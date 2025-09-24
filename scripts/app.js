@@ -25,9 +25,27 @@ class DoItTomorrowApp {
     this.setupSyncControls();
     this.setupThemeToggle();
     this.setupDeleteMode();
+    this.setupGlobalHandlers();
     this.render();
     this.updateCompletedCounter();
     this.registerServiceWorker();
+  }
+
+  // Setup global event handlers
+  setupGlobalHandlers() {
+    // Cancel edit mode when clicking outside
+    document.addEventListener('click', (e) => {
+      if (this.editingTask) {
+        const editInput = document.querySelector('.edit-input');
+        const clickedOnInput = editInput && editInput.contains(e.target);
+        const clickedOnTask = e.target.closest(`[data-task-id="${this.editingTask}"]`);
+
+        if (!clickedOnInput && !clickedOnTask) {
+          this.cancelEdit();
+          this.render();
+        }
+      }
+    });
   }
   
   updateCurrentDate() {
@@ -81,6 +99,22 @@ class DoItTomorrowApp {
       if (e.key === 'Enter') {
         this.handleAddTask('tomorrow', tomorrowInput);
       }
+    });
+
+    // Make entire add-task-container clickable
+    const todayContainer = todayInput.closest('.add-task-container');
+    const tomorrowContainer = tomorrowInput.closest('.add-task-container');
+
+    todayContainer.addEventListener('click', (e) => {
+      // Always ensure focus happens reliably
+      e.preventDefault();
+      todayInput.focus();
+    });
+
+    tomorrowContainer.addEventListener('click', (e) => {
+      // Always ensure focus happens reliably
+      e.preventDefault();
+      tomorrowInput.focus();
     });
 
     // Auto-focus tomorrow input field initially
@@ -211,6 +245,29 @@ class DoItTomorrowApp {
       li.className = `task-item ${task.completed ? 'completed' : ''}`;
       li.setAttribute('data-task-id', task.id);
 
+      // Add click handlers to the container
+      li.addEventListener('click', (e) => this.handleTaskClick(task.id, e));
+      li.addEventListener('mousedown', (e) => {
+        li.classList.add('button-pressed');
+        this.startLongPress(task.id, e);
+      });
+      li.addEventListener('mouseup', () => {
+        li.classList.remove('button-pressed');
+        this.endLongPress();
+      });
+      li.addEventListener('mouseleave', () => {
+        li.classList.remove('button-pressed');
+        this.endLongPress();
+      });
+      li.addEventListener('touchstart', (e) => {
+        li.classList.add('button-pressed');
+        this.startLongPress(task.id, e);
+      });
+      li.addEventListener('touchend', () => {
+        li.classList.remove('button-pressed');
+        this.endLongPress();
+      });
+
       // Add moving-in animation for recently moved tasks
       if (task._justMoved) {
         li.classList.add(`moving-in-${task._justMoved}`);
@@ -227,28 +284,18 @@ class DoItTomorrowApp {
       listEl.appendChild(li);
     });
 
-    // Add overflow detection after DOM updates
-    setTimeout(() => {
-      this.detectTextOverflow(listEl);
-    }, 0);
+    // Overflow detection removed
   }
 
   getTaskHTML(task, listName) {
     // Movement icons only for incomplete tasks - elegant arrows
     const moveBtnHTML = task.completed ? '' :
       (listName === 'today' ?
-        `<span class="move-icon" onclick="app.pushToTomorrow('${task.id}')" title="Push to Later">→</span>` :
-        `<span class="move-icon" onclick="app.pullToToday('${task.id}')" title="Pull to Today">←</span>`);
+        `<span class="move-icon" onclick="event.stopPropagation(); app.pushToTomorrow('${task.id}')" title="Push to Later">→</span>` :
+        `<span class="move-icon" onclick="event.stopPropagation(); app.pullToToday('${task.id}')" title="Pull to Today">←</span>`);
 
     return `
-      <span class="task-text"
-            onclick="app.handleTaskClick('${task.id}', event)"
-            onmousedown="app.startLongPress('${task.id}', event)"
-            onmouseup="app.endLongPress()"
-            onmouseleave="app.endLongPress()"
-            ontouchstart="app.startLongPress('${task.id}', event)"
-            ontouchend="app.endLongPress()"
-            style="cursor: pointer;">${this.escapeHtml(task.text)}</span>
+      <span class="task-text">${this.escapeHtml(task.text)}</span>
       <div class="task-actions">
         ${moveBtnHTML}
       </div>
@@ -459,8 +506,15 @@ class DoItTomorrowApp {
 
   // Handle task click (completion or edit)
   handleTaskClick(id, event) {
-    // If we're in edit mode, don't complete
-    if (this.editingTask) return;
+    // If we're in edit mode for a DIFFERENT task, cancel edit and allow click
+    if (this.editingTask && this.editingTask !== id) {
+      this.cancelEdit();
+      // Don't return - allow the click to proceed
+    }
+    // If we're in edit mode for THIS task, don't complete
+    else if (this.editingTask === id) {
+      return;
+    }
 
     // If this was a long press, don't complete
     if (this.wasLongPress) {
@@ -629,16 +683,33 @@ class DoItTomorrowApp {
 
     this.editingTask = null;
     this.originalText = null;
+    this.wasLongPress = false; // Reset long press flag when canceling edit
   }
 
   // Move task from Today to Later
   pushToTomorrow(id) {
-    this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
+    // Animate the task item being pushed right
+    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
+    if (taskElement) {
+      taskElement.classList.add('pushing-right');
+      setTimeout(() => {
+        taskElement.classList.remove('pushing-right');
+        this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
+      }, 300);
+    }
   }
 
   // Move task from Later to Today (for productive days!)
   pullToToday(id) {
-    this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
+    // Animate the task item being pushed left
+    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
+    if (taskElement) {
+      taskElement.classList.add('pushing-left');
+      setTimeout(() => {
+        taskElement.classList.remove('pushing-left');
+        this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
+      }, 300);
+    }
   }
 
   // Animated task movement between lists
@@ -964,55 +1035,41 @@ class DoItTomorrowApp {
     `;
 
     content.innerHTML = `
-      <h3 class="qr-modal-title">
-        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px;">
-          <path d="M1 1h6v6H1z"/>
-          <path d="M9 1h6v6H9z"/>
-          <path d="M1 9h6v6H1z"/>
-          <path d="M9 9h2v2H9z"/>
-          <path d="M13 9h2v2h-2z"/>
-          <path d="M9 13h2v2H9z"/>
-          <path d="M13 13h2v2h-2z"/>
-          <path d="M3 3h2v2H3z"/>
-          <path d="M11 3h2v2h-2z"/>
-          <path d="M3 11h2v2H3z"/>
+      <button class="qr-close" id="close-modal" aria-label="Close modal">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
         </svg>
-        QR Sync
-      </h3>
-      <div id="qr-tabs" class="qr-tabs">
-        <button id="share-tab" class="qr-tab active">Share My Tasks</button>
-        <button id="scan-tab" class="qr-tab">Scan QR Code</button>
+      </button>
+
+      <h3 class="qr-modal-title">QR Sync</h3>
+
+      <div class="qr-tabs">
+        <button id="share-tab" class="qr-tab active">Share</button>
+        <button id="scan-tab" class="qr-tab">Scan</button>
       </div>
 
       <!-- Share Panel -->
       <div id="share-panel" class="qr-panel">
-        <p class="qr-description">
-          Scan this QR code with another device to sync your tasks
-        </p>
-        <div id="qr-container" class="qr-container">
+        <div class="qr-container">
           <div id="qr-code" class="qr-code-display">
             <div class="qr-loading">Generating QR code...</div>
           </div>
         </div>
         <p class="qr-stats">
-          ${this.data.today.length + this.data.tomorrow.length} tasks • ${Math.round(qrData.length / 1024 * 100) / 100}KB
+          ${this.data.today.length + this.data.tomorrow.length} tasks
         </p>
       </div>
 
       <!-- Scan Panel -->
       <div id="scan-panel" class="qr-panel qr-panel-hidden">
-        <p class="qr-description">
-          Point your camera at a QR code to scan and import tasks
-        </p>
-
-        <div id="camera-controls" class="camera-controls">
-          <button id="start-camera" class="qr-btn qr-btn-primary">
+        <div class="camera-controls">
+          <button id="start-camera" class="sync-btn">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M15 12V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586L9.828 2.828A2 2 0 0 0 8.414 2H7.586a2 2 0 0 0-1.414.586L5.586 3.172A2 2 0 0 1 4.172 4H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2zM8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
             </svg>
             Start Camera
           </button>
-          <button id="stop-camera" class="qr-btn qr-btn-secondary qr-btn-hidden">
+          <button id="stop-camera" class="sync-btn" style="display: none;">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <rect x="2" y="2" width="12" height="12" rx="2"/>
             </svg>
@@ -1020,10 +1077,10 @@ class DoItTomorrowApp {
           </button>
         </div>
 
-        <div id="camera-area" class="camera-area camera-area-hidden">
+        <div id="camera-area" class="camera-area" style="display: none;">
           <div class="camera-container">
             <video id="camera-preview" autoplay playsinline class="camera-preview"></video>
-            <div id="scan-overlay" class="scan-overlay">
+            <div class="scan-overlay">
               <div class="scan-corner scan-corner-tl"></div>
               <div class="scan-corner scan-corner-tr"></div>
               <div class="scan-corner scan-corner-bl"></div>
@@ -1035,50 +1092,23 @@ class DoItTomorrowApp {
           </p>
         </div>
 
-        <div id="scan-result" class="scan-result scan-result-hidden">
+        <div id="scan-result" class="scan-result" style="display: none;">
           <div class="scan-success">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
-              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4.5-4.5z"/>
-            </svg>
             QR Code Detected
           </div>
           <p id="scan-data-preview" class="scan-preview"></p>
           <div class="scan-actions">
-            <button id="import-scanned" class="qr-btn qr-btn-success">Import Tasks</button>
-            <button id="scan-again" class="qr-btn qr-btn-secondary">Scan Again</button>
+            <button id="import-scanned" class="sync-btn">Import Tasks</button>
+            <button id="scan-again" class="sync-btn">Scan Again</button>
           </div>
         </div>
       </div>
-
-      <button id="close-modal" class="qr-btn qr-btn-secondary qr-close">Close</button>
     `;
 
     modal.appendChild(content);
     document.body.appendChild(modal);
 
-    // Add QR tab styles
-    const style = document.createElement('style');
-    style.textContent = `
-      .qr-tab {
-        padding: 0.5rem 1rem;
-        margin: 0 0.25rem;
-        background: var(--border);
-        color: var(--text);
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background 0.2s ease;
-      }
-      .qr-tab.active {
-        background: var(--primary-color);
-        color: white;
-      }
-      .qr-tab:hover {
-        background: var(--primary-color);
-        color: white;
-      }
-    `;
-    document.head.appendChild(style);
+    // QR tab styles are now handled in main.css
 
     // Generate QR code with multiple fallbacks
     this.generateQRCode(qrData);
@@ -1092,15 +1122,15 @@ class DoItTomorrowApp {
     shareTab.addEventListener('click', () => {
       shareTab.classList.add('active');
       scanTab.classList.remove('active');
-      sharePanel.style.display = 'block';
-      scanPanel.style.display = 'none';
+      sharePanel.classList.remove('qr-panel-hidden');
+      scanPanel.classList.add('qr-panel-hidden');
     });
 
     scanTab.addEventListener('click', () => {
       scanTab.classList.add('active');
       shareTab.classList.remove('active');
-      sharePanel.style.display = 'none';
-      scanPanel.style.display = 'block';
+      sharePanel.classList.add('qr-panel-hidden');
+      scanPanel.classList.remove('qr-panel-hidden');
     });
 
     // Camera scanning functionality
@@ -1139,7 +1169,7 @@ class DoItTomorrowApp {
         // Update UI
         cameraArea.style.display = 'block';
         startCameraBtn.style.display = 'none';
-        stopCameraBtn.style.display = 'inline-block';
+        stopCameraBtn.style.display = 'inline-flex';
         scanStatus.textContent = 'Scanning for QR codes...';
         scanStatus.style.color = 'var(--text-muted)';
 
@@ -1157,7 +1187,7 @@ class DoItTomorrowApp {
         currentScanner = null;
       }
 
-      cameraArea.style.display = 'none';
+      cameraArea.classList.add('camera-area-hidden');
       scanResult.style.display = 'none';
       startCameraBtn.style.display = 'inline-block';
       stopCameraBtn.style.display = 'none';
@@ -1382,25 +1412,7 @@ class DoItTomorrowApp {
     }
   }
 
-  // Detect text overflow and add data attribute for marquee
-  detectTextOverflow(listEl) {
-    const taskTexts = listEl.querySelectorAll('.task-text');
-    taskTexts.forEach(textEl => {
-      // Reset any existing overflow state
-      textEl.removeAttribute('data-overflow');
-      textEl.style.removeProperty('--scroll-distance');
-
-      // Check if content overflows container
-      if (textEl.scrollWidth > textEl.clientWidth) {
-        textEl.setAttribute('data-overflow', 'true');
-
-        // Calculate optimal scroll distance for full text reveal
-        const overflowAmount = textEl.scrollWidth - textEl.clientWidth;
-        const scrollDistance = Math.min(overflowAmount + 20, textEl.scrollWidth * 0.8);
-        textEl.style.setProperty('--scroll-distance', `-${scrollDistance}px`);
-      }
-    });
-  }
+  // Removed detectTextOverflow function
 }
 
 // Initialize app when DOM is ready

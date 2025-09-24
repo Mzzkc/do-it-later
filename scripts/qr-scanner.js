@@ -86,25 +86,43 @@ class QRScanner {
     requestAnimationFrame(() => this.scan());
   }
 
-  // QR detection placeholder
+  // QR detection using jsQR library
   detectQRCode(imageData) {
-    // Real QR detection would use jsQR or similar library here
-    // For now, we disable automatic detection to prevent false positives
+    try {
+      // Use jsQR library for real QR code detection
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert", // Don't invert colors for better performance
+      });
 
-    // To test the import functionality, users can manually generate and scan real QR codes
-    // or we can add a "Test Import" button for development
+      if (code && code.data) {
+        // Validate that this looks like our task data format
+        if (this.isValidTaskData(code.data)) {
+          return code.data;
+        } else {
+          console.log('QR code found but not valid task data:', code.data);
+        }
+      }
 
-    return null;
+      return null; // No valid QR code found in this frame
+
+    } catch (error) {
+      console.error('QR detection error:', error);
+      return null;
+    }
   }
-}
 
-// Simplified QR detection that looks for our specific data pattern
-function isValidQRData(text) {
-  try {
-    const data = JSON.parse(text);
-    return data && typeof data === 'object' &&
-           (data.t || data.l || data.tc !== undefined);
-  } catch {
-    return false;
+  // Validate QR code contains task data
+  isValidTaskData(data) {
+    try {
+      const parsed = JSON.parse(data);
+
+      // Check if it has the expected task data structure
+      return parsed &&
+             typeof parsed === 'object' &&
+             (Array.isArray(parsed.today) || Array.isArray(parsed.tomorrow) || typeof parsed.totalCompleted === 'number');
+
+    } catch (error) {
+      return false;
+    }
   }
 }
