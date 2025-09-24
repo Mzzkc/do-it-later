@@ -22,3 +22,10 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Claude Code specific files
+.claude/
+CLAUDE.md
+coordination-scratchpad.md
+validate-*.md
+docs/
