@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Do It (Later)</title>
+    <meta name="description" content="Simple two-list todo app - Today and Later">
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" href="icons/favicon.ico">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/mobile.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="header-top">
+                <h1 class="app-title">Do It (Later)</h1>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+                    <div class="toggle-track">
+                        <div class="toggle-thumb">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="theme-icon theme-icon-dark">
+                                <path d="M6 .278a.768.768 0 0 1 .08.858 7.208 7.208 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277.527 0 1.04-.055 1.533-.16a.787.787 0 0 1 .81.316.733.733 0 0 1-.031.893A8.349 8.349 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.752.752 0 0 1 6 .278z"/>
+                            </svg>
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" class="theme-icon theme-icon-light">
+                                <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0zm0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13zm8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5zM3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8zm10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0zm-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0zm9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707zM4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <small class="theme-label">Dark</small>
+                </button>
+            </div>
+
+            <div class="header-metadata">
+                <div id="current-date" class="date"></div>
+                <div id="completed-counter" class="task-count">0 tasks completed</div>
+            </div>
+
+            <!-- Mobile day navigation -->
+            <div class="mobile-nav" id="mobile-nav">
+                <button class="nav-btn" id="today-nav" data-day="today">Today</button>
+                <button class="nav-btn" id="tomorrow-nav" data-day="tomorrow">Later</button>
+            </div>
+        </header>
+        
+        <main>
+            <!-- Phase 1: Basic structure placeholder -->
+            <div class="lists-container">
+                <section class="list-section" id="today-section">
+                    <div class="section-header">
+                        <h2>Today</h2>
+                        <button class="delete-mode-toggle" data-list="today" aria-label="Toggle delete mode">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="add-task-container">
+                        <input
+                            type="text"
+                            id="today-task-input"
+                            placeholder="What are you doing today?"
+                            maxlength="200"
+                            autocomplete="off"
+                            class="notebook-input">
+                    </div>
+                    <ul id="today-list"></ul>
+                </section>
+
+                <section class="list-section" id="tomorrow-section">
+                    <div class="section-header">
+                        <h2>Later</h2>
+                        <button class="delete-mode-toggle" data-list="tomorrow" aria-label="Toggle delete mode">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="add-task-container">
+                        <input
+                            type="text"
+                            id="tomorrow-task-input"
+                            placeholder="What are you doing later?"
+                            maxlength="200"
+                            autocomplete="off"
+                            class="notebook-input">
+                    </div>
+                    <ul id="tomorrow-list"></ul>
+                </section>
+            </div>
+        </main>
+        
+        <footer>
+            <div class="sync-controls">
+                <button id="export-file-btn" class="sync-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M4 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5l-3-3H5a1 1 0 0 0-1 1z"/>
+                        <path d="M9 2v3h3"/>
+                        <path d="M6 10l2 2 2-2"/>
+                        <path d="M8 7v5"/>
+                    </svg>
+                    Export File
+                </button>
+                <button id="export-clipboard-btn" class="sync-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="4" y="2" width="8" height="12" rx="1"/>
+                        <rect x="6" y="1" width="4" height="2" rx="0.5"/>
+                        <path d="M6 8l2 2 4-4"/>
+                    </svg>
+                    Copy
+                </button>
+                <label for="import-file" class="sync-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M4 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5l-3-3H5a1 1 0 0 0-1 1z"/>
+                        <path d="M9 2v3h3"/>
+                        <path d="M10 8l-2-2-2 2"/>
+                        <path d="M8 11V6"/>
+                    </svg>
+                    Import File
+                </label>
+                <input type="file" id="import-file" accept=".txt" style="display: none;">
+                <button id="import-clipboard-btn" class="sync-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="4" y="2" width="8" height="12" rx="1"/>
+                        <rect x="6" y="1" width="4" height="2" rx="0.5"/>
+                        <path d="M6 7h4"/>
+                        <path d="M6 9h4"/>
+                        <path d="M6 11h2"/>
+                    </svg>
+                    Paste
+                </button>
+                <button id="qr-btn" class="sync-btn">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M1 1h6v6H1z"/>
+                        <path d="M9 1h6v6H9z"/>
+                        <path d="M1 9h6v6H1z"/>
+                        <path d="M9 9h2v2H9z"/>
+                        <path d="M13 9h2v2h-2z"/>
+                        <path d="M9 13h2v2H9z"/>
+                        <path d="M13 13h2v2h-2z"/>
+                        <path d="M3 3h2v2H3z"/>
+                        <path d="M11 3h2v2h-2z"/>
+                        <path d="M3 11h2v2H3z"/>
+                    </svg>
+                    QR Sync
+                </button>
+            </div>
+
+            <div class="donation-section">
+                <small class="donation-text">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 4px;">
+                        <path d="M8 14.5a.5.5 0 0 1-.3-.1l-5.2-4.7A4.5 4.5 0 1 1 8 3.1a4.5 4.5 0 1 1 5.5 6.6l-5.2 4.7a.5.5 0 0 1-.3.1z"/>
+                    </svg>
+                    Enjoying Do It (Later)?
+                    <a href="https://github.com/sponsors/YOUR_USERNAME" target="_blank" rel="noopener" class="donation-link">Buy me coffee!</a>
+                </small>
+            </div>
+
+            <small class="storage-notice">Tasks stored locally - clearing browser data resets lists</small>
+        </footer>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="scripts/storage.js"></script>
+    <script src="scripts/sync.js"></script>
+    <script src="scripts/qrcode.min.js"></script>
+    <script src="scripts/qr-scanner.js"></script>
+    <script src="scripts/app.js"></script>
+</body>
+</html>

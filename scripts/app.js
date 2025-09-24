@@ -1,0 +1,1409 @@
+// Do It (Later) - Main Application
+// Phase 1: Basic app initialization
+
+class DoItTomorrowApp {
+  constructor() {
+    this.data = Storage.load();
+    this.saveTimeout = null;
+    this.renderTimeout = null;
+    this.currentMobileView = 'tomorrow'; // Default to tomorrow on mobile
+    this.init();
+  }
+
+  // Generate unique ID for tasks
+  generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+  
+  init() {
+    this.initTheme();
+    this.updateCurrentDate();
+    this.checkDateRollover();
+    this.bindEvents();
+    this.setupMobileNavigation();
+    this.setupSwipeGestures();
+    this.setupSyncControls();
+    this.setupThemeToggle();
+    this.setupDeleteMode();
+    this.render();
+    this.updateCompletedCounter();
+    this.registerServiceWorker();
+  }
+  
+  updateCurrentDate() {
+    const dateEl = document.getElementById('current-date');
+    const today = new Date();
+    const options = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    dateEl.textContent = today.toLocaleDateString('en-US', options);
+  }
+
+  updateCompletedCounter() {
+    const counterEl = document.getElementById('completed-counter');
+    const count = this.data.totalCompleted || 0;
+    counterEl.textContent = `${count} tasks completed`;
+
+    // Add pulse animation for counter updates
+    counterEl.classList.add('counter-update');
+    setTimeout(() => {
+      counterEl.classList.remove('counter-update');
+    }, 300);
+  }
+  
+  checkDateRollover() {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.data.currentDate !== today) {
+      // New day - move incomplete tomorrow tasks to today, remove completed tasks
+      this.data.today = this.data.tomorrow.filter(task => !task.completed);
+      this.data.tomorrow = [];
+      this.data.currentDate = today;
+      this.save();
+    }
+  }
+  
+  bindEvents() {
+    const todayInput = document.getElementById('today-task-input');
+    const tomorrowInput = document.getElementById('tomorrow-task-input');
+
+    // Add task via Enter key for Today
+    todayInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.handleAddTask('today', todayInput);
+      }
+    });
+
+    // Add task via Enter key for Tomorrow
+    tomorrowInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.handleAddTask('tomorrow', tomorrowInput);
+      }
+    });
+
+    // Auto-focus tomorrow input field initially
+    tomorrowInput.focus();
+
+    // Global escape key handler
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.cancelEdit();
+      }
+    });
+  }
+
+  handleAddTask(list, inputElement) {
+    const text = inputElement.value.trim();
+
+    if (text) {
+      // Prevent adding extremely long tasks
+      if (text.length > 200) {
+        this.showNotification('Task too long! Please keep it under 200 characters.', 'error');
+        return;
+      }
+
+      // Prevent duplicate tasks in the same list
+      const existingTasks = this.data[list];
+      if (existingTasks.some(task => task.text.toLowerCase() === text.toLowerCase())) {
+        this.showNotification('This task already exists in this list!', 'warning');
+        return;
+      }
+
+      try {
+        this.addTask(text, list);
+        inputElement.value = '';
+        inputElement.focus();
+      } catch (error) {
+        console.error('Error adding task:', error);
+        this.showNotification('Failed to add task. Please try again.', 'error');
+      }
+    }
+  }
+
+  // Show notification to user
+  showNotification(message, type = 'info') {
+    // Remove existing notification
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+
+    // Create SVG icons for notifications
+    const icons = {
+      success: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4.5-4.5z"/></svg>',
+      error: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg>',
+      warning: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>',
+      info: '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>'
+    };
+
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `${icons[type] || icons.info}${message}`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      z-index: 1000;
+      max-width: 300px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    `;
+
+    // Set background color based on type
+    const colors = {
+      success: '#059669',
+      error: '#dc2626',
+      warning: '#d97706',
+      info: '#2563eb'
+    };
+    notification.style.backgroundColor = colors[type] || colors.info;
+
+    document.body.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 300);
+    }, 3000);
+  }
+
+  renderList(listName, tasks) {
+    const listEl = document.getElementById(`${listName}-list`);
+    if (!listEl) return;
+
+    listEl.innerHTML = '';
+
+    if (tasks.length === 0) {
+      const emptyMsg = document.createElement('li');
+      emptyMsg.className = 'empty-message';
+
+      if (listName === 'today') {
+        const totalCompleted = this.data.totalCompleted || 0;
+        if (totalCompleted === 0) {
+          emptyMsg.innerHTML = 'Ready to start your day?<br><small>Add tasks or move some from Later</small>';
+        } else {
+          emptyMsg.innerHTML = 'All done for today!<br><small>Take a break or tackle later tasks</small>';
+        }
+      } else {
+        emptyMsg.innerHTML = 'What\'s on your agenda for later?<br><small>Type above to add your first task</small>';
+      }
+
+      listEl.appendChild(emptyMsg);
+      return;
+    }
+
+    tasks.forEach(task => {
+      const li = document.createElement('li');
+      li.className = `task-item ${task.completed ? 'completed' : ''}`;
+      li.setAttribute('data-task-id', task.id);
+
+      // Add moving-in animation for recently moved tasks
+      if (task._justMoved) {
+        li.classList.add(`moving-in-${task._justMoved}`);
+        delete task._justMoved;
+
+        // Clean up the animation class after it completes
+        setTimeout(() => {
+          li.classList.remove(`moving-in-left`);
+          li.classList.remove(`moving-in-right`);
+        }, 300);
+      }
+
+      li.innerHTML = this.getTaskHTML(task, listName);
+      listEl.appendChild(li);
+    });
+
+    // Add overflow detection after DOM updates
+    setTimeout(() => {
+      this.detectTextOverflow(listEl);
+    }, 0);
+  }
+
+  getTaskHTML(task, listName) {
+    // Movement icons only for incomplete tasks - elegant arrows
+    const moveBtnHTML = task.completed ? '' :
+      (listName === 'today' ?
+        `<span class="move-icon" onclick="app.pushToTomorrow('${task.id}')" title="Push to Later">→</span>` :
+        `<span class="move-icon" onclick="app.pullToToday('${task.id}')" title="Pull to Today">←</span>`);
+
+    return `
+      <span class="task-text"
+            onclick="app.handleTaskClick('${task.id}', event)"
+            onmousedown="app.startLongPress('${task.id}', event)"
+            onmouseup="app.endLongPress()"
+            onmouseleave="app.endLongPress()"
+            ontouchstart="app.startLongPress('${task.id}', event)"
+            ontouchend="app.endLongPress()"
+            style="cursor: pointer;">${this.escapeHtml(task.text)}</span>
+      <div class="task-actions">
+        ${moveBtnHTML}
+      </div>
+    `;
+  }
+
+  // Escape HTML to prevent XSS
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  save() {
+    // Debounce saves to improve performance
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+
+    this.saveTimeout = setTimeout(() => {
+      try {
+        this.data.lastUpdated = Date.now();
+        const success = Storage.save(this.data);
+        if (!success) {
+          this.showNotification('Storage quota exceeded! Please clear some browser data.', 'error');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        this.showNotification('Failed to save data. Your changes might be lost.', 'error');
+      }
+    }, 100);
+  }
+
+  // Debounced render for performance
+  render() {
+    if (this.renderTimeout) {
+      clearTimeout(this.renderTimeout);
+    }
+
+    this.renderTimeout = setTimeout(() => {
+      this.renderList('today', this.data.today);
+      this.renderList('tomorrow', this.data.tomorrow);
+    }, 16); // ~60fps
+  }
+
+  // Setup mobile navigation
+  setupMobileNavigation() {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const day = e.target.dataset.day;
+        this.switchMobileView(day);
+      });
+    });
+
+    // Set initial mobile view
+    this.updateMobileView();
+  }
+
+  // Switch mobile view between days
+  switchMobileView(day) {
+    this.currentMobileView = day;
+    this.updateMobileView();
+  }
+
+  // Update mobile view display
+  updateMobileView() {
+    // Update navigation buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.day === this.currentMobileView);
+    });
+
+    // Update list sections
+    document.querySelectorAll('.list-section').forEach(section => {
+      const sectionId = section.id.replace('-section', '');
+      section.classList.toggle('active', sectionId === this.currentMobileView);
+    });
+  }
+
+  // Setup swipe gestures for mobile
+  setupSwipeGestures() {
+    let startX = 0;
+    let startY = 0;
+    let isDragging = false;
+
+    const main = document.querySelector('main');
+
+    main.addEventListener('touchstart', (e) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    });
+
+    main.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+
+      const deltaY = Math.abs(e.touches[0].clientY - startY);
+      // Prevent vertical scrolling interference
+      if (deltaY > 30) {
+        isDragging = false;
+      }
+    });
+
+    main.addEventListener('touchend', (e) => {
+      if (!isDragging) return;
+
+      const endX = e.changedTouches[0].clientX;
+      const deltaX = endX - startX;
+      const threshold = 50; // Minimum swipe distance
+
+      if (Math.abs(deltaX) > threshold) {
+        if (deltaX > 0) {
+          // Swipe right - go to Today (left list)
+          this.switchMobileView('today');
+        } else {
+          // Swipe left - go to Later (right list)
+          this.switchMobileView('tomorrow');
+        }
+      }
+
+      isDragging = false;
+    });
+  }
+
+  // Core Task Management Functions
+
+  // Add new task (always to Later list unless specified)
+  addTask(text, list = 'tomorrow') {
+    if (!text || !text.trim()) return false;
+
+    const task = {
+      id: this.generateId(),
+      text: text.trim(),
+      completed: false,
+      createdAt: Date.now()
+    };
+
+    this.data[list].push(task);
+    this.save();
+    this.render();
+    return task;
+  }
+
+  // Toggle task completion status
+  completeTask(id, event) {
+    // Add ripple effect if event is provided
+    if (event && event.target) {
+      this.addRippleEffect(event.target);
+    }
+
+    // Find the actual task object (not a copy) in the data arrays
+    let task = null;
+    let taskIndex = -1;
+    let listName = '';
+
+    // Check today list
+    taskIndex = this.data.today.findIndex(t => t.id === id);
+    if (taskIndex !== -1) {
+      task = this.data.today[taskIndex];
+      listName = 'today';
+    } else {
+      // Check tomorrow list
+      taskIndex = this.data.tomorrow.findIndex(t => t.id === id);
+      if (taskIndex !== -1) {
+        task = this.data.tomorrow[taskIndex];
+        listName = 'tomorrow';
+      }
+    }
+
+    if (task) {
+      const wasCompleted = task.completed;
+      task.completed = !task.completed;
+
+      // Increment lifetime counter when marking as complete
+      if (!wasCompleted && task.completed) {
+        this.data.totalCompleted = (this.data.totalCompleted || 0) + 1;
+        this.updateCompletedCounter();
+      }
+      // Decrement counter when unmarking (undo)
+      else if (wasCompleted && !task.completed) {
+        this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
+        this.updateCompletedCounter();
+      }
+
+      this.save();
+      this.render();
+      return true;
+    }
+    return false;
+  }
+
+  // Add ripple effect to clicked element
+  addRippleEffect(element) {
+    // Don't add multiple ripples
+    if (element.classList.contains('ripple')) return;
+
+    element.classList.add('ripple');
+
+    setTimeout(() => {
+      element.classList.add('ripple-fade');
+      element.classList.remove('ripple');
+
+      setTimeout(() => {
+        element.classList.remove('ripple-fade');
+      }, 200);
+    }, 300);
+  }
+
+  // Handle task click (completion or edit)
+  handleTaskClick(id, event) {
+    // If we're in edit mode, don't complete
+    if (this.editingTask) return;
+
+    // If this was a long press, don't complete
+    if (this.wasLongPress) {
+      this.wasLongPress = false;
+      return;
+    }
+
+    // Check if we're in delete mode for this list
+    const taskInfo = this.findTask(id);
+    if (!taskInfo) return;
+
+    const listName = taskInfo.list;
+    if (this.deleteMode[listName]) {
+      // Delete mode - delete the task
+      this.deleteTask(id);
+      this.showNotification('Task deleted', 'success');
+      this.render();
+      return;
+    }
+
+    // Normal click - complete task
+    this.completeTask(id, event);
+  }
+
+  // Long press detection
+  startLongPress(id, event) {
+    // Prevent default to avoid text selection
+    event.preventDefault();
+
+    this.longPressTimer = setTimeout(() => {
+      this.enterEditMode(id);
+      this.wasLongPress = true;
+    }, 500); // 500ms for long press
+  }
+
+  endLongPress() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
+  // Enter edit mode for a task
+  enterEditMode(id) {
+    if (this.editingTask) this.cancelEdit();
+
+    const taskInfo = this.findTask(id);
+    if (!taskInfo) return;
+
+    const taskElement = document.querySelector(`[data-task-id="${id}"] .task-text`);
+    if (!taskElement) return;
+
+    this.editingTask = id;
+    this.originalText = taskInfo.text;
+
+    // Create input element
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = taskInfo.text;
+    input.className = 'edit-input';
+    input.style.cssText = `
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--primary-color);
+      border-radius: 4px;
+      padding: 4px 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: inherit;
+      overflow: hidden;
+      text-overflow: clip;
+      white-space: nowrap;
+      outline: none;
+    `;
+
+    // Replace task text with input
+    taskElement.style.display = 'none';
+    taskElement.parentNode.insertBefore(input, taskElement);
+
+    // Focus and select all text
+    input.focus();
+    input.select();
+
+    // Save on Enter or blur
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.saveEdit(input.value.trim());
+      }
+    });
+
+    input.addEventListener('blur', () => {
+      this.saveEdit(input.value.trim());
+    });
+  }
+
+  // Save edited task text
+  saveEdit(newText) {
+    if (!this.editingTask) return;
+
+    // Find the actual task object to update
+    let actualTask = null;
+
+    // Check today list
+    let taskIndex = this.data.today.findIndex(t => t.id === this.editingTask);
+    if (taskIndex !== -1) {
+      actualTask = this.data.today[taskIndex];
+    } else {
+      // Check tomorrow list
+      taskIndex = this.data.tomorrow.findIndex(t => t.id === this.editingTask);
+      if (taskIndex !== -1) {
+        actualTask = this.data.tomorrow[taskIndex];
+      }
+    }
+
+    if (!actualTask) return;
+
+    // Validate new text
+    if (newText && newText.length > 200) {
+      this.showNotification('Task too long! Please keep it under 200 characters.', 'error');
+      return;
+    }
+
+    // If text is empty, delete the task
+    if (!newText || newText.trim() === '') {
+      try {
+        this.deleteTask(this.editingTask);
+        this.showNotification('Task deleted', 'success');
+        this.cancelEdit();
+        this.render();
+        return;
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        this.showNotification('Failed to delete task. Please try again.', 'error');
+      }
+    }
+
+    // Update task text if changed and not empty
+    if (newText && newText !== this.originalText) {
+      try {
+        actualTask.text = newText;
+        this.save();
+      } catch (error) {
+        console.error('Error updating task:', error);
+        this.showNotification('Failed to update task. Please try again.', 'error');
+        actualTask.text = this.originalText; // Revert on error
+      }
+    }
+
+    this.cancelEdit();
+    this.render();
+  }
+
+  // Cancel edit mode
+  cancelEdit() {
+    if (!this.editingTask) return;
+
+    const editInput = document.querySelector('.edit-input');
+    if (editInput) {
+      editInput.remove();
+    }
+
+    const taskElement = document.querySelector(`[data-task-id="${this.editingTask}"] .task-text`);
+    if (taskElement) {
+      taskElement.style.display = '';
+    }
+
+    this.editingTask = null;
+    this.originalText = null;
+  }
+
+  // Move task from Today to Later
+  pushToTomorrow(id) {
+    this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
+  }
+
+  // Move task from Later to Today (for productive days!)
+  pullToToday(id) {
+    this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
+  }
+
+  // Animated task movement between lists
+  animateTaskMovement(id, fromList, toList, direction) {
+    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
+    if (!taskElement) return false;
+
+    // Add moving-out animation in correct direction
+    taskElement.classList.add(`moving-out-${direction}`);
+
+    // Wait for animation, then move the task
+    setTimeout(() => {
+      const fromIndex = this.data[fromList].findIndex(task => task.id === id);
+      if (fromIndex === -1) return false;
+
+      const task = this.data[fromList].splice(fromIndex, 1)[0];
+      this.data[toList].push(task);
+      this.save();
+
+      // Mark task for moving-in animation from opposite direction
+      const inDirection = direction === 'right' ? 'left' : 'right';
+      task._justMoved = inDirection;
+      this.render();
+
+      return true;
+    }, 300);
+  }
+
+  // Helper function to find task by ID across both lists
+  findTask(id) {
+    const todayTask = this.data.today.find(task => task.id === id);
+    if (todayTask) {
+      return { ...todayTask, list: 'today' };
+    }
+
+    const tomorrowTask = this.data.tomorrow.find(task => task.id === id);
+    if (tomorrowTask) {
+      return { ...tomorrowTask, list: 'tomorrow' };
+    }
+
+    return null;
+  }
+
+  // Delete task (not in requirements but useful for cleanup)
+  deleteTask(id) {
+    let found = false;
+
+    // Check today list
+    const todayIndex = this.data.today.findIndex(task => task.id === id);
+    if (todayIndex !== -1) {
+      this.data.today.splice(todayIndex, 1);
+      found = true;
+    }
+
+    // Check tomorrow list
+    const tomorrowIndex = this.data.tomorrow.findIndex(task => task.id === id);
+    if (tomorrowIndex !== -1) {
+      this.data.tomorrow.splice(tomorrowIndex, 1);
+      found = true;
+    }
+
+    if (found) {
+      this.save();
+      this.render();
+    }
+    return found;
+  }
+  
+  registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('SW registered:', registration);
+        })
+        .catch(error => {
+          console.log('SW registration failed:', error);
+        });
+    }
+  }
+  // Setup sync controls
+  setupSyncControls() {
+    const exportFileBtn = document.getElementById('export-file-btn');
+    const exportClipboardBtn = document.getElementById('export-clipboard-btn');
+    const importFile = document.getElementById('import-file');
+    const importClipboardBtn = document.getElementById('import-clipboard-btn');
+    const qrBtn = document.getElementById('qr-btn');
+
+    // Export to file functionality
+    exportFileBtn.addEventListener('click', () => {
+      try {
+        const filename = Sync.exportToFile(this.data);
+        this.showNotification(`Exported to ${filename}`, 'success');
+      } catch (error) {
+        this.showNotification(`Export failed: ${error.message}`, 'error');
+      }
+    });
+
+    // Export to clipboard functionality
+    exportClipboardBtn.addEventListener('click', async () => {
+      try {
+        const textData = Sync.exportToText(this.data);
+        await navigator.clipboard.writeText(textData);
+        this.showNotification(`Copied to clipboard`, 'success');
+      } catch (error) {
+        this.showNotification(`Copy failed: ${error.message}`, 'error');
+      }
+    });
+
+    // Import functionality
+    importFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const importedData = await Sync.importFromFile(file);
+
+        // Merge with existing data
+        const shouldReplace = confirm(
+          'Replace your current tasks with imported data?\n\n' +
+          'Click OK to replace everything, or Cancel to merge with existing tasks.'
+        );
+
+        if (shouldReplace) {
+          this.data = importedData;
+        } else {
+          // Merge: add imported tasks to existing ones (avoid duplicates)
+          this.data.today.push(...importedData.today.filter(task =>
+            !this.data.today.some(existing => existing.text === task.text)
+          ));
+          this.data.tomorrow.push(...importedData.tomorrow.filter(task =>
+            !this.data.tomorrow.some(existing => existing.text === task.text)
+          ));
+          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+        }
+
+        this.save();
+        this.render();
+        this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks`, 'success');
+
+        // Clear file input
+        importFile.value = '';
+      } catch (error) {
+        this.showNotification(`Import failed: ${error.message}`, 'error');
+        importFile.value = '';
+      }
+    });
+
+    // Import from clipboard functionality
+    importClipboardBtn.addEventListener('click', async () => {
+      try {
+        // Read from clipboard
+        const clipboardText = await navigator.clipboard.readText();
+
+        if (!clipboardText.trim()) {
+          this.showNotification('Clipboard is empty', 'error');
+          return;
+        }
+
+        // Try to parse as exported text format first
+        let importedData;
+        try {
+          importedData = Sync.parseFromText(clipboardText);
+        } catch (textError) {
+          // If text parsing fails, try QR format
+          try {
+            importedData = Sync.parseQRData(clipboardText);
+          } catch (qrError) {
+            throw new Error('Invalid data format - not exported text or QR data');
+          }
+        }
+
+        // Merge with existing data
+        const shouldReplace = confirm(
+          'Replace your current tasks with clipboard data?\n\n' +
+          'Click OK to replace everything, or Cancel to merge with existing tasks.'
+        );
+
+        if (shouldReplace) {
+          this.data = importedData;
+        } else {
+          // Merge: add imported tasks to existing ones (avoid duplicates)
+          this.data.today.push(...importedData.today.filter(task =>
+            !this.data.today.some(existing => existing.text === task.text)
+          ));
+          this.data.tomorrow.push(...importedData.tomorrow.filter(task =>
+            !this.data.tomorrow.some(existing => existing.text === task.text)
+          ));
+          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+        }
+
+        this.save();
+        this.render();
+        this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from clipboard`, 'success');
+
+      } catch (error) {
+        this.showNotification(`Import failed: ${error.message}`, 'error');
+      }
+    });
+
+    // QR Code functionality
+    qrBtn.addEventListener('click', () => {
+      this.showQRModal();
+    });
+  }
+
+  // Theme management
+  initTheme() {
+    const savedTheme = localStorage.getItem('do-it-later-theme') || 'dark';
+    this.applyTheme(savedTheme);
+  }
+
+  setupThemeToggle() {
+    const themeToggle = document.getElementById('theme-toggle');
+    themeToggle.addEventListener('click', () => {
+      this.toggleTheme();
+    });
+  }
+
+  applyTheme(theme) {
+    const body = document.body;
+    const themeLabel = document.querySelector('.theme-label');
+
+    if (theme === 'light') {
+      body.classList.add('light-theme');
+      if (themeLabel) themeLabel.textContent = 'Light';
+    } else {
+      body.classList.remove('light-theme');
+      if (themeLabel) themeLabel.textContent = 'Dark';
+    }
+    this.currentTheme = theme;
+  }
+
+  toggleTheme() {
+    const newTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+    this.applyTheme(newTheme);
+    localStorage.setItem('do-it-later-theme', newTheme);
+  }
+
+  // Delete mode functionality
+  setupDeleteMode() {
+    this.deleteMode = {
+      today: false,
+      tomorrow: false
+    };
+
+    const deleteModeToggles = document.querySelectorAll('.delete-mode-toggle');
+    deleteModeToggles.forEach(toggle => {
+      toggle.addEventListener('click', (e) => {
+        const listName = e.target.closest('.delete-mode-toggle').dataset.list;
+        this.toggleDeleteMode(listName);
+      });
+    });
+  }
+
+  toggleDeleteMode(listName) {
+    this.deleteMode[listName] = !this.deleteMode[listName];
+
+    const section = document.getElementById(`${listName}-section`);
+    const toggle = section.querySelector('.delete-mode-toggle');
+
+    if (this.deleteMode[listName]) {
+      section.classList.add('delete-mode');
+      toggle.classList.add('active');
+      this.showDeleteModeNotice(section);
+    } else {
+      section.classList.remove('delete-mode');
+      toggle.classList.remove('active');
+      this.hideDeleteModeNotice(section);
+    }
+  }
+
+  showDeleteModeNotice(section) {
+    let notice = section.querySelector('.delete-mode-notice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.className = 'delete-mode-notice';
+      notice.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 4px;">
+          <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+        </svg>
+        Delete mode active - click any task to remove it
+      `;
+      section.insertBefore(notice, section.querySelector('ul'));
+    }
+  }
+
+  hideDeleteModeNotice(section) {
+    const notice = section.querySelector('.delete-mode-notice');
+    if (notice) {
+      notice.remove();
+    }
+  }
+
+  // Show QR code modal with actual QR generation and scanning
+  showQRModal() {
+    const qrData = Sync.generateQRData(this.data);
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    `;
+
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: var(--surface);
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 90%;
+      max-height: 90vh;
+      overflow: auto;
+      text-align: center;
+      color: var(--text);
+    `;
+
+    content.innerHTML = `
+      <h3 class="qr-modal-title">
+        <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 8px;">
+          <path d="M1 1h6v6H1z"/>
+          <path d="M9 1h6v6H9z"/>
+          <path d="M1 9h6v6H1z"/>
+          <path d="M9 9h2v2H9z"/>
+          <path d="M13 9h2v2h-2z"/>
+          <path d="M9 13h2v2H9z"/>
+          <path d="M13 13h2v2h-2z"/>
+          <path d="M3 3h2v2H3z"/>
+          <path d="M11 3h2v2h-2z"/>
+          <path d="M3 11h2v2H3z"/>
+        </svg>
+        QR Sync
+      </h3>
+      <div id="qr-tabs" class="qr-tabs">
+        <button id="share-tab" class="qr-tab active">Share My Tasks</button>
+        <button id="scan-tab" class="qr-tab">Scan QR Code</button>
+      </div>
+
+      <!-- Share Panel -->
+      <div id="share-panel" class="qr-panel">
+        <p class="qr-description">
+          Scan this QR code with another device to sync your tasks
+        </p>
+        <div id="qr-container" class="qr-container">
+          <div id="qr-code" class="qr-code-display">
+            <div class="qr-loading">Generating QR code...</div>
+          </div>
+        </div>
+        <p class="qr-stats">
+          ${this.data.today.length + this.data.tomorrow.length} tasks • ${Math.round(qrData.length / 1024 * 100) / 100}KB
+        </p>
+      </div>
+
+      <!-- Scan Panel -->
+      <div id="scan-panel" class="qr-panel qr-panel-hidden">
+        <p class="qr-description">
+          Point your camera at a QR code to scan and import tasks
+        </p>
+
+        <div id="camera-controls" class="camera-controls">
+          <button id="start-camera" class="qr-btn qr-btn-primary">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M15 12V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586L9.828 2.828A2 2 0 0 0 8.414 2H7.586a2 2 0 0 0-1.414.586L5.586 3.172A2 2 0 0 1 4.172 4H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2zM8 11a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
+            </svg>
+            Start Camera
+          </button>
+          <button id="stop-camera" class="qr-btn qr-btn-secondary qr-btn-hidden">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <rect x="2" y="2" width="12" height="12" rx="2"/>
+            </svg>
+            Stop Camera
+          </button>
+        </div>
+
+        <div id="camera-area" class="camera-area camera-area-hidden">
+          <div class="camera-container">
+            <video id="camera-preview" autoplay playsinline class="camera-preview"></video>
+            <div id="scan-overlay" class="scan-overlay">
+              <div class="scan-corner scan-corner-tl"></div>
+              <div class="scan-corner scan-corner-tr"></div>
+              <div class="scan-corner scan-corner-bl"></div>
+              <div class="scan-corner scan-corner-br"></div>
+            </div>
+          </div>
+          <p id="scan-status" class="scan-status">
+            Point camera at QR code and hold steady
+          </p>
+        </div>
+
+        <div id="scan-result" class="scan-result scan-result-hidden">
+          <div class="scan-success">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px;">
+              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l4.5-4.5z"/>
+            </svg>
+            QR Code Detected
+          </div>
+          <p id="scan-data-preview" class="scan-preview"></p>
+          <div class="scan-actions">
+            <button id="import-scanned" class="qr-btn qr-btn-success">Import Tasks</button>
+            <button id="scan-again" class="qr-btn qr-btn-secondary">Scan Again</button>
+          </div>
+        </div>
+      </div>
+
+      <button id="close-modal" class="qr-btn qr-btn-secondary qr-close">Close</button>
+    `;
+
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+
+    // Add QR tab styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .qr-tab {
+        padding: 0.5rem 1rem;
+        margin: 0 0.25rem;
+        background: var(--border);
+        color: var(--text);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+      .qr-tab.active {
+        background: var(--primary-color);
+        color: white;
+      }
+      .qr-tab:hover {
+        background: var(--primary-color);
+        color: white;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Generate QR code with multiple fallbacks
+    this.generateQRCode(qrData);
+
+    // Tab switching
+    const shareTab = content.querySelector('#share-tab');
+    const scanTab = content.querySelector('#scan-tab');
+    const sharePanel = content.querySelector('#share-panel');
+    const scanPanel = content.querySelector('#scan-panel');
+
+    shareTab.addEventListener('click', () => {
+      shareTab.classList.add('active');
+      scanTab.classList.remove('active');
+      sharePanel.style.display = 'block';
+      scanPanel.style.display = 'none';
+    });
+
+    scanTab.addEventListener('click', () => {
+      scanTab.classList.add('active');
+      shareTab.classList.remove('active');
+      sharePanel.style.display = 'none';
+      scanPanel.style.display = 'block';
+    });
+
+    // Camera scanning functionality
+    let currentScanner = null;
+    let scannedData = null;
+
+    const startCameraBtn = content.querySelector('#start-camera');
+    const stopCameraBtn = content.querySelector('#stop-camera');
+    const cameraArea = content.querySelector('#camera-area');
+    const scanStatus = content.querySelector('#scan-status');
+    const scanResult = content.querySelector('#scan-result');
+    const importScannedBtn = content.querySelector('#import-scanned');
+    const scanAgainBtn = content.querySelector('#scan-again');
+
+    // Start camera scanning
+    startCameraBtn.addEventListener('click', async () => {
+      try {
+        const video = content.querySelector('#camera-preview');
+        currentScanner = new QRScanner();
+
+        await currentScanner.init(
+          video,
+          (data) => {
+            // QR code scanned successfully
+            scannedData = data;
+            this.handleQRScanSuccess(data, scanResult, scanStatus);
+          },
+          (error) => {
+            scanStatus.textContent = `Error: ${error}`;
+            scanStatus.style.color = 'var(--error-color, #ff6b6b)';
+          }
+        );
+
+        currentScanner.startScanning();
+
+        // Update UI
+        cameraArea.style.display = 'block';
+        startCameraBtn.style.display = 'none';
+        stopCameraBtn.style.display = 'inline-block';
+        scanStatus.textContent = 'Scanning for QR codes...';
+        scanStatus.style.color = 'var(--text-muted)';
+
+      } catch (error) {
+        console.error('Camera error:', error);
+        scanStatus.textContent = `Camera access failed: ${error.message}`;
+        scanStatus.style.color = 'var(--error-color, #ff6b6b)';
+      }
+    });
+
+    // Stop camera scanning
+    stopCameraBtn.addEventListener('click', () => {
+      if (currentScanner) {
+        currentScanner.stopScanning();
+        currentScanner = null;
+      }
+
+      cameraArea.style.display = 'none';
+      scanResult.style.display = 'none';
+      startCameraBtn.style.display = 'inline-block';
+      stopCameraBtn.style.display = 'none';
+      scannedData = null;
+    });
+
+    // Import scanned data
+    importScannedBtn.addEventListener('click', () => {
+      if (!scannedData) {
+        this.showNotification('No scanned data available', 'error');
+        return;
+      }
+
+      this.importQRData(scannedData, modal, style);
+    });
+
+    // Scan again
+    scanAgainBtn.addEventListener('click', () => {
+      scanResult.style.display = 'none';
+      scanStatus.textContent = 'Scanning for QR codes...';
+      scanStatus.style.color = 'var(--text-muted)';
+      scannedData = null;
+
+      if (currentScanner) {
+        currentScanner.startScanning();
+      }
+    });
+
+    // Close modal handlers
+    const closeModal = () => {
+      // Cleanup camera if active
+      if (currentScanner) {
+        currentScanner.stopScanning();
+      }
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+    };
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    content.querySelector('#close-modal').addEventListener('click', closeModal);
+  }
+
+  // QR Code generation with fallbacks
+  generateQRCode(data) {
+    const qrElement = document.getElementById('qr-code');
+    if (!qrElement) return;
+
+    // Method 1: Try local QRCode library
+    setTimeout(() => {
+      try {
+        qrElement.innerHTML = '';
+
+        if (typeof QRCode !== 'undefined') {
+          const qr = new QRCode(qrElement, {
+            text: data,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+
+          // Clean up the QR code display - remove any extra elements and padding
+          setTimeout(() => {
+            const qrImg = qrElement.querySelector('img');
+            const qrCanvas = qrElement.querySelector('canvas');
+            const qrTable = qrElement.querySelector('table');
+
+            // Remove all existing content and styling
+            qrElement.style.padding = '0';
+            qrElement.style.margin = '0';
+            qrElement.style.background = 'transparent';
+
+            if (qrImg) {
+              // Clean image-based QR codes
+              qrElement.innerHTML = '';
+              qrImg.style.cssText = 'display: block; margin: 0; padding: 0; width: 200px; height: 200px;';
+              qrElement.appendChild(qrImg);
+            } else if (qrCanvas) {
+              // Clean canvas-based QR codes
+              qrElement.innerHTML = '';
+              qrCanvas.style.cssText = 'display: block; margin: 0; padding: 0; width: 200px; height: 200px;';
+              qrElement.appendChild(qrCanvas);
+            } else if (qrTable) {
+              // Clean table-based QR codes (older browsers)
+              qrElement.innerHTML = '';
+              qrTable.style.cssText = 'margin: 0; padding: 0; border-collapse: collapse; width: 200px; height: 200px;';
+              qrElement.appendChild(qrTable);
+            }
+          }, 100);
+
+          console.log('QR generated with local library');
+          return;
+        }
+        throw new Error('Local QRCode library not available');
+
+      } catch (error) {
+        console.log('Local QR generation failed:', error.message);
+        this.generateQRCodeFallback(data);
+      }
+    }, 100);
+  }
+
+  // Fallback QR generation methods
+  generateQRCodeFallback(data) {
+    const qrElement = document.getElementById('qr-code');
+    if (!qrElement) return;
+
+    // Method 2: Online QR service
+    try {
+      const encodedData = encodeURIComponent(data);
+      const maxUrlLength = 2048; // URL length limit
+
+      if (encodedData.length > maxUrlLength) {
+        throw new Error('Data too large for online QR service');
+      }
+
+      const img = document.createElement('img');
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}`;
+      img.style.cssText = 'width: 200px; height: 200px; border-radius: 4px;';
+      img.onload = () => console.log('QR generated with online service');
+      img.onerror = () => {
+        qrElement.innerHTML = this.getManualQRFallback(data);
+      };
+      qrElement.innerHTML = '';
+      qrElement.appendChild(img);
+
+    } catch (error) {
+      console.log('Online QR generation failed:', error.message);
+      qrElement.innerHTML = this.getManualQRFallback(data);
+    }
+  }
+
+  // Final fallback: Manual copy option
+  getManualQRFallback(data) {
+    const div = document.createElement('div');
+    div.style.cssText = 'width: 200px; height: 200px; background: #f8f9fa; border: 2px dashed #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1rem; color: #666;';
+
+    const title = document.createElement('div');
+    title.textContent = '📋 Manual Copy';
+    title.style.cssText = 'font-size: 0.9rem; margin-bottom: 0.5rem;';
+
+    const button = document.createElement('button');
+    button.textContent = 'Copy Data';
+    button.style.cssText = 'padding: 0.5rem; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;';
+    button.onclick = () => {
+      navigator.clipboard.writeText(data).then(() => {
+        alert('Copied to clipboard!');
+      }).catch(() => {
+        prompt('Copy this data:', data);
+      });
+    };
+
+    const subtitle = document.createElement('div');
+    subtitle.textContent = 'Click to copy sync data';
+    subtitle.style.cssText = 'font-size: 0.7rem; margin-top: 0.5rem; opacity: 0.7;';
+
+    div.appendChild(title);
+    div.appendChild(button);
+    div.appendChild(subtitle);
+
+    return div.outerHTML;
+  }
+
+  // Handle successful QR scan
+  handleQRScanSuccess(data, scanResult, scanStatus) {
+    try {
+      // Validate the QR data
+      const parsedData = Sync.parseQRData(data);
+      const taskCount = parsedData.today.length + parsedData.tomorrow.length;
+
+      // Show scan result
+      scanResult.style.display = 'block';
+      const preview = scanResult.querySelector('#scan-data-preview');
+      preview.textContent = `Found ${taskCount} tasks to import (${parsedData.totalCompleted} completed lifetime)`;
+
+      scanStatus.textContent = 'QR code scanned successfully!';
+      scanStatus.style.color = 'var(--success-color)';
+
+    } catch (error) {
+      console.error('QR validation error:', error);
+      scanStatus.textContent = `Invalid QR code: ${error.message}`;
+      scanStatus.style.color = 'var(--error-color, #ff6b6b)';
+    }
+  }
+
+  // Import QR data with confirmation
+  importQRData(qrData, modal, style) {
+    try {
+      const importedData = Sync.parseQRData(qrData);
+
+      const shouldReplace = confirm(
+        'Replace your current tasks with scanned data?\n\n' +
+        'Click OK to replace everything, or Cancel to merge with existing tasks.'
+      );
+
+      if (shouldReplace) {
+        this.data = importedData;
+      } else {
+        // Merge: add imported tasks to existing ones
+        this.data.today.push(...importedData.today);
+        this.data.tomorrow.push(...importedData.tomorrow);
+        this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+      }
+
+      this.save();
+      this.render();
+      this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from QR scan`, 'success');
+
+      // Close modal
+      document.body.removeChild(modal);
+      document.head.removeChild(style);
+
+    } catch (error) {
+      console.error('QR import error:', error);
+      this.showNotification(`Invalid QR data: ${error.message}`, 'error');
+    }
+  }
+
+  // Detect text overflow and add data attribute for marquee
+  detectTextOverflow(listEl) {
+    const taskTexts = listEl.querySelectorAll('.task-text');
+    taskTexts.forEach(textEl => {
+      // Reset any existing overflow state
+      textEl.removeAttribute('data-overflow');
+      textEl.style.removeProperty('--scroll-distance');
+
+      // Check if content overflows container
+      if (textEl.scrollWidth > textEl.clientWidth) {
+        textEl.setAttribute('data-overflow', 'true');
+
+        // Calculate optimal scroll distance for full text reveal
+        const overflowAmount = textEl.scrollWidth - textEl.clientWidth;
+        const scrollDistance = Math.min(overflowAmount + 20, textEl.scrollWidth * 0.8);
+        textEl.style.setProperty('--scroll-distance', `-${scrollDistance}px`);
+      }
+    });
+  }
+}
+
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new DoItTomorrowApp();
+});

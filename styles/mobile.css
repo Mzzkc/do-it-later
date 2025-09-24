@@ -1,0 +1,42 @@
+/* Do It (Later) - Mobile-Specific Styles */
+/* Phase 1: Mobile-first enhancements */
+
+@media (max-width: 767px) {
+  #app {
+    padding: 0;
+  }
+  
+  header {
+    padding: 0.75rem;
+  }
+  
+  main {
+    padding: 0.75rem;
+  }
+  
+  .lists-container {
+    gap: 1rem;
+  }
+  
+  .list-section {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  
+  .add-button {
+    padding: 1rem;
+    font-size: 1.1rem;
+  }
+}
+
+/* Touch-specific interactions */
+@media (hover: none) and (pointer: coarse) {
+  .add-button {
+    min-height: 48px;
+  }
+  
+  .add-button:active {
+    background: #1e40af;
+    transform: scale(0.98);
+  }
+}
