@@ -44,6 +44,20 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Remove tap highlight on mobile */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove focus outline on touch devices, keep for keyboard navigation */
+@media (hover: none) {
+  button:focus,
+  .task-item:focus,
+  .sync-btn:focus,
+  .nav-btn:focus,
+  .add-button:focus,
+  .delete-mode-toggle:focus {
+    outline: none;
+  }
 }
 
 body {

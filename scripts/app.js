@@ -46,6 +46,13 @@ class DoItTomorrowApp {
         }
       }
     });
+
+    // Remove focus from buttons after interaction on mobile
+    document.addEventListener('touchend', (e) => {
+      if (e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle')) {
+        setTimeout(() => e.target.blur(), 100);
+      }
+    });
   }
   
   updateCurrentDate() {
@@ -282,6 +289,33 @@ class DoItTomorrowApp {
 
       li.innerHTML = this.getTaskHTML(task, listName);
       listEl.appendChild(li);
+
+      // Add event listeners for arrow buttons
+      const moveIcon = li.querySelector('.move-icon');
+      if (moveIcon) {
+        moveIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = moveIcon.dataset.action;
+          const taskId = moveIcon.dataset.taskId;
+          if (action === 'push') {
+            this.pushToTomorrow(taskId);
+          } else if (action === 'pull') {
+            this.pullToToday(taskId);
+          }
+        });
+        // Also handle touch events for mobile
+        moveIcon.addEventListener('touchend', (e) => {
+          e.preventDefault(); // Prevent ghost click
+          e.stopPropagation();
+          const action = moveIcon.dataset.action;
+          const taskId = moveIcon.dataset.taskId;
+          if (action === 'push') {
+            this.pushToTomorrow(taskId);
+          } else if (action === 'pull') {
+            this.pullToToday(taskId);
+          }
+        });
+      }
     });
 
     // Overflow detection removed
@@ -291,8 +325,8 @@ class DoItTomorrowApp {
     // Movement icons only for incomplete tasks - elegant arrows
     const moveBtnHTML = task.completed ? '' :
       (listName === 'today' ?
-        `<span class="move-icon" onclick="event.stopPropagation(); app.pushToTomorrow('${task.id}')" title="Push to Later">→</span>` :
-        `<span class="move-icon" onclick="event.stopPropagation(); app.pullToToday('${task.id}')" title="Pull to Today">←</span>`);
+        `<span class="move-icon" data-action="push" data-task-id="${task.id}" title="Push to Later">→</span>` :
+        `<span class="move-icon" data-action="pull" data-task-id="${task.id}" title="Pull to Today">←</span>`);
 
     return `
       <span class="task-text">${this.escapeHtml(task.text)}</span>
@@ -541,10 +575,14 @@ class DoItTomorrowApp {
 
   // Long press detection
   startLongPress(id, event) {
-    // Prevent default to avoid text selection
-    event.preventDefault();
+    // Store the event type to handle mobile differently
+    const isTouchEvent = event.type === 'touchstart';
 
     this.longPressTimer = setTimeout(() => {
+      // Only prevent default when actually entering edit mode
+      if (isTouchEvent && event.cancelable) {
+        event.preventDefault();
+      }
       this.enterEditMode(id);
       this.wasLongPress = true;
     }, 500); // 500ms for long press

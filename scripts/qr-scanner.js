@@ -89,17 +89,28 @@ class QRScanner {
   // QR detection using jsQR library
   detectQRCode(imageData) {
     try {
+      // Check if jsQR library is loaded
+      if (typeof jsQR === 'undefined') {
+        console.error('jsQR library not loaded! QR scanning will not work.');
+        if (this.onError) {
+          this.onError('QR scanner library not loaded. Please check your internet connection and refresh.');
+        }
+        this.stopScanning();
+        return null;
+      }
+
       // Use jsQR library for real QR code detection
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
         inversionAttempts: "dontInvert", // Don't invert colors for better performance
       });
 
       if (code && code.data) {
+        console.log('QR code detected:', code.data);
         // Validate that this looks like our task data format
         if (this.isValidTaskData(code.data)) {
           return code.data;
         } else {
-          console.log('QR code found but not valid task data:', code.data);
+          console.log('QR code found but not valid task data format');
         }
       }
 
@@ -115,13 +126,21 @@ class QRScanner {
   isValidTaskData(data) {
     try {
       const parsed = JSON.parse(data);
+      console.log('Parsed QR data:', parsed);
 
       // Check if it has the expected task data structure
-      return parsed &&
+      const isValid = parsed &&
              typeof parsed === 'object' &&
              (Array.isArray(parsed.today) || Array.isArray(parsed.tomorrow) || typeof parsed.totalCompleted === 'number');
 
+      if (!isValid) {
+        console.log('Invalid task data structure. Expected: {today: [], tomorrow: []}');
+      }
+
+      return isValid;
+
     } catch (error) {
+      console.log('Failed to parse QR data as JSON:', error.message);
       return false;
     }
   }
