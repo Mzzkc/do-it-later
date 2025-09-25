@@ -349,6 +349,28 @@ class DoItTomorrowApp {
         this.startLongPress(task.id, e);
       });
 
+      li.addEventListener('touchmove', (e) => {
+        if (taskStartX !== undefined && taskStartY !== undefined) {
+          const currentX = e.touches[0].clientX;
+          const currentY = e.touches[0].clientY;
+          const deltaX = Math.abs(currentX - taskStartX);
+          const deltaY = Math.abs(currentY - taskStartY);
+
+          // If we detect scrolling movement, cancel long press
+          if (deltaY > 15 || deltaX > 15) {
+            if (this.devMode) {
+              console.log('📱 CANCELLING LONG PRESS: Scroll detected', {
+                taskId: task.id,
+                deltaX,
+                deltaY
+              });
+            }
+            li.classList.remove('button-pressed');
+            this.endLongPress();
+          }
+        }
+      }, { passive: true });
+
       li.addEventListener('touchend', (e) => {
         li.classList.remove('button-pressed');
         this.endLongPress();
