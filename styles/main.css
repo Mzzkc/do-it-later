@@ -48,14 +48,31 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Simple mobile focus fix - just remove focus outlines and let blur handle the rest */
+/* CSS-only mobile button fix using focus-visible */
 @media (hover: none) {
-  button:focus:not(.nav-btn),
-  .sync-btn:focus,
-  .add-button:focus,
-  .delete-mode-toggle:focus,
-  .theme-toggle:focus {
+  /* Completely disable focus styles on touch devices except for nav buttons */
+  button:focus:not(:focus-visible):not(.nav-btn),
+  .sync-btn:focus:not(:focus-visible),
+  .add-button:focus:not(:focus-visible),
+  .delete-mode-toggle:focus:not(:focus-visible),
+  .theme-toggle:focus:not(:focus-visible) {
     outline: none;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+    transform: none;
+    filter: none;
+  }
+
+  /* Only allow focus-visible (keyboard navigation) to show focus styles */
+  button:focus-visible,
+  .sync-btn:focus-visible,
+  .add-button:focus-visible,
+  .delete-mode-toggle:focus-visible,
+  .theme-toggle:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 }
 

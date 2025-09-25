@@ -100,16 +100,7 @@ class DoItTomorrowApp {
       }
     });
 
-    // Simple mobile button focus fix
-    document.addEventListener('touchend', (e) => {
-      if (e.target.matches('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle') ||
-          e.target.closest('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle')) {
-        const button = e.target.matches('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle') ?
-                      e.target :
-                      e.target.closest('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle');
-        setTimeout(() => button.blur(), 100);
-      }
-    });
+    // Note: Mobile button focus is now handled purely with CSS :focus-visible
   }
   
   updateCurrentDate() {
