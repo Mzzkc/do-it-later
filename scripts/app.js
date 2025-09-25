@@ -330,6 +330,7 @@ class DoItTomorrowApp {
 
       // Unified touch handling with tap detection and long press
       let taskStartX, taskStartY, taskStartTime;
+      let touchHandled = false;
 
       li.addEventListener('touchstart', (e) => {
         if (this.devMode) {
@@ -342,6 +343,7 @@ class DoItTomorrowApp {
         taskStartX = e.touches[0].clientX;
         taskStartY = e.touches[0].clientY;
         taskStartTime = Date.now();
+        touchHandled = true;
 
         li.classList.add('button-pressed');
         this.startLongPress(task.id, e);
@@ -362,11 +364,28 @@ class DoItTomorrowApp {
         // Only handle as tap if it's quick with minimal movement
         const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
 
+        if (this.devMode) {
+          console.log('📱 TASK TOUCHEND:', {
+            taskId: task.id,
+            deltaX,
+            deltaY,
+            deltaTime,
+            isTap,
+            wasLongPress: this.wasLongPress,
+            willExecute: isTap && !this.wasLongPress
+          });
+        }
+
         if (isTap && !this.wasLongPress) {
           // Create a synthetic event for consistency with existing code
           const syntheticEvent = { type: 'tap', target: e.target };
           this.handleTaskClick(task.id, syntheticEvent);
         }
+
+        // Reset touch handled flag after a delay to allow for click events from mouse
+        setTimeout(() => {
+          touchHandled = false;
+        }, 100);
       });
 
       // Mouse events for desktop
@@ -382,7 +401,27 @@ class DoItTomorrowApp {
         li.classList.remove('button-pressed');
         this.endLongPress();
       });
-      li.addEventListener('click', (e) => this.handleTaskClick(task.id, e));
+      li.addEventListener('click', (e) => {
+        if (this.devMode) {
+          console.log('🖱️ TASK CLICK EVENT (MOUSE):', {
+            taskId: task.id,
+            target: e.target.tagName,
+            eventType: e.type,
+            touchHandled,
+            willExecute: !touchHandled
+          });
+        }
+
+        // Prevent click if touch was handled
+        if (touchHandled) {
+          if (this.devMode) {
+            console.log('🚫 CLICK BLOCKED: Touch event already handled');
+          }
+          return;
+        }
+
+        this.handleTaskClick(task.id, e);
+      });
 
       // Add moving-in animation for recently moved tasks
       if (task._justMoved) {
