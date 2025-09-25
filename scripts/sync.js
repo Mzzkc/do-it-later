@@ -167,7 +167,6 @@ const Sync = {
         c: task.completed ? 1 : 0
       })),
       tc: data.totalCompleted || 0,
-      d: data.currentDate,
       ts: Date.now()
     };
 
@@ -193,7 +192,7 @@ const Sync = {
           createdAt: compressed.ts
         })),
         totalCompleted: compressed.tc || 0,
-        currentDate: compressed.d,
+        currentDate: new Date().toISOString().split('T')[0],
         lastUpdated: compressed.ts
       };
     } catch (error) {

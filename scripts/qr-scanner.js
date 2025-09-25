@@ -143,13 +143,15 @@ class QRScanner {
       const parsed = JSON.parse(data);
       console.log('Parsed QR data:', parsed);
 
-      // Check if it has the expected task data structure
+      // Check if it has the expected compressed task data structure
       const isValid = parsed &&
              typeof parsed === 'object' &&
-             (Array.isArray(parsed.today) || Array.isArray(parsed.tomorrow) || typeof parsed.totalCompleted === 'number');
+             (Array.isArray(parsed.t) || Array.isArray(parsed.l) || typeof parsed.tc === 'number');
 
       if (!isValid) {
-        console.log('Invalid task data structure. Expected: {today: [], tomorrow: []}');
+        console.log('Invalid task data structure. Expected compressed format: {t: [], l: [], tc: number}');
+      } else {
+        console.log('Valid compressed task data format detected!');
       }
 
       return isValid;
