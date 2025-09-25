@@ -55,8 +55,21 @@
   .sync-btn:focus,
   .nav-btn:focus,
   .add-button:focus,
-  .delete-mode-toggle:focus {
+  .delete-mode-toggle:focus,
+  .qr-tab:focus,
+  .theme-toggle:focus,
+  label:focus {
     outline: none;
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  /* Force sync buttons back to default state on mobile */
+  .sync-btn:focus {
+    background: var(--surface) !important;
+    color: var(--text) !important;
   }
 }
 

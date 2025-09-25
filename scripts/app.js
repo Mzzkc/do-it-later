@@ -102,8 +102,39 @@ class DoItTomorrowApp {
 
     // Remove focus from buttons after interaction on mobile
     document.addEventListener('touchend', (e) => {
-      if (e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle')) {
-        setTimeout(() => e.target.blur(), 100);
+      // More comprehensive button selector
+      if (e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, input[type="button"], input[type="submit"], .qr-tab, .theme-toggle') ||
+          e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle')) {
+        const button = e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle') ?
+                      e.target :
+                      e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle');
+
+        if (button) {
+          // Longer timeout and force blur
+          setTimeout(() => {
+            button.blur();
+            // Force removal of focus styles
+            button.style.outline = 'none';
+            setTimeout(() => button.style.outline = '', 10);
+          }, 150);
+        }
+      }
+    });
+
+    // Additional mobile focus handling - also handle click events
+    document.addEventListener('click', (e) => {
+      // Only on touch devices
+      if ('ontouchstart' in window) {
+        const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
+        if (button) {
+          setTimeout(() => {
+            button.blur();
+            // Remove any active/focus classes that might be stuck
+            if (button.classList.contains('active') && !button.matches('.nav-btn')) {
+              button.classList.remove('active');
+            }
+          }, 200);
+        }
       }
     });
   }
