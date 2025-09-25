@@ -102,18 +102,28 @@ class DoItTomorrowApp {
 
     // Mobile button focus fix - prevent stuck focus states while preserving active feedback
     document.addEventListener('touchend', (e) => {
-      // Only blur after touch ends to prevent stuck focus, but allow active states during touch
+      // Immediate blur on touch end to prevent any focus state gap
       const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
       if (button && !button.matches('.nav-btn, input[type="text"], textarea')) {
-        // Small delay to allow active state to show briefly
-        setTimeout(() => button.blur(), 100);
+        // Immediate blur - no delay
+        button.blur();
       }
     });
 
-    // Backup: prevent focus on non-interactive elements
+    // Prevent focus entirely on touch devices for buttons
     document.addEventListener('focus', (e) => {
       if ('ontouchstart' in window && !e.target.matches('.nav-btn, input[type="text"], input[type="file"], textarea, select')) {
-        setTimeout(() => e.target.blur(), 50);
+        e.target.blur();
+      }
+    });
+
+    // Also prevent mousedown focus on touch devices
+    document.addEventListener('mousedown', (e) => {
+      if ('ontouchstart' in window) {
+        const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
+        if (button && !button.matches('.nav-btn, input[type="text"], textarea')) {
+          e.preventDefault();
+        }
       }
     });
   }
