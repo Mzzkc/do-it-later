@@ -48,41 +48,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Mobile touch feedback - allow :active states but prevent stuck :focus states */
+/* Simple mobile focus fix - just remove focus outlines and let blur handle the rest */
 @media (hover: none) {
-  /* Remove sticky focus states but keep active press feedback */
   button:focus:not(.nav-btn),
   .sync-btn:focus,
   .add-button:focus,
   .delete-mode-toggle:focus,
-  .qr-tab:focus,
-  .theme-toggle:focus,
-  label:focus {
-    outline: none !important;
-    background: var(--surface) !important;
-    color: var(--text) !important;
-    border-color: var(--border) !important;
-    box-shadow: none !important;
-    transform: none !important;
-  }
-
-  /* Ensure active states still work for touch feedback */
-  button:active,
-  .sync-btn:active,
-  .nav-btn:active,
-  .add-button:active,
-  .delete-mode-toggle:active,
-  .theme-toggle:active {
-    background: var(--background) !important;
-    transform: scale(0.96) !important;
-    transition: transform 0.1s ease, background 0.1s ease !important;
-  }
-
-  /* Special active state for sync buttons */
-  .sync-btn:active {
-    background: var(--background) !important;
-    border-color: var(--text-muted) !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  .theme-toggle:focus {
+    outline: none;
   }
 }
 

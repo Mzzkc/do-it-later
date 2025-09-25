@@ -100,30 +100,14 @@ class DoItTomorrowApp {
       }
     });
 
-    // Mobile button focus fix - prevent stuck focus states while preserving active feedback
+    // Simple mobile button focus fix
     document.addEventListener('touchend', (e) => {
-      // Immediate blur on touch end to prevent any focus state gap
-      const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
-      if (button && !button.matches('.nav-btn, input[type="text"], textarea')) {
-        // Immediate blur - no delay
-        button.blur();
-      }
-    });
-
-    // Prevent focus entirely on touch devices for buttons
-    document.addEventListener('focus', (e) => {
-      if ('ontouchstart' in window && !e.target.matches('.nav-btn, input[type="text"], input[type="file"], textarea, select')) {
-        e.target.blur();
-      }
-    });
-
-    // Also prevent mousedown focus on touch devices
-    document.addEventListener('mousedown', (e) => {
-      if ('ontouchstart' in window) {
-        const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
-        if (button && !button.matches('.nav-btn, input[type="text"], textarea')) {
-          e.preventDefault();
-        }
+      if (e.target.matches('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle') ||
+          e.target.closest('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle')) {
+        const button = e.target.matches('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle') ?
+                      e.target :
+                      e.target.closest('button, .sync-btn, .add-button, .delete-mode-toggle, .theme-toggle');
+        setTimeout(() => button.blur(), 100);
       }
     });
   }
