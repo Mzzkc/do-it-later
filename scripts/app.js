@@ -111,40 +111,10 @@ class DoItTomorrowApp {
   }
 
   setupScrollDetection() {
-    // Much simpler approach: only detect actual scrolling, not touch movement
+    // No scroll detection - let browser handle everything naturally
     this.isScrolling = false;
-    this.scrollResetTimer = null;
 
-    // Listen for actual scroll events on scrollable containers
-    const scrollableElements = [document.body, document.documentElement, ...document.querySelectorAll('main, .lists-container')];
-
-    scrollableElements.forEach(element => {
-      element.addEventListener('scroll', () => {
-        if (!this.isScrolling && this.devMode) {
-          console.log('🟡 ACTUAL SCROLL DETECTED');
-        }
-
-        this.isScrolling = true;
-
-        // Cancel any long press during actual scrolling
-        this.endLongPress();
-
-        // Clear existing reset timer
-        if (this.scrollResetTimer) {
-          clearTimeout(this.scrollResetTimer);
-        }
-
-        // Set new reset timer with very short delay
-        this.scrollResetTimer = setTimeout(() => {
-          if (this.devMode) {
-            console.log('🔄 SCROLL RESET: Restoring interactions');
-          }
-          this.isScrolling = false;
-        }, 50); // Much shorter delay
-      }, { passive: true });
-    });
-
-    // Also listen for touchstart/end for dev logging only (no interference with scrolling)
+    // Only dev logging for debugging - no interference with interactions
     if (this.devMode) {
       document.addEventListener('touchstart', (e) => {
         console.log('🟢 TOUCH START:', {
@@ -156,10 +126,7 @@ class DoItTomorrowApp {
       }, { passive: true });
 
       document.addEventListener('touchend', () => {
-        console.log('🔴 TOUCH END:', {
-          wasScrolling: this.isScrolling,
-          longPressActive: !!this.longPressTimer
-        });
+        console.log('🔴 TOUCH END');
       }, { passive: true });
     }
   }
@@ -428,26 +395,15 @@ class DoItTomorrowApp {
             this.pullToToday(taskId);
           }
         });
-        // Touch events for mobile - simplified approach
-        moveIcon.addEventListener('touchend', (e) => {
+        // Simple click handler - let browser handle scroll vs click naturally
+        moveIcon.addEventListener('click', (e) => {
           if (this.devMode) {
-            console.log('⬅️ ARROW TOUCHEND:', {
+            console.log('⬅️ ARROW CLICKED:', {
               action: moveIcon.dataset.action,
-              taskId: moveIcon.dataset.taskId,
-              isScrolling: this.isScrolling,
-              willBlock: this.isScrolling
+              taskId: moveIcon.dataset.taskId
             });
           }
 
-          // Only block during actual scrolling
-          if (this.isScrolling) {
-            if (this.devMode) {
-              console.log('🚫 ARROW BLOCKED: Scrolling in progress');
-            }
-            return;
-          }
-
-          // Only prevent default when actually executing to avoid ghost clicks
           e.preventDefault();
           e.stopImmediatePropagation();
 
@@ -763,13 +719,7 @@ class DoItTomorrowApp {
         });
       }
 
-      // Don't enter edit mode if user is scrolling
-      if (this.isScrolling) {
-        if (this.devMode) {
-          console.log('🚫 LONG PRESS BLOCKED: Scrolling in progress');
-        }
-        return;
-      }
+      // No scroll blocking - let long press work naturally
 
       // Only prevent default when actually entering edit mode
       if (isTouchEvent && event.cancelable) {
@@ -780,12 +730,17 @@ class DoItTomorrowApp {
         console.log('✏️ ENTERING EDIT MODE:', { taskId: id });
       }
 
-      // If already editing a different task, cancel that first
+      // If already editing a different task, cancel that first and wait
       if (this.editingTask && this.editingTask !== id) {
         if (this.devMode) {
           console.log('🔄 SWITCHING EDIT MODE:', { from: this.editingTask, to: id });
         }
         this.cancelEdit();
+        // Small delay to ensure DOM is cleaned up
+        setTimeout(() => {
+          this.enterEditMode(id);
+        }, 10);
+        return;
       }
 
       this.enterEditMode(id);
