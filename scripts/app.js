@@ -1201,16 +1201,23 @@ class DoItTomorrowApp {
     // Import from clipboard functionality
     importClipboardBtn.addEventListener('click', async () => {
       try {
-        // Check if clipboard API is available
-        if (!navigator.clipboard || !navigator.clipboard.readText) {
-          throw new Error('Clipboard API not available. Please use Ctrl+V to paste in the browser.');
+        // Try to read from clipboard first
+        let clipboardText = '';
+
+        try {
+          // This might fail due to permissions
+          clipboardText = await navigator.clipboard.readText();
+        } catch (clipboardError) {
+          // If direct clipboard access fails, show a paste dialog
+          console.log('Direct clipboard access failed, showing paste dialog');
+          clipboardText = await this.showPasteDialog();
+          if (!clipboardText) {
+            return; // User cancelled
+          }
         }
 
-        // Read from clipboard
-        const clipboardText = await navigator.clipboard.readText();
-
         if (!clipboardText.trim()) {
-          this.showNotification('Clipboard is empty', 'error');
+          this.showNotification('Clipboard is empty or no data pasted', 'error');
           return;
         }
 
@@ -1530,6 +1537,101 @@ class DoItTomorrowApp {
     if (notice) {
       notice.remove();
     }
+  }
+
+  // Show paste dialog when clipboard API fails
+  showPasteDialog() {
+    return new Promise((resolve) => {
+      // Create modal
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      `;
+
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: var(--surface);
+        padding: 2rem;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        color: var(--text);
+      `;
+
+      content.innerHTML = `
+        <h3 style="margin-top: 0;">Paste Your Tasks</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+          Press Ctrl+V (or Cmd+V on Mac) to paste your tasks data
+        </p>
+        <textarea
+          id="paste-area"
+          placeholder="Click here and press Ctrl+V to paste..."
+          style="
+            width: 100%;
+            min-height: 200px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--background);
+            color: var(--text);
+            font-family: inherit;
+            resize: vertical;
+            margin: 1rem 0;
+          "
+        ></textarea>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+          <button id="paste-import" class="sync-btn" style="padding: 0.5rem 1.5rem;">Import</button>
+          <button id="paste-cancel" class="sync-btn" style="padding: 0.5rem 1.5rem; opacity: 0.7;">Cancel</button>
+        </div>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // Auto-focus textarea
+      const textarea = content.querySelector('#paste-area');
+      setTimeout(() => textarea.focus(), 100);
+
+      // Handle import
+      content.querySelector('#paste-import').addEventListener('click', () => {
+        const pastedText = textarea.value;
+        document.body.removeChild(modal);
+        resolve(pastedText);
+      });
+
+      // Handle cancel
+      content.querySelector('#paste-cancel').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        resolve(null);
+      });
+
+      // Close on outside click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+          resolve(null);
+        }
+      });
+
+      // Handle Enter key to import
+      textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          const pastedText = textarea.value;
+          document.body.removeChild(modal);
+          resolve(pastedText);
+        }
+      });
+    });
   }
 
   // Show QR code modal with actual QR generation and scanning
