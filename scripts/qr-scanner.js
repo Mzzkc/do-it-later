@@ -139,26 +139,44 @@ class QRScanner {
 
   // Validate QR code contains task data
   isValidTaskData(data) {
+    console.log('Validating QR data:', data);
+
+    // Check new ultra-compressed format first: T:task1|task2~L:task3~C:5
+    if (data.includes('T:') || data.includes('L:') || data.includes('C:')) {
+      const parts = data.split('~');
+      const validParts = parts.filter(part =>
+        part.startsWith('T:') || part.startsWith('L:') || part.startsWith('C:')
+      );
+
+      const isValid = validParts.length > 0;
+      if (isValid) {
+        console.log('Valid ultra-compressed task data format detected!');
+      } else {
+        console.log('Invalid ultra-compressed format');
+      }
+      return isValid;
+    }
+
+    // Fallback: Check legacy JSON formats
     try {
       const parsed = JSON.parse(data);
       console.log('Parsed QR data:', parsed);
 
       // Check if it has the expected compressed task data structure
-      // Accept both new format (without d) and existing format (with d) for backward compatibility
       const isValid = parsed &&
              typeof parsed === 'object' &&
-             (Array.isArray(parsed.t) || Array.isArray(parsed.l) || typeof parsed.tc === 'number');
+             (Array.isArray(parsed.t) || Array.isArray(parsed.l) || typeof parsed.tc === 'number' || typeof parsed.c === 'number');
 
       if (!isValid) {
-        console.log('Invalid task data structure. Expected compressed format: {t: [], l: [], tc: number}');
+        console.log('Invalid task data structure. Expected compressed format or ultra-compressed format');
       } else {
-        console.log('Valid compressed task data format detected!');
+        console.log('Valid legacy JSON task data format detected!');
       }
 
       return isValid;
 
     } catch (error) {
-      console.log('Failed to parse QR data as JSON:', error.message);
+      console.log('Failed to parse QR data as JSON and not ultra-compressed format:', error.message);
       return false;
     }
   }

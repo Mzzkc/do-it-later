@@ -152,51 +152,139 @@ const Sync = {
     });
   },
 
-  // Generate QR code data (compressed JSON)
+  // Generate QR code data (ultra-compressed format)
   generateQRData(data) {
-    // Create compressed version for QR code
-    const compressed = {
-      t: data.today.map(task => ({
-        i: task.id,
-        x: task.text,
-        c: task.completed ? 1 : 0
-      })),
-      l: data.tomorrow.map(task => ({
-        i: task.id,
-        x: task.text,
-        c: task.completed ? 1 : 0
-      })),
-      tc: data.totalCompleted || 0,
-      ts: Date.now()
-    };
+    // Ultra-compressed format: T:task1|task2~L:task3|task4~C:5
+    // Only include incomplete tasks (completed ones aren't needed for sync)
+    // Skip task IDs (regenerate on import)
 
-    return JSON.stringify(compressed);
+    const activeTodayTasks = data.today
+      .filter(task => !task.completed)
+      .map(task => task.text.replace(/[|~]/g, '')) // Remove delimiters from text
+      .join('|');
+
+    const activeTomorrowTasks = data.tomorrow
+      .filter(task => !task.completed)
+      .map(task => task.text.replace(/[|~]/g, '')) // Remove delimiters from text
+      .join('|');
+
+    // Format: T:tasks~L:tasks~C:count
+    const parts = [];
+    if (activeTodayTasks) parts.push(`T:${activeTodayTasks}`);
+    if (activeTomorrowTasks) parts.push(`L:${activeTomorrowTasks}`);
+    if (data.totalCompleted) parts.push(`C:${data.totalCompleted}`);
+
+    const compressed = parts.join('~');
+
+    // Fallback to JSON if custom format would be larger (rare edge case)
+    const jsonFallback = JSON.stringify({
+      t: data.today.filter(t => !t.completed).map(t => t.text),
+      l: data.tomorrow.filter(t => !t.completed).map(t => t.text),
+      c: data.totalCompleted || 0
+    });
+
+    return compressed.length < jsonFallback.length ? compressed : jsonFallback;
   },
 
-  // Parse QR code data
+  // Parse QR code data (supports both new ultra-compressed and legacy formats)
   parseQRData(qrData) {
     try {
+      // Try new ultra-compressed format first: T:task1|task2~L:task3~C:5
+      if (qrData.includes('T:') || qrData.includes('L:') || qrData.includes('C:')) {
+        const parts = qrData.split('~');
+        const result = {
+          today: [],
+          tomorrow: [],
+          totalCompleted: 0,
+          currentDate: new Date().toISOString().split('T')[0],
+          lastUpdated: Date.now()
+        };
+
+        parts.forEach(part => {
+          if (part.startsWith('T:')) {
+            // Today tasks
+            const tasksText = part.substring(2);
+            if (tasksText) {
+              result.today = tasksText.split('|')
+                .filter(text => text.trim())
+                .map(text => ({
+                  id: this.generateId(),
+                  text: text.trim(),
+                  completed: false,
+                  createdAt: Date.now()
+                }));
+            }
+          } else if (part.startsWith('L:')) {
+            // Tomorrow/Later tasks
+            const tasksText = part.substring(2);
+            if (tasksText) {
+              result.tomorrow = tasksText.split('|')
+                .filter(text => text.trim())
+                .map(text => ({
+                  id: this.generateId(),
+                  text: text.trim(),
+                  completed: false,
+                  createdAt: Date.now()
+                }));
+            }
+          } else if (part.startsWith('C:')) {
+            // Completed count
+            result.totalCompleted = parseInt(part.substring(2)) || 0;
+          }
+        });
+
+        return result;
+      }
+
+      // Fallback: Try legacy JSON format
       const compressed = JSON.parse(qrData);
 
-      return {
-        today: compressed.t.map(task => ({
-          id: task.i,
-          text: task.x,
-          completed: !!task.c,
-          createdAt: compressed.ts
-        })),
-        tomorrow: compressed.l.map(task => ({
-          id: task.i,
-          text: task.x,
-          completed: !!task.c,
-          createdAt: compressed.ts
-        })),
-        totalCompleted: compressed.tc || 0,
-        currentDate: new Date().toISOString().split('T')[0],
-        lastUpdated: compressed.ts
-      };
+      // Handle old compressed format with i,x,c structure
+      if (compressed.t && Array.isArray(compressed.t) && compressed.t[0] && compressed.t[0].i) {
+        return {
+          today: compressed.t.map(task => ({
+            id: task.i,
+            text: task.x,
+            completed: !!task.c,
+            createdAt: compressed.ts || Date.now()
+          })),
+          tomorrow: compressed.l.map(task => ({
+            id: task.i,
+            text: task.x,
+            completed: !!task.c,
+            createdAt: compressed.ts || Date.now()
+          })),
+          totalCompleted: compressed.tc || 0,
+          currentDate: new Date().toISOString().split('T')[0],
+          lastUpdated: compressed.ts || Date.now()
+        };
+      }
+
+      // Handle simplified JSON format (t: [strings], l: [strings])
+      if (compressed.t && Array.isArray(compressed.t)) {
+        return {
+          today: compressed.t.map(text => ({
+            id: this.generateId(),
+            text: text,
+            completed: false,
+            createdAt: Date.now()
+          })),
+          tomorrow: (compressed.l || []).map(text => ({
+            id: this.generateId(),
+            text: text,
+            completed: false,
+            createdAt: Date.now()
+          })),
+          totalCompleted: compressed.c || 0,
+          currentDate: new Date().toISOString().split('T')[0],
+          lastUpdated: Date.now()
+        };
+      }
+
+      throw new Error('Unrecognized QR data format');
+
     } catch (error) {
-      throw new Error('Invalid QR code data');
+      throw new Error('Invalid QR code data: ' + error.message);
     }
   }
 };
