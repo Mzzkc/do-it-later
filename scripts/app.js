@@ -120,6 +120,15 @@ class DoItTomorrowApp {
       this.touchStartY = e.touches[0].clientY;
       this.touchStartTime = Date.now();
       this.isScrolling = false;
+
+      if (this.devMode) {
+        console.log('🟢 TOUCH START:', {
+          x: this.touchStartX,
+          y: this.touchStartY,
+          target: e.target.className || e.target.tagName,
+          time: this.touchStartTime
+        });
+      }
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
@@ -128,6 +137,15 @@ class DoItTomorrowApp {
 
       // Consider it scrolling if moved more than 5px (much more sensitive)
       if (deltaX > 5 || deltaY > 5) {
+        if (!this.isScrolling && this.devMode) {
+          console.log('🟡 SCROLL DETECTED:', {
+            deltaX,
+            deltaY,
+            wasScrolling: this.isScrolling,
+            longPressActive: !!this.longPressTimer
+          });
+        }
+
         this.isScrolling = true;
 
         // Immediately cancel any long press that might be in progress
@@ -142,8 +160,18 @@ class DoItTomorrowApp {
     }, { passive: true });
 
     document.addEventListener('touchend', () => {
+      if (this.devMode) {
+        console.log('🔴 TOUCH END:', {
+          wasScrolling: this.isScrolling,
+          longPressActive: !!this.longPressTimer
+        });
+      }
+
       // Reset and restore arrows after scroll ends
       setTimeout(() => {
+        if (this.devMode && this.isScrolling) {
+          console.log('🔄 SCROLL RESET: Restoring arrows');
+        }
         this.isScrolling = false;
         // Restore all arrows
         document.querySelectorAll('.move-icon').forEach(icon => {
@@ -409,8 +437,20 @@ class DoItTomorrowApp {
           e.stopImmediatePropagation(); // Stop all propagation
         });
         moveIcon.addEventListener('touchend', (e) => {
+          if (this.devMode) {
+            console.log('⬅️ ARROW TOUCHEND:', {
+              action: moveIcon.dataset.action,
+              taskId: moveIcon.dataset.taskId,
+              isScrolling: this.isScrolling,
+              willBlock: this.isScrolling
+            });
+          }
+
           // Prevent accidental arrow clicks during scrolling
           if (this.isScrolling) {
+            if (this.devMode) {
+              console.log('🚫 ARROW BLOCKED: Scrolling in progress');
+            }
             return;
           }
 
@@ -418,6 +458,11 @@ class DoItTomorrowApp {
           e.stopImmediatePropagation(); // Stop all propagation
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
+
+          if (this.devMode) {
+            console.log('✅ ARROW EXECUTED:', { action, taskId });
+          }
+
           if (action === 'push') {
             this.pushToTomorrow(taskId);
           } else if (action === 'pull') {
@@ -649,8 +694,21 @@ class DoItTomorrowApp {
 
   // Handle task click (completion or edit)
   handleTaskClick(id, event) {
+    if (this.devMode) {
+      console.log('👆 TASK CLICK:', {
+        taskId: id,
+        isScrolling: this.isScrolling,
+        editingTask: this.editingTask,
+        wasLongPress: this.wasLongPress,
+        willBlock: this.isScrolling
+      });
+    }
+
     // Prevent accidental clicks during scrolling
     if (this.isScrolling) {
+      if (this.devMode) {
+        console.log('🚫 TASK CLICK BLOCKED: Scrolling in progress');
+      }
       return;
     }
 
@@ -692,9 +750,28 @@ class DoItTomorrowApp {
     // Store the event type to handle mobile differently
     const isTouchEvent = event.type === 'touchstart';
 
+    if (this.devMode) {
+      console.log('⏱️ LONG PRESS START:', {
+        taskId: id,
+        isTouchEvent,
+        isScrolling: this.isScrolling
+      });
+    }
+
     this.longPressTimer = setTimeout(() => {
+      if (this.devMode) {
+        console.log('⏱️ LONG PRESS TIMER FIRED:', {
+          taskId: id,
+          isScrolling: this.isScrolling,
+          willBlock: this.isScrolling
+        });
+      }
+
       // Don't enter edit mode if user is scrolling
       if (this.isScrolling) {
+        if (this.devMode) {
+          console.log('🚫 LONG PRESS BLOCKED: Scrolling in progress');
+        }
         return;
       }
 
@@ -702,6 +779,11 @@ class DoItTomorrowApp {
       if (isTouchEvent && event.cancelable) {
         event.preventDefault();
       }
+
+      if (this.devMode) {
+        console.log('✏️ ENTERING EDIT MODE:', { taskId: id });
+      }
+
       this.enterEditMode(id);
       this.wasLongPress = true;
     }, 500); // 500ms for long press
@@ -709,6 +791,9 @@ class DoItTomorrowApp {
 
   endLongPress() {
     if (this.longPressTimer) {
+      if (this.devMode) {
+        console.log('❌ LONG PRESS CANCELLED');
+      }
       clearTimeout(this.longPressTimer);
       this.longPressTimer = null;
     }
