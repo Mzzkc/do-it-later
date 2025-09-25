@@ -120,6 +120,7 @@ class DoItTomorrowApp {
       this.touchStartY = e.touches[0].clientY;
       this.touchStartTime = Date.now();
       this.isScrolling = false;
+      this.touchMoved = false;
 
       if (this.devMode) {
         console.log('🟢 TOUCH START:', {
@@ -134,13 +135,34 @@ class DoItTomorrowApp {
     document.addEventListener('touchmove', (e) => {
       const deltaX = Math.abs(e.touches[0].clientX - this.touchStartX);
       const deltaY = Math.abs(e.touches[0].clientY - this.touchStartY);
+      const timeSinceStart = Date.now() - this.touchStartTime;
 
-      // Consider it scrolling if moved more than 3px (extremely sensitive)
-      if (deltaX > 3 || deltaY > 3) {
-        if (!this.isScrolling && this.devMode) {
+      // Mark that touch has moved
+      this.touchMoved = true;
+
+      // More nuanced scroll detection:
+      // - For large movements (>10px), immediately consider it scrolling
+      // - For smaller movements (5-10px), only consider scrolling if sustained (>100ms)
+      // - For tiny movements (<5px), only consider scrolling if very sustained (>200ms)
+      const isLargeMovement = deltaX > 10 || deltaY > 10;
+      const isMediumMovement = deltaX > 5 || deltaY > 5;
+      const isSmallMovement = deltaX > 3 || deltaY > 3;
+
+      let shouldBeScrolling = false;
+      if (isLargeMovement) {
+        shouldBeScrolling = true;
+      } else if (isMediumMovement && timeSinceStart > 100) {
+        shouldBeScrolling = true;
+      } else if (isSmallMovement && timeSinceStart > 200) {
+        shouldBeScrolling = true;
+      }
+
+      if (shouldBeScrolling && !this.isScrolling) {
+        if (this.devMode) {
           console.log('🟡 SCROLL DETECTED:', {
             deltaX,
             deltaY,
+            timeSinceStart,
             wasScrolling: this.isScrolling,
             longPressActive: !!this.longPressTimer
           });
@@ -163,6 +185,7 @@ class DoItTomorrowApp {
       if (this.devMode) {
         console.log('🔴 TOUCH END:', {
           wasScrolling: this.isScrolling,
+          touchMoved: this.touchMoved,
           longPressActive: !!this.longPressTimer
         });
       }
@@ -173,6 +196,7 @@ class DoItTomorrowApp {
           console.log('🔄 SCROLL RESET: Restoring arrows');
         }
         this.isScrolling = false;
+        this.touchMoved = false;
         // Restore all arrows
         document.querySelectorAll('.move-icon').forEach(icon => {
           icon.style.pointerEvents = '';
@@ -474,6 +498,7 @@ class DoItTomorrowApp {
               action: moveIcon.dataset.action,
               taskId: moveIcon.dataset.taskId,
               isScrolling: this.isScrolling,
+              touchMoved: this.touchMoved,
               willBlock: this.isScrolling
             });
           }
@@ -786,7 +811,8 @@ class DoItTomorrowApp {
       console.log('⏱️ LONG PRESS START:', {
         taskId: id,
         isTouchEvent,
-        isScrolling: this.isScrolling
+        isScrolling: this.isScrolling,
+        currentlyEditing: this.editingTask
       });
     }
 
@@ -814,6 +840,14 @@ class DoItTomorrowApp {
 
       if (this.devMode) {
         console.log('✏️ ENTERING EDIT MODE:', { taskId: id });
+      }
+
+      // If already editing a different task, cancel that first
+      if (this.editingTask && this.editingTask !== id) {
+        if (this.devMode) {
+          console.log('🔄 SWITCHING EDIT MODE:', { from: this.editingTask, to: id });
+        }
+        this.cancelEdit();
       }
 
       this.enterEditMode(id);
