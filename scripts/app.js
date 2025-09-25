@@ -1359,6 +1359,21 @@ class DoItTomorrowApp {
     this.updateDevModeUI(); // Update dev mode UI
   }
 
+  // Reset completed task count (dev mode only)
+  resetCompletedCount() {
+    if (!this.devMode) return;
+
+    const oldCount = this.data.totalCompleted || 0;
+    this.data.totalCompleted = 0;
+    this.save();
+    this.updateCompletedCounter();
+    this.showNotification(`Reset completed count from ${oldCount} to 0`, 'success');
+
+    if (this.devMode) {
+      console.log(`🔧 DEV: Reset completed count from ${oldCount} to 0`);
+    }
+  }
+
   // Clear browser cache and reload
   async clearCache() {
     try {
@@ -1443,6 +1458,20 @@ class DoItTomorrowApp {
         clearCacheBtn.addEventListener('click', () => this.clearCache());
         syncControls.appendChild(clearCacheBtn);
         console.log('Clear cache button added to sync controls');
+
+        // Add reset completed count button
+        const resetCountBtn = document.createElement('button');
+        resetCountBtn.className = 'sync-btn dev-mode-btn';
+        resetCountBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+          </svg>
+          Reset Count
+        `;
+        resetCountBtn.addEventListener('click', () => this.resetCompletedCount());
+        syncControls.appendChild(resetCountBtn);
+        console.log('Reset completed count button added to sync controls');
       } else {
         console.error('Could not find sync controls element');
       }
