@@ -1201,6 +1201,11 @@ class DoItTomorrowApp {
     // Import from clipboard functionality
     importClipboardBtn.addEventListener('click', async () => {
       try {
+        // Check if clipboard API is available
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+          throw new Error('Clipboard API not available. Please use Ctrl+V to paste in the browser.');
+        }
+
         // Read from clipboard
         const clipboardText = await navigator.clipboard.readText();
 
@@ -1246,7 +1251,18 @@ class DoItTomorrowApp {
         this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from clipboard`, 'success');
 
       } catch (error) {
-        this.showNotification(`Import failed: ${error.message}`, 'error');
+        console.error('Clipboard import error:', error);
+
+        // Provide specific error messages based on the error type
+        if (error.name === 'NotAllowedError') {
+          this.showNotification('Clipboard access denied. Please allow clipboard permissions and try again.', 'error');
+        } else if (error.name === 'SecurityError') {
+          this.showNotification('Clipboard access blocked for security. Make sure you are on HTTPS or localhost.', 'error');
+        } else if (error.message.includes('Clipboard API')) {
+          this.showNotification(error.message, 'error');
+        } else {
+          this.showNotification(`Import failed: ${error.message}`, 'error');
+        }
       }
     });
 
@@ -1736,7 +1752,11 @@ class DoItTomorrowApp {
         currentScanner.stopScanning();
       }
       document.body.removeChild(modal);
-      document.head.removeChild(style);
+      // Remove inline styles if they were added
+      const existingStyle = document.getElementById('qr-modal-styles');
+      if (existingStyle) {
+        document.head.removeChild(existingStyle);
+      }
     };
 
     modal.addEventListener('click', (e) => {
