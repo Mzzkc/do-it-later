@@ -1204,12 +1204,23 @@ class DoItTomorrowApp {
         // Try to read from clipboard first
         let clipboardText = '';
 
-        try {
-          // This might fail due to permissions
-          clipboardText = await navigator.clipboard.readText();
-        } catch (clipboardError) {
-          // If direct clipboard access fails, show a paste dialog
-          console.log('Direct clipboard access failed, showing paste dialog');
+        // Check if we're on mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          // On mobile, try clipboard API first
+          try {
+            clipboardText = await navigator.clipboard.readText();
+          } catch (clipboardError) {
+            // If it fails on mobile, show paste dialog
+            console.log('Mobile clipboard access failed, showing paste dialog');
+            clipboardText = await this.showPasteDialog();
+            if (!clipboardText) {
+              return; // User cancelled
+            }
+          }
+        } else {
+          // On desktop, always use paste dialog to avoid permission prompts
           clipboardText = await this.showPasteDialog();
           if (!clipboardText) {
             return; // User cancelled
