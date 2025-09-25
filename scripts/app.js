@@ -11,6 +11,13 @@ class DoItTomorrowApp {
     this.devTapCount = 0;
     this.devTapTimer = null;
     this.logs = [];
+
+    // Touch tracking for scroll detection
+    this.touchStartX = 0;
+    this.touchStartY = 0;
+    this.touchStartTime = 0;
+    this.isScrolling = false;
+
     this.setupLogging();
     this.init();
   }
@@ -101,6 +108,39 @@ class DoItTomorrowApp {
     });
 
     // Note: Mobile button focus is now handled purely with CSS :focus-visible
+
+    // Setup scroll detection to prevent accidental taps during scroll
+    this.setupScrollDetection();
+  }
+
+  setupScrollDetection() {
+    // Track touch events globally to detect scrolling
+    document.addEventListener('touchstart', (e) => {
+      this.touchStartX = e.touches[0].clientX;
+      this.touchStartY = e.touches[0].clientY;
+      this.touchStartTime = Date.now();
+      this.isScrolling = false;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      const deltaX = Math.abs(e.touches[0].clientX - this.touchStartX);
+      const deltaY = Math.abs(e.touches[0].clientY - this.touchStartY);
+      const deltaTime = Date.now() - this.touchStartTime;
+
+      // Consider it scrolling if:
+      // - Moved more than 10px in any direction, OR
+      // - Touch has been active for more than 200ms (long touch = likely scroll)
+      if (deltaX > 10 || deltaY > 10 || deltaTime > 200) {
+        this.isScrolling = true;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+      // Reset after a short delay to avoid false positives
+      setTimeout(() => {
+        this.isScrolling = false;
+      }, 50);
+    }, { passive: true });
   }
   
   updateCurrentDate() {
@@ -358,6 +398,11 @@ class DoItTomorrowApp {
           e.stopImmediatePropagation(); // Stop all propagation
         });
         moveIcon.addEventListener('touchend', (e) => {
+          // Prevent accidental arrow clicks during scrolling
+          if (this.isScrolling) {
+            return;
+          }
+
           e.preventDefault(); // Prevent ghost click and other default behaviors
           e.stopImmediatePropagation(); // Stop all propagation
           const action = moveIcon.dataset.action;
@@ -593,6 +638,11 @@ class DoItTomorrowApp {
 
   // Handle task click (completion or edit)
   handleTaskClick(id, event) {
+    // Prevent accidental clicks during scrolling
+    if (this.isScrolling) {
+      return;
+    }
+
     // If we're in edit mode for a DIFFERENT task, cancel edit and allow click
     if (this.editingTask && this.editingTask !== id) {
       this.cancelEdit();
@@ -632,6 +682,11 @@ class DoItTomorrowApp {
     const isTouchEvent = event.type === 'touchstart';
 
     this.longPressTimer = setTimeout(() => {
+      // Don't enter edit mode if user is scrolling
+      if (this.isScrolling) {
+        return;
+      }
+
       // Only prevent default when actually entering edit mode
       if (isTouchEvent && event.cancelable) {
         event.preventDefault();
