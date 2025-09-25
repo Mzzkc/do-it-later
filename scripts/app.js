@@ -114,96 +114,57 @@ class DoItTomorrowApp {
   }
 
   setupScrollDetection() {
-    // Track touch events globally to detect scrolling
-    document.addEventListener('touchstart', (e) => {
-      this.touchStartX = e.touches[0].clientX;
-      this.touchStartY = e.touches[0].clientY;
-      this.touchStartTime = Date.now();
-      this.isScrolling = false;
-      this.touchMoved = false;
+    // Much simpler approach: only detect actual scrolling, not touch movement
+    this.isScrolling = false;
+    this.scrollResetTimer = null;
 
-      if (this.devMode) {
-        console.log('🟢 TOUCH START:', {
-          x: this.touchStartX,
-          y: this.touchStartY,
-          target: e.target.className || e.target.tagName,
-          time: this.touchStartTime
-        });
-      }
-    }, { passive: true });
+    // Listen for actual scroll events on scrollable containers
+    const scrollableElements = [document.body, document.documentElement, ...document.querySelectorAll('main, .lists-container')];
 
-    document.addEventListener('touchmove', (e) => {
-      const deltaX = Math.abs(e.touches[0].clientX - this.touchStartX);
-      const deltaY = Math.abs(e.touches[0].clientY - this.touchStartY);
-      const timeSinceStart = Date.now() - this.touchStartTime;
-
-      // Mark that touch has moved
-      this.touchMoved = true;
-
-      // More nuanced scroll detection:
-      // - For large movements (>10px), immediately consider it scrolling
-      // - For smaller movements (5-10px), only consider scrolling if sustained (>100ms)
-      // - For tiny movements (<5px), only consider scrolling if very sustained (>200ms)
-      const isLargeMovement = deltaX > 10 || deltaY > 10;
-      const isMediumMovement = deltaX > 5 || deltaY > 5;
-      const isSmallMovement = deltaX > 3 || deltaY > 3;
-
-      let shouldBeScrolling = false;
-      if (isLargeMovement) {
-        shouldBeScrolling = true;
-      } else if (isMediumMovement && timeSinceStart > 100) {
-        shouldBeScrolling = true;
-      } else if (isSmallMovement && timeSinceStart > 200) {
-        shouldBeScrolling = true;
-      }
-
-      if (shouldBeScrolling && !this.isScrolling) {
-        if (this.devMode) {
-          console.log('🟡 SCROLL DETECTED:', {
-            deltaX,
-            deltaY,
-            timeSinceStart,
-            wasScrolling: this.isScrolling,
-            longPressActive: !!this.longPressTimer
-          });
+    scrollableElements.forEach(element => {
+      element.addEventListener('scroll', () => {
+        if (!this.isScrolling && this.devMode) {
+          console.log('🟡 ACTUAL SCROLL DETECTED');
         }
 
         this.isScrolling = true;
 
-        // Immediately cancel any long press that might be in progress
+        // Cancel any long press during actual scrolling
         this.endLongPress();
 
-        // Hide all arrows while scrolling
-        document.querySelectorAll('.move-icon').forEach(icon => {
-          icon.style.pointerEvents = 'none';
-          icon.style.opacity = '0.3';
-        });
-      }
-    }, { passive: true });
+        // Clear existing reset timer
+        if (this.scrollResetTimer) {
+          clearTimeout(this.scrollResetTimer);
+        }
 
-    document.addEventListener('touchend', () => {
-      if (this.devMode) {
+        // Set new reset timer with very short delay
+        this.scrollResetTimer = setTimeout(() => {
+          if (this.devMode) {
+            console.log('🔄 SCROLL RESET: Restoring interactions');
+          }
+          this.isScrolling = false;
+        }, 50); // Much shorter delay
+      }, { passive: true });
+    });
+
+    // Also listen for touchstart/end for dev logging only (no interference with scrolling)
+    if (this.devMode) {
+      document.addEventListener('touchstart', (e) => {
+        console.log('🟢 TOUCH START:', {
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          target: e.target.className || e.target.tagName,
+          time: Date.now()
+        });
+      }, { passive: true });
+
+      document.addEventListener('touchend', () => {
         console.log('🔴 TOUCH END:', {
           wasScrolling: this.isScrolling,
-          touchMoved: this.touchMoved,
           longPressActive: !!this.longPressTimer
         });
-      }
-
-      // Reset and restore arrows after scroll ends
-      setTimeout(() => {
-        if (this.devMode && this.isScrolling) {
-          console.log('🔄 SCROLL RESET: Restoring arrows');
-        }
-        this.isScrolling = false;
-        this.touchMoved = false;
-        // Restore all arrows
-        document.querySelectorAll('.move-icon').forEach(icon => {
-          icon.style.pointerEvents = '';
-          icon.style.opacity = '';
-        });
-      }, 100);
-    }, { passive: true });
+      }, { passive: true });
+    }
   }
   
   updateCurrentDate() {
@@ -470,40 +431,18 @@ class DoItTomorrowApp {
             this.pullToToday(taskId);
           }
         });
-        // Also handle touch events for mobile
-        moveIcon.addEventListener('touchstart', (e) => {
-          if (this.devMode) {
-            console.log('⬅️ ARROW TOUCHSTART:', {
-              action: moveIcon.dataset.action,
-              isScrolling: this.isScrolling
-            });
-          }
-
-          // Block arrow interaction immediately if already scrolling
-          if (this.isScrolling) {
-            if (this.devMode) {
-              console.log('🚫 ARROW TOUCHSTART BLOCKED: Already scrolling');
-            }
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            return;
-          }
-
-          e.preventDefault(); // Prevent ghost click and other default behaviors
-          e.stopImmediatePropagation(); // Stop all propagation
-        });
+        // Touch events for mobile - simplified approach
         moveIcon.addEventListener('touchend', (e) => {
           if (this.devMode) {
             console.log('⬅️ ARROW TOUCHEND:', {
               action: moveIcon.dataset.action,
               taskId: moveIcon.dataset.taskId,
               isScrolling: this.isScrolling,
-              touchMoved: this.touchMoved,
               willBlock: this.isScrolling
             });
           }
 
-          // Prevent accidental arrow clicks during scrolling
+          // Only block during actual scrolling
           if (this.isScrolling) {
             if (this.devMode) {
               console.log('🚫 ARROW BLOCKED: Scrolling in progress');
@@ -511,8 +450,10 @@ class DoItTomorrowApp {
             return;
           }
 
-          e.preventDefault(); // Prevent ghost click and other default behaviors
-          e.stopImmediatePropagation(); // Stop all propagation
+          // Only prevent default when actually executing to avoid ghost clicks
+          e.preventDefault();
+          e.stopImmediatePropagation();
+
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
 
@@ -867,6 +808,10 @@ class DoItTomorrowApp {
 
   // Enter edit mode for a task
   enterEditMode(id) {
+    // Prevent race conditions by checking if we're already editing this task
+    if (this.editingTask === id) return;
+
+    // Cancel any existing edit mode first
     if (this.editingTask) this.cancelEdit();
 
     const taskInfo = this.findTask(id);
@@ -979,11 +924,20 @@ class DoItTomorrowApp {
   cancelEdit() {
     if (!this.editingTask) return;
 
+    // Safely remove edit input with error handling
     const editInput = document.querySelector('.edit-input');
-    if (editInput) {
-      editInput.remove();
+    if (editInput && editInput.parentNode) {
+      try {
+        editInput.remove();
+      } catch (error) {
+        if (this.devMode) {
+          console.log('⚠️ Edit input already removed:', error.message);
+        }
+        // Element already removed, continue cleanup
+      }
     }
 
+    // Restore task text display
     const taskElement = document.querySelector(`[data-task-id="${this.editingTask}"] .task-text`);
     if (taskElement) {
       taskElement.style.display = '';
