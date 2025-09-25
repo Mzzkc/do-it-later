@@ -347,7 +347,7 @@ class DoItTomorrowApp {
 
         li.classList.add('button-pressed');
         this.startLongPress(task.id, e);
-      }, { passive: true });
+      });
 
       li.addEventListener('touchend', (e) => {
         li.classList.remove('button-pressed');
@@ -386,6 +386,11 @@ class DoItTomorrowApp {
         setTimeout(() => {
           touchHandled = false;
         }, 100);
+      });
+
+      li.addEventListener('touchcancel', (e) => {
+        li.classList.remove('button-pressed');
+        this.endLongPress();
       });
 
       // Mouse events for desktop
@@ -456,18 +461,28 @@ class DoItTomorrowApp {
         let startX, startY, startTime;
 
         moveIcon.addEventListener('touchstart', (e) => {
+          e.stopPropagation(); // Prevent task touchstart from firing
           startX = e.touches[0].clientX;
           startY = e.touches[0].clientY;
           startTime = Date.now();
+
+          // Cancel any existing long press for the parent task
+          this.endLongPress();
+
+          // Add visual pressed state to arrow
+          moveIcon.style.opacity = '0.6';
 
           if (this.devMode) {
             console.log('⬅️ ARROW TOUCHSTART:', {
               action: moveIcon.dataset.action
             });
           }
-        }, { passive: true });
+        });
 
         moveIcon.addEventListener('touchend', (e) => {
+          // Reset visual pressed state
+          moveIcon.style.opacity = '';
+
           const endX = e.changedTouches[0].clientX;
           const endY = e.changedTouches[0].clientY;
           const endTime = Date.now();
@@ -512,6 +527,11 @@ class DoItTomorrowApp {
           } else if (action === 'pull') {
             this.pullToToday(taskId);
           }
+        });
+
+        moveIcon.addEventListener('touchcancel', (e) => {
+          // Reset visual pressed state
+          moveIcon.style.opacity = '';
         });
       }
     });
