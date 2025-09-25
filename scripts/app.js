@@ -12,10 +12,7 @@ class DoItTomorrowApp {
     this.devTapTimer = null;
     this.logs = [];
 
-    // Touch tracking for scroll detection
-    this.touchStartX = 0;
-    this.touchStartY = 0;
-    this.touchStartTime = 0;
+    // Simple scroll detection
     this.isScrolling = false;
 
     this.setupLogging();
@@ -924,18 +921,19 @@ class DoItTomorrowApp {
   cancelEdit() {
     if (!this.editingTask) return;
 
-    // Safely remove edit input with error handling
-    const editInput = document.querySelector('.edit-input');
-    if (editInput && editInput.parentNode) {
+    // More robust edit input removal
+    const editInputs = document.querySelectorAll('.edit-input');
+    editInputs.forEach(input => {
       try {
-        editInput.remove();
+        if (input && input.parentNode && input.isConnected) {
+          input.remove();
+        }
       } catch (error) {
         if (this.devMode) {
-          console.log('⚠️ Edit input already removed:', error.message);
+          console.log('⚠️ Edit input removal failed:', error.message);
         }
-        // Element already removed, continue cleanup
       }
-    }
+    });
 
     // Restore task text display
     const taskElement = document.querySelector(`[data-task-id="${this.editingTask}"] .task-text`);
