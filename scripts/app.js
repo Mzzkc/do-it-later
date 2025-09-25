@@ -160,27 +160,61 @@ class DoItTomorrowApp {
     if (this.data.currentDate !== today) {
       // New day detected - perform daily cleanup
       const completedToday = this.data.today.filter(task => task.completed).length;
-      const completedTomorrow = this.data.tomorrow.filter(task => task.completed).length;
+      const completedLater = this.data.tomorrow.filter(task => task.completed).length;
 
-      // Move only incomplete tomorrow tasks to today
-      this.data.today = this.data.tomorrow.filter(task => !task.completed);
+      // Remove completed tasks from Today
+      this.data.today = this.data.today.filter(task => !task.completed);
 
-      // Clear tomorrow list
-      this.data.tomorrow = [];
+      // Remove completed tasks from Later, but keep incomplete ones there
+      const incompleteLaterTasks = this.data.tomorrow.filter(task => !task.completed);
+
+      // Check for week-old Later tasks (7+ days old) and move them to Today
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoTimestamp = weekAgo.getTime();
+
+      const weekOldTasks = [];
+      const remainingLaterTasks = [];
+
+      incompleteLaterTasks.forEach(task => {
+        const taskAge = task.createdAt || Date.now(); // Fallback for tasks without timestamp
+        if (taskAge < weekAgoTimestamp) {
+          // Task is 7+ days old, move to Today
+          weekOldTasks.push(task);
+        } else {
+          // Keep in Later
+          remainingLaterTasks.push(task);
+        }
+      });
+
+      // Add week-old tasks to Today
+      this.data.today.push(...weekOldTasks);
+
+      // Update Later list with remaining tasks
+      this.data.tomorrow = remainingLaterTasks;
 
       // Update date
       this.data.currentDate = today;
 
+      // Prepare notification message
+      let notificationParts = [];
+      if (completedToday > 0 || completedLater > 0) {
+        notificationParts.push(`${completedToday + completedLater} completed tasks cleaned up`);
+      }
+      if (weekOldTasks.length > 0) {
+        notificationParts.push(`${weekOldTasks.length} week-old tasks moved to Today`);
+      }
+
       // Log cleanup for dev mode
-      if (this.devMode && (completedToday > 0 || completedTomorrow > 0)) {
-        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedTomorrow} completed tasks`);
+      if (this.devMode && (completedToday > 0 || completedLater > 0 || weekOldTasks.length > 0)) {
+        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedLater} completed tasks, moved ${weekOldTasks.length} week-old tasks to Today`);
       }
 
       this.save();
 
       // Show notification about the rollover
-      if (completedToday > 0 || completedTomorrow > 0) {
-        this.showNotification(`New day! Cleaned up ${completedToday + completedTomorrow} completed tasks`, 'info');
+      if (notificationParts.length > 0) {
+        this.showNotification(`New day! ${notificationParts.join(', ')}`, 'info');
       }
     }
   }
