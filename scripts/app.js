@@ -135,8 +135,8 @@ class DoItTomorrowApp {
       const deltaX = Math.abs(e.touches[0].clientX - this.touchStartX);
       const deltaY = Math.abs(e.touches[0].clientY - this.touchStartY);
 
-      // Consider it scrolling if moved more than 5px (much more sensitive)
-      if (deltaX > 5 || deltaY > 5) {
+      // Consider it scrolling if moved more than 3px (extremely sensitive)
+      if (deltaX > 3 || deltaY > 3) {
         if (!this.isScrolling && this.devMode) {
           console.log('🟡 SCROLL DETECTED:', {
             deltaX,
@@ -394,6 +394,21 @@ class DoItTomorrowApp {
         this.endLongPress();
       });
       li.addEventListener('touchstart', (e) => {
+        if (this.devMode) {
+          console.log('👆 TASK TOUCHSTART:', {
+            taskId: task.id,
+            isScrolling: this.isScrolling
+          });
+        }
+
+        // Block task interaction immediately if already scrolling
+        if (this.isScrolling) {
+          if (this.devMode) {
+            console.log('🚫 TASK TOUCHSTART BLOCKED: Already scrolling');
+          }
+          return;
+        }
+
         li.classList.add('button-pressed');
         this.startLongPress(task.id, e);
       });
@@ -433,6 +448,23 @@ class DoItTomorrowApp {
         });
         // Also handle touch events for mobile
         moveIcon.addEventListener('touchstart', (e) => {
+          if (this.devMode) {
+            console.log('⬅️ ARROW TOUCHSTART:', {
+              action: moveIcon.dataset.action,
+              isScrolling: this.isScrolling
+            });
+          }
+
+          // Block arrow interaction immediately if already scrolling
+          if (this.isScrolling) {
+            if (this.devMode) {
+              console.log('🚫 ARROW TOUCHSTART BLOCKED: Already scrolling');
+            }
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+          }
+
           e.preventDefault(); // Prevent ghost click and other default behaviors
           e.stopImmediatePropagation(); // Stop all propagation
         });
@@ -786,7 +818,7 @@ class DoItTomorrowApp {
 
       this.enterEditMode(id);
       this.wasLongPress = true;
-    }, 500); // 500ms for long press
+    }, 300); // 300ms for long press (shorter to reduce accidental triggers)
   }
 
   endLongPress() {
