@@ -1080,6 +1080,49 @@ class DoItTomorrowApp {
     this.updateDevModeUI(); // Update dev mode UI
   }
 
+  // Clear browser cache and reload
+  async clearCache() {
+    try {
+      // Clear localStorage (but preserve user data)
+      const userData = localStorage.getItem('do-it-later-data');
+      const userTheme = localStorage.getItem('theme');
+
+      // Clear all localStorage
+      localStorage.clear();
+
+      // Restore user data
+      if (userData) localStorage.setItem('do-it-later-data', userData);
+      if (userTheme) localStorage.setItem('theme', userTheme);
+
+      // Clear service worker cache if available
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          console.log('Unregistering service worker...');
+          await registration.unregister();
+        }
+      }
+
+      // Clear cache API if available
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        console.log('Clearing caches:', cacheNames);
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+
+      this.showNotification('Cache cleared! Reloading...', 'success');
+
+      // Force reload with cache bypass
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Cache clear error:', error);
+      this.showNotification('Cache clear failed. Try manual refresh (Ctrl+F5)', 'error');
+    }
+  }
+
   // Update dev mode UI elements
   updateDevModeUI() {
     console.log('updateDevModeUI called, devMode:', this.devMode);
@@ -1107,6 +1150,20 @@ class DoItTomorrowApp {
         exportLogsBtn.addEventListener('click', () => this.exportLogs());
         syncControls.appendChild(exportLogsBtn);
         console.log('Export logs button added to sync controls');
+
+        // Add clear cache button
+        const clearCacheBtn = document.createElement('button');
+        clearCacheBtn.className = 'sync-btn dev-mode-btn';
+        clearCacheBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+          </svg>
+          Clear Cache
+        `;
+        clearCacheBtn.addEventListener('click', () => this.clearCache());
+        syncControls.appendChild(clearCacheBtn);
+        console.log('Clear cache button added to sync controls');
       } else {
         console.error('Could not find sync controls element');
       }

@@ -144,6 +144,7 @@ class QRScanner {
       console.log('Parsed QR data:', parsed);
 
       // Check if it has the expected compressed task data structure
+      // Accept both new format (without d) and existing format (with d) for backward compatibility
       const isValid = parsed &&
              typeof parsed === 'object' &&
              (Array.isArray(parsed.t) || Array.isArray(parsed.l) || typeof parsed.tc === 'number');
