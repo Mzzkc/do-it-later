@@ -9,6 +9,7 @@ class QRScanner {
     this.scanning = false;
     this.onScanSuccess = null;
     this.onError = null;
+    this.frameCount = 0; // For throttled logging
   }
 
   async init(videoElement, onScanSuccess, onError) {
@@ -51,6 +52,7 @@ class QRScanner {
   startScanning() {
     if (this.scanning) return;
     this.scanning = true;
+    console.log('QR Scanner: Starting scan process');
     this.scan();
   }
 
@@ -64,6 +66,12 @@ class QRScanner {
   scan() {
     if (!this.scanning || !this.video || this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
       if (this.scanning) {
+        // Log video state issues
+        if (!this.video) {
+          console.log('QR Scanner: No video element');
+        } else if (this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
+          console.log('QR Scanner: Video not ready, readyState:', this.video.readyState);
+        }
         requestAnimationFrame(() => this.scan());
       }
       return;
@@ -73,10 +81,17 @@ class QRScanner {
     this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
     const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
+    // Log every 60 frames (about once per second)
+    this.frameCount++;
+    if (this.frameCount % 60 === 0) {
+      console.log('QR Scanner: Processing frames...', this.canvas.width + 'x' + this.canvas.height, 'frame', this.frameCount);
+    }
+
     // Simple QR detection (basic pattern recognition)
     const qrData = this.detectQRCode(imageData);
 
     if (qrData) {
+      console.log('QR Scanner: Successfully detected QR code');
       this.scanning = false;
       if (this.onScanSuccess) this.onScanSuccess(qrData);
       return;

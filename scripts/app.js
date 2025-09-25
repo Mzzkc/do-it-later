@@ -7,7 +7,60 @@ class DoItTomorrowApp {
     this.saveTimeout = null;
     this.renderTimeout = null;
     this.currentMobileView = 'tomorrow'; // Default to tomorrow on mobile
+    this.devMode = false;
+    this.devTapCount = 0;
+    this.devTapTimer = null;
+    this.logs = [];
+    this.setupLogging();
     this.init();
+  }
+
+  // Setup logging system to capture console messages
+  setupLogging() {
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    console.log = (...args) => {
+      this.addLog('log', args);
+      originalLog.apply(console, args);
+    };
+
+    console.error = (...args) => {
+      this.addLog('error', args);
+      originalError.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+      this.addLog('warn', args);
+      originalWarn.apply(console, args);
+    };
+
+    // Also capture unhandled errors
+    window.addEventListener('error', (e) => {
+      this.addLog('error', [`Unhandled error: ${e.message}`, e.filename, e.lineno]);
+    });
+  }
+
+  addLog(type, args) {
+    const timestamp = new Date().toISOString();
+    const message = args.map(arg => {
+      if (typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch {
+          return String(arg);
+        }
+      }
+      return String(arg);
+    }).join(' ');
+
+    this.logs.push({ timestamp, type, message });
+
+    // Keep only last 500 logs to prevent memory issues
+    if (this.logs.length > 500) {
+      this.logs.shift();
+    }
   }
 
   // Generate unique ID for tasks
@@ -294,7 +347,8 @@ class DoItTomorrowApp {
       const moveIcon = li.querySelector('.move-icon');
       if (moveIcon) {
         moveIcon.addEventListener('click', (e) => {
-          e.stopPropagation();
+          e.preventDefault(); // Prevent any default behavior
+          e.stopImmediatePropagation(); // Stop all propagation including other listeners
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
           if (action === 'push') {
@@ -304,9 +358,13 @@ class DoItTomorrowApp {
           }
         });
         // Also handle touch events for mobile
+        moveIcon.addEventListener('touchstart', (e) => {
+          e.preventDefault(); // Prevent ghost click and other default behaviors
+          e.stopImmediatePropagation(); // Stop all propagation
+        });
         moveIcon.addEventListener('touchend', (e) => {
-          e.preventDefault(); // Prevent ghost click
-          e.stopPropagation();
+          e.preventDefault(); // Prevent ghost click and other default behaviors
+          e.stopImmediatePropagation(); // Stop all propagation
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
           if (action === 'push') {
@@ -835,6 +893,9 @@ class DoItTomorrowApp {
     const importClipboardBtn = document.getElementById('import-clipboard-btn');
     const qrBtn = document.getElementById('qr-btn');
 
+    // Add dev mode buttons if in dev mode
+    this.updateDevModeUI();
+
     // Export to file functionality
     exportFileBtn.addEventListener('click', () => {
       try {
@@ -963,7 +1024,101 @@ class DoItTomorrowApp {
     const themeToggle = document.getElementById('theme-toggle');
     themeToggle.addEventListener('click', () => {
       this.toggleTheme();
+      this.handleDevModeActivation();
     });
+  }
+
+  // Handle secret dev mode activation (7 taps within 3 seconds)
+  handleDevModeActivation() {
+    this.devTapCount++;
+
+    // Reset counter if too much time has passed
+    if (this.devTapTimer) {
+      clearTimeout(this.devTapTimer);
+    }
+
+    this.devTapTimer = setTimeout(() => {
+      this.devTapCount = 0;
+    }, 3000);
+
+    // Activate dev mode after 7 taps
+    if (this.devTapCount >= 7 && !this.devMode) {
+      this.devMode = true;
+      this.showNotification('🔧 Dev Mode Activated', 'success');
+      this.render(); // Re-render to show dev mode UI
+      console.log('Dev mode activated! Logging is now available.');
+    }
+  }
+
+  // Export logs as downloadable file
+  exportLogs() {
+    const logsText = this.logs.map(log =>
+      `[${log.timestamp}] ${log.type.toUpperCase()}: ${log.message}`
+    ).join('\n');
+
+    const blob = new Blob([logsText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `do-it-later-logs-${new Date().toISOString().slice(0,19)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.showNotification('Logs exported successfully', 'success');
+  }
+
+  // Exit dev mode
+  exitDevMode() {
+    this.devMode = false;
+    this.showNotification('Dev Mode Disabled', 'info');
+    this.updateDevModeUI(); // Update dev mode UI
+  }
+
+  // Update dev mode UI elements
+  updateDevModeUI() {
+    const syncControls = document.querySelector('.sync-controls');
+    const headerTop = document.querySelector('.header-top');
+
+    // Remove existing dev mode buttons
+    document.querySelectorAll('.dev-mode-btn').forEach(btn => btn.remove());
+
+    if (this.devMode) {
+      // Add export logs button to sync controls
+      const exportLogsBtn = document.createElement('button');
+      exportLogsBtn.className = 'sync-btn dev-mode-btn';
+      exportLogsBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/>
+          <path d="M4 6h8M4 8h8M4 10h6" stroke="white" stroke-width="1"/>
+        </svg>
+        Export Logs
+      `;
+      exportLogsBtn.addEventListener('click', () => this.exportLogs());
+      syncControls.appendChild(exportLogsBtn);
+
+      // Add exit dev mode button to header
+      const exitDevBtn = document.createElement('button');
+      exitDevBtn.className = 'dev-mode-btn';
+      exitDevBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+        </svg>
+      `;
+      exitDevBtn.title = 'Exit Dev Mode';
+      exitDevBtn.style.cssText = `
+        background: rgba(220, 38, 38, 0.2);
+        border: 1px solid rgba(220, 38, 38, 0.4);
+        color: #dc2626;
+        border-radius: 4px;
+        padding: 0.25rem;
+        cursor: pointer;
+        margin-left: 0.5rem;
+      `;
+      exitDevBtn.addEventListener('click', () => this.exitDevMode());
+      headerTop.appendChild(exitDevBtn);
+    }
   }
 
   applyTheme(theme) {
