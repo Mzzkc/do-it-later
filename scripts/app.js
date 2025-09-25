@@ -6,7 +6,7 @@ class DoItTomorrowApp {
     this.data = Storage.load();
     this.saveTimeout = null;
     this.renderTimeout = null;
-    this.currentMobileView = 'tomorrow'; // Default to tomorrow on mobile
+    this.currentMobileView = 'today'; // Default to today on mobile
     this.devMode = false;
     this.devTapCount = 0;
     this.devTapTimer = null;
