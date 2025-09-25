@@ -100,41 +100,20 @@ class DoItTomorrowApp {
       }
     });
 
-    // Remove focus from buttons after interaction on mobile
+    // Mobile button focus fix - prevent stuck focus states while preserving active feedback
     document.addEventListener('touchend', (e) => {
-      // More comprehensive button selector
-      if (e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, input[type="button"], input[type="submit"], .qr-tab, .theme-toggle') ||
-          e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle')) {
-        const button = e.target.matches('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle') ?
-                      e.target :
-                      e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle');
-
-        if (button) {
-          // Longer timeout and force blur
-          setTimeout(() => {
-            button.blur();
-            // Force removal of focus styles
-            button.style.outline = 'none';
-            setTimeout(() => button.style.outline = '', 10);
-          }, 150);
-        }
+      // Only blur after touch ends to prevent stuck focus, but allow active states during touch
+      const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
+      if (button && !button.matches('.nav-btn, input[type="text"], textarea')) {
+        // Small delay to allow active state to show briefly
+        setTimeout(() => button.blur(), 100);
       }
     });
 
-    // Additional mobile focus handling - also handle click events
-    document.addEventListener('click', (e) => {
-      // Only on touch devices
-      if ('ontouchstart' in window) {
-        const button = e.target.closest('button, .sync-btn, .nav-btn, .add-button, .delete-mode-toggle, .qr-tab, .theme-toggle, label');
-        if (button) {
-          setTimeout(() => {
-            button.blur();
-            // Remove any active/focus classes that might be stuck
-            if (button.classList.contains('active') && !button.matches('.nav-btn')) {
-              button.classList.remove('active');
-            }
-          }, 200);
-        }
+    // Backup: prevent focus on non-interactive elements
+    document.addEventListener('focus', (e) => {
+      if ('ontouchstart' in window && !e.target.matches('.nav-btn, input[type="text"], input[type="file"], textarea, select')) {
+        setTimeout(() => e.target.blur(), 50);
       }
     });
   }
