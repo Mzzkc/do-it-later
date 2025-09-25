@@ -328,8 +328,48 @@ class DoItTomorrowApp {
       li.className = `task-item ${task.completed ? 'completed' : ''}`;
       li.setAttribute('data-task-id', task.id);
 
-      // Add click handlers to the container
-      li.addEventListener('click', (e) => this.handleTaskClick(task.id, e));
+      // Unified touch handling with tap detection and long press
+      let taskStartX, taskStartY, taskStartTime;
+
+      li.addEventListener('touchstart', (e) => {
+        if (this.devMode) {
+          console.log('👆 TASK TOUCHSTART:', {
+            taskId: task.id,
+            isScrolling: this.isScrolling
+          });
+        }
+
+        taskStartX = e.touches[0].clientX;
+        taskStartY = e.touches[0].clientY;
+        taskStartTime = Date.now();
+
+        li.classList.add('button-pressed');
+        this.startLongPress(task.id, e);
+      }, { passive: true });
+
+      li.addEventListener('touchend', (e) => {
+        li.classList.remove('button-pressed');
+        this.endLongPress();
+
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const endTime = Date.now();
+
+        const deltaX = Math.abs(endX - taskStartX);
+        const deltaY = Math.abs(endY - taskStartY);
+        const deltaTime = endTime - taskStartTime;
+
+        // Only handle as tap if it's quick with minimal movement
+        const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
+
+        if (isTap && !this.wasLongPress) {
+          // Create a synthetic event for consistency with existing code
+          const syntheticEvent = { type: 'tap', target: e.target };
+          this.handleTaskClick(task.id, syntheticEvent);
+        }
+      });
+
+      // Mouse events for desktop
       li.addEventListener('mousedown', (e) => {
         li.classList.add('button-pressed');
         this.startLongPress(task.id, e);
@@ -342,29 +382,7 @@ class DoItTomorrowApp {
         li.classList.remove('button-pressed');
         this.endLongPress();
       });
-      li.addEventListener('touchstart', (e) => {
-        if (this.devMode) {
-          console.log('👆 TASK TOUCHSTART:', {
-            taskId: task.id,
-            isScrolling: this.isScrolling
-          });
-        }
-
-        // Block task interaction immediately if already scrolling
-        if (this.isScrolling) {
-          if (this.devMode) {
-            console.log('🚫 TASK TOUCHSTART BLOCKED: Already scrolling');
-          }
-          return;
-        }
-
-        li.classList.add('button-pressed');
-        this.startLongPress(task.id, e);
-      });
-      li.addEventListener('touchend', () => {
-        li.classList.remove('button-pressed');
-        this.endLongPress();
-      });
+      li.addEventListener('click', (e) => this.handleTaskClick(task.id, e));
 
       // Add moving-in animation for recently moved tasks
       if (task._justMoved) {
@@ -395,13 +413,49 @@ class DoItTomorrowApp {
             this.pullToToday(taskId);
           }
         });
-        // Simple click handler - let browser handle scroll vs click naturally
-        moveIcon.addEventListener('click', (e) => {
+        // Touch events with simple tap detection
+        let startX, startY, startTime;
+
+        moveIcon.addEventListener('touchstart', (e) => {
+          startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
+          startTime = Date.now();
+
           if (this.devMode) {
-            console.log('⬅️ ARROW CLICKED:', {
-              action: moveIcon.dataset.action,
-              taskId: moveIcon.dataset.taskId
+            console.log('⬅️ ARROW TOUCHSTART:', {
+              action: moveIcon.dataset.action
             });
+          }
+        }, { passive: true });
+
+        moveIcon.addEventListener('touchend', (e) => {
+          const endX = e.changedTouches[0].clientX;
+          const endY = e.changedTouches[0].clientY;
+          const endTime = Date.now();
+
+          const deltaX = Math.abs(endX - startX);
+          const deltaY = Math.abs(endY - startY);
+          const deltaTime = endTime - startTime;
+
+          // Only execute if it's a quick tap with minimal movement
+          const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
+
+          if (this.devMode) {
+            console.log('⬅️ ARROW TOUCHEND:', {
+              action: moveIcon.dataset.action,
+              taskId: moveIcon.dataset.taskId,
+              deltaX,
+              deltaY,
+              deltaTime,
+              isTap
+            });
+          }
+
+          if (!isTap) {
+            if (this.devMode) {
+              console.log('🚫 ARROW BLOCKED: Movement detected');
+            }
+            return;
           }
 
           e.preventDefault();
@@ -648,19 +702,10 @@ class DoItTomorrowApp {
     if (this.devMode) {
       console.log('👆 TASK CLICK:', {
         taskId: id,
-        isScrolling: this.isScrolling,
         editingTask: this.editingTask,
         wasLongPress: this.wasLongPress,
-        willBlock: this.isScrolling
+        eventType: event.type
       });
-    }
-
-    // Prevent accidental clicks during scrolling
-    if (this.isScrolling) {
-      if (this.devMode) {
-        console.log('🚫 TASK CLICK BLOCKED: Scrolling in progress');
-      }
-      return;
     }
 
     // If we're in edit mode for a DIFFERENT task, cancel edit and allow click
