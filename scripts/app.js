@@ -1469,7 +1469,7 @@ class DoItTomorrowApp {
         return;
       }
 
-      this.importQRData(scannedData, modal, style);
+      this.importQRData(scannedData, modal, null);
     });
 
     // Scan again
@@ -1672,7 +1672,9 @@ class DoItTomorrowApp {
 
       // Close modal
       document.body.removeChild(modal);
-      document.head.removeChild(style);
+      if (style) {
+        document.head.removeChild(style);
+      }
 
     } catch (error) {
       console.error('QR import error:', error);
