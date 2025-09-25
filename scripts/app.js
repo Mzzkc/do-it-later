@@ -125,21 +125,32 @@ class DoItTomorrowApp {
     document.addEventListener('touchmove', (e) => {
       const deltaX = Math.abs(e.touches[0].clientX - this.touchStartX);
       const deltaY = Math.abs(e.touches[0].clientY - this.touchStartY);
-      const deltaTime = Date.now() - this.touchStartTime;
 
-      // Consider it scrolling if:
-      // - Moved more than 10px in any direction, OR
-      // - Touch has been active for more than 200ms (long touch = likely scroll)
-      if (deltaX > 10 || deltaY > 10 || deltaTime > 200) {
+      // Consider it scrolling if moved more than 5px (much more sensitive)
+      if (deltaX > 5 || deltaY > 5) {
         this.isScrolling = true;
+
+        // Immediately cancel any long press that might be in progress
+        this.endLongPress();
+
+        // Hide all arrows while scrolling
+        document.querySelectorAll('.move-icon').forEach(icon => {
+          icon.style.pointerEvents = 'none';
+          icon.style.opacity = '0.3';
+        });
       }
     }, { passive: true });
 
     document.addEventListener('touchend', () => {
-      // Reset after a short delay to avoid false positives
+      // Reset and restore arrows after scroll ends
       setTimeout(() => {
         this.isScrolling = false;
-      }, 50);
+        // Restore all arrows
+        document.querySelectorAll('.move-icon').forEach(icon => {
+          icon.style.pointerEvents = '';
+          icon.style.opacity = '';
+        });
+      }, 100);
     }, { passive: true });
   }
   
