@@ -158,11 +158,30 @@ class DoItTomorrowApp {
   checkDateRollover() {
     const today = new Date().toISOString().split('T')[0];
     if (this.data.currentDate !== today) {
-      // New day - move incomplete tomorrow tasks to today, remove completed tasks
+      // New day detected - perform daily cleanup
+      const completedToday = this.data.today.filter(task => task.completed).length;
+      const completedTomorrow = this.data.tomorrow.filter(task => task.completed).length;
+
+      // Move only incomplete tomorrow tasks to today
       this.data.today = this.data.tomorrow.filter(task => !task.completed);
+
+      // Clear tomorrow list
       this.data.tomorrow = [];
+
+      // Update date
       this.data.currentDate = today;
+
+      // Log cleanup for dev mode
+      if (this.devMode && (completedToday > 0 || completedTomorrow > 0)) {
+        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedTomorrow} completed tasks`);
+      }
+
       this.save();
+
+      // Show notification about the rollover
+      if (completedToday > 0 || completedTomorrow > 0) {
+        this.showNotification(`New day! Cleaned up ${completedToday + completedTomorrow} completed tasks`, 'info');
+      }
     }
   }
   
