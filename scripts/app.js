@@ -893,9 +893,6 @@ class DoItTomorrowApp {
     const importClipboardBtn = document.getElementById('import-clipboard-btn');
     const qrBtn = document.getElementById('qr-btn');
 
-    // Add dev mode buttons if in dev mode
-    this.updateDevModeUI();
-
     // Export to file functionality
     exportFileBtn.addEventListener('click', () => {
       try {
@@ -1044,9 +1041,16 @@ class DoItTomorrowApp {
     // Activate dev mode after 7 taps
     if (this.devTapCount >= 7 && !this.devMode) {
       this.devMode = true;
-      this.showNotification('🔧 Dev Mode Activated', 'success');
-      this.render(); // Re-render to show dev mode UI
       console.log('Dev mode activated! Logging is now available.');
+      this.updateDevModeUI(); // Update dev mode UI immediately
+
+      // Show notification and fallback alert for mobile
+      this.showNotification('🔧 Dev Mode Activated', 'success');
+      setTimeout(() => {
+        if (!document.querySelector('.dev-mode-btn')) {
+          alert('Dev Mode Activated! Check console logs and look for new buttons.');
+        }
+      }, 1000);
     }
   }
 
@@ -1078,46 +1082,60 @@ class DoItTomorrowApp {
 
   // Update dev mode UI elements
   updateDevModeUI() {
+    console.log('updateDevModeUI called, devMode:', this.devMode);
     const syncControls = document.querySelector('.sync-controls');
     const headerTop = document.querySelector('.header-top');
+
+    console.log('syncControls found:', !!syncControls);
+    console.log('headerTop found:', !!headerTop);
 
     // Remove existing dev mode buttons
     document.querySelectorAll('.dev-mode-btn').forEach(btn => btn.remove());
 
     if (this.devMode) {
       // Add export logs button to sync controls
-      const exportLogsBtn = document.createElement('button');
-      exportLogsBtn.className = 'sync-btn dev-mode-btn';
-      exportLogsBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/>
-          <path d="M4 6h8M4 8h8M4 10h6" stroke="white" stroke-width="1"/>
-        </svg>
-        Export Logs
-      `;
-      exportLogsBtn.addEventListener('click', () => this.exportLogs());
-      syncControls.appendChild(exportLogsBtn);
+      if (syncControls) {
+        const exportLogsBtn = document.createElement('button');
+        exportLogsBtn.className = 'sync-btn dev-mode-btn';
+        exportLogsBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3z"/>
+            <path d="M4 6h8M4 8h8M4 10h6" stroke="white" stroke-width="1"/>
+          </svg>
+          Export Logs
+        `;
+        exportLogsBtn.addEventListener('click', () => this.exportLogs());
+        syncControls.appendChild(exportLogsBtn);
+        console.log('Export logs button added to sync controls');
+      } else {
+        console.error('Could not find sync controls element');
+      }
 
       // Add exit dev mode button to header
-      const exitDevBtn = document.createElement('button');
-      exitDevBtn.className = 'dev-mode-btn';
-      exitDevBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
-        </svg>
-      `;
-      exitDevBtn.title = 'Exit Dev Mode';
-      exitDevBtn.style.cssText = `
-        background: rgba(220, 38, 38, 0.2);
-        border: 1px solid rgba(220, 38, 38, 0.4);
-        color: #dc2626;
-        border-radius: 4px;
-        padding: 0.25rem;
-        cursor: pointer;
-        margin-left: 0.5rem;
-      `;
-      exitDevBtn.addEventListener('click', () => this.exitDevMode());
-      headerTop.appendChild(exitDevBtn);
+      if (headerTop) {
+        const exitDevBtn = document.createElement('button');
+        exitDevBtn.className = 'dev-mode-btn';
+        exitDevBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/>
+          </svg>
+        `;
+        exitDevBtn.title = 'Exit Dev Mode';
+        exitDevBtn.style.cssText = `
+          background: rgba(220, 38, 38, 0.2);
+          border: 1px solid rgba(220, 38, 38, 0.4);
+          color: #dc2626;
+          border-radius: 4px;
+          padding: 0.25rem;
+          cursor: pointer;
+          margin-left: 0.5rem;
+        `;
+        exitDevBtn.addEventListener('click', () => this.exitDevMode());
+        headerTop.appendChild(exitDevBtn);
+        console.log('Exit dev mode button added to header');
+      } else {
+        console.error('Could not find header-top element');
+      }
     }
   }
 
