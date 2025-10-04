@@ -17,11 +17,11 @@ Ultra-simple task management that gets out of your way. Add tasks, complete them
 
 ## 🚀 Live App
 
-Visit: `https://yourusername.github.io/do-it-later/`
+Visit: `https://mzzkc.github.io/do-it-later/`
 
 ## 💝 Support
 
-Enjoying Do It (Later)? [Buy me coffee!](https://github.com/sponsors/YOUR_USERNAME)
+Enjoying Do It (Later)? [Buy me coffee!](https://www.paypal.com/donate/?hosted_button_id=2NBZZZZ892E3N)
 
 ## 🛠 Development
 
