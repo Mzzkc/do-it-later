@@ -665,17 +665,13 @@ class DoItTomorrowApp {
   // Phase 4: Smart task sorting system
   sortTasks(tasks) {
     return tasks.sort((a, b) => {
-      // First level: Completed status (incomplete tasks first)
-      if (a.completed !== b.completed) {
-        return a.completed ? 1 : -1;
-      }
-
-      // Second level: Importance (important tasks first within each completion group)
+      // First level: Importance (important tasks first, regardless of completion)
       if (a.important !== b.important) {
         return b.important ? 1 : -1;
       }
 
-      // Third level: Creation time (newest first for better UX)
+      // Second level: Creation time (newest first for better UX)
+      // Completed tasks stay in order with incomplete tasks
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
   }
@@ -2634,33 +2630,47 @@ class ContextMenu {
 
   // Position menu with viewport awareness
   positionMenu(position) {
-    const menuWidth = 200; // Estimated menu width
-    const menuHeight = 100; // Estimated menu height
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const margin = 20; // Margin from viewport edges
+    const isMobile = viewportWidth <= 768;
 
-    let x = position.x;
-    let y = position.y - 50; // Offset above touch point
+    if (isMobile) {
+      // Mobile: Center bottom sheet
+      this.menuElement.classList.add('mobile-bottom-sheet');
+      this.menuElement.style.left = '50%';
+      this.menuElement.style.top = 'auto';
+      this.menuElement.style.bottom = '0';
+      this.menuElement.style.transform = 'translateX(-50%)';
+    } else {
+      // Desktop: Position near touch/click point
+      const menuWidth = 200; // Estimated menu width
+      const menuHeight = 100; // Estimated menu height
+      const margin = 20; // Margin from viewport edges
 
-    // Horizontal viewport constraints
-    if (x + menuWidth > viewportWidth - margin) {
-      x = viewportWidth - menuWidth - margin;
-    }
-    if (x < margin) {
-      x = margin;
-    }
+      let x = position.x;
+      let y = position.y - 50; // Offset above touch point
 
-    // Vertical viewport constraints
-    if (y + menuHeight > viewportHeight - margin) {
-      y = position.y - menuHeight - 10; // Flip above touch point
-    }
-    if (y < margin) {
-      y = margin;
-    }
+      // Horizontal viewport constraints
+      if (x + menuWidth > viewportWidth - margin) {
+        x = viewportWidth - menuWidth - margin;
+      }
+      if (x < margin) {
+        x = margin;
+      }
 
-    this.menuElement.style.left = `${x}px`;
-    this.menuElement.style.top = `${y}px`;
+      // Vertical viewport constraints
+      if (y + menuHeight > viewportHeight - margin) {
+        y = position.y - menuHeight - 10; // Flip above touch point
+      }
+      if (y < margin) {
+        y = margin;
+      }
+
+      this.menuElement.style.left = `${x}px`;
+      this.menuElement.style.top = `${y}px`;
+      this.menuElement.style.bottom = 'auto';
+      this.menuElement.style.transform = 'scale(1)';
+    }
   }
 
   // Setup menu interactions

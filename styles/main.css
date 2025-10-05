@@ -1800,6 +1800,21 @@ footer {
 
 /* Mobile-specific adjustments */
 @media (max-width: 768px) {
+  /* Mobile bottom sheet styling */
+  .context-menu.mobile-bottom-sheet {
+    position: fixed;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    min-width: 100%;
+    max-width: 100%;
+    border-radius: 24px 24px 0 0;
+    padding: 20px 16px calc(env(safe-area-inset-bottom) + 16px);
+    transform: translateY(0) !important;
+    animation: slideUpFromBottom 300ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
   .context-menu {
     min-width: 200px;
     padding: 12px;
@@ -1814,6 +1829,40 @@ footer {
   .context-menu-item svg {
     width: 18px;
     height: 18px;
+  }
+
+  /* Enhanced important task visibility on mobile */
+  .task-item.important {
+    border-left: 4px solid rgba(59, 130, 246, 0.6);
+    background: linear-gradient(135deg,
+      rgba(59, 130, 246, 0.12) 0%,
+      rgba(147, 51, 234, 0.08) 50%,
+      rgba(59, 130, 246, 0.12) 100%);
+    box-shadow:
+      0 0 16px rgba(59, 130, 246, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .light-theme .task-item.important {
+    border-left: 4px solid rgba(79, 70, 229, 0.7);
+    background: linear-gradient(135deg,
+      rgba(79, 70, 229, 0.12) 0%,
+      rgba(147, 51, 234, 0.08) 50%,
+      rgba(79, 70, 229, 0.12) 100%);
+    box-shadow:
+      0 0 20px rgba(79, 70, 229, 0.15),
+      0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+@keyframes slideUpFromBottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
