@@ -10,10 +10,23 @@ Ultra-simple task management that gets out of your way. Add tasks, complete them
 
 - **Two Lists Only:** Today and Later
 - **Three Actions:** Add, Complete, Push to Later
+- **Task Deadlines:** Set deadlines that auto-prioritize and move tasks
 - **Maintenance-Free Sync:** Export/import files + QR codes
 - **Offline-First:** Works without internet
 - **Your Data:** Stored locally, export anytime
 - **No Tracking:** Zero analytics or data collection
+
+### 📅 Deadlines Feature
+
+Tasks can have deadlines that automatically manage themselves:
+- **Set via Long Press:** Hold task → Set Deadline
+- **Auto-Important:** Tasks become important 3 days before deadline
+- **Auto-Move:** Tasks move to Today list on deadline day
+- **Visual Indicators:** Color-coded badges show deadline status
+  - Red: Overdue
+  - Orange: Due today
+  - Yellow: Due soon (tomorrow or within 3 days)
+  - Blue: Future deadline
 
 ## 🚀 Live App
 
