@@ -16,6 +16,7 @@ class DoItTomorrowApp {
     this.isScrolling = false;
 
     this.setupLogging();
+    this.initializeLongPressSystem();
     this.init();
   }
 
@@ -378,7 +379,12 @@ class DoItTomorrowApp {
 
     tasks.forEach(task => {
       const li = document.createElement('li');
-      li.className = `task-item ${task.completed ? 'completed' : ''}`;
+      // Phase 3: Add importance class for visual gradient effects
+      const classes = ['task-item'];
+      if (task.completed) classes.push('completed');
+      if (task.important) classes.push('important');
+
+      li.className = classes.join(' ');
       li.setAttribute('data-task-id', task.id);
 
       // Unified touch handling with tap detection and long press
@@ -656,6 +662,24 @@ class DoItTomorrowApp {
     }, 100);
   }
 
+  // Phase 4: Smart task sorting system
+  sortTasks(tasks) {
+    return tasks.sort((a, b) => {
+      // First level: Completed status (incomplete tasks first)
+      if (a.completed !== b.completed) {
+        return a.completed ? 1 : -1;
+      }
+
+      // Second level: Importance (important tasks first within each completion group)
+      if (a.important !== b.important) {
+        return b.important ? 1 : -1;
+      }
+
+      // Third level: Creation time (newest first for better UX)
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }
+
   // Debounced render for performance
   render() {
     if (this.renderTimeout) {
@@ -663,8 +687,32 @@ class DoItTomorrowApp {
     }
 
     this.renderTimeout = setTimeout(() => {
-      this.renderList('today', this.data.today);
-      this.renderList('tomorrow', this.data.tomorrow);
+      // Phase 4: Sort tasks before rendering
+      const sortedToday = this.sortTasks([...this.data.today]);
+      const sortedTomorrow = this.sortTasks([...this.data.tomorrow]);
+
+      this.renderList('today', sortedToday);
+      this.renderList('tomorrow', sortedTomorrow);
+
+      if (this.devMode) {
+        const importantToday = sortedToday.filter(t => t.important && !t.completed).length;
+        const importantTomorrow = sortedTomorrow.filter(t => t.important && !t.completed).length;
+
+        if (importantToday > 0 || importantTomorrow > 0) {
+          console.log('📋 SORTED LISTS:', {
+            today: {
+              total: sortedToday.length,
+              important: importantToday,
+              order: sortedToday.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
+            },
+            tomorrow: {
+              total: sortedTomorrow.length,
+              important: importantTomorrow,
+              order: sortedTomorrow.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
+            }
+          });
+        }
+      }
     }, 16); // ~60fps
   }
 
@@ -757,6 +805,7 @@ class DoItTomorrowApp {
       id: this.generateId(),
       text: text.trim(),
       completed: false,
+      important: false,
       createdAt: Date.now()
     };
 
@@ -875,66 +924,127 @@ class DoItTomorrowApp {
     this.completeTask(id, event);
   }
 
-  // Long press detection
-  startLongPress(id, event) {
-    // Store the event type to handle mobile differently
-    const isTouchEvent = event.type === 'touchstart';
+  // Phase 2: Ultra-comprehensive Long Press & Context Menu System
 
-    if (this.devMode) {
-      console.log('⏱️ LONG PRESS START:', {
-        taskId: id,
-        isTouchEvent,
-        isScrolling: this.isScrolling,
-        currentlyEditing: this.editingTask
-      });
+  // Initialize long press and context menu systems
+  initializeLongPressSystem() {
+    this.longPressManager = new LongPressManager({
+      timeout: 600, // Accessibility optimized timing
+      tolerance: 10, // Movement tolerance in pixels
+      onLongPress: (element, event, position) => this.handleLongPress(element, event, position),
+      onCancel: (reason) => this.handleLongPressCancel(reason),
+      devMode: this.devMode
+    });
+
+    this.contextMenu = new ContextMenu({
+      onEdit: (taskId) => this.handleMenuEdit(taskId),
+      onToggleImportant: (taskId) => this.handleMenuToggleImportant(taskId),
+      onClose: () => this.handleMenuClose(),
+      devMode: this.devMode
+    });
+  }
+
+  // Handle long press trigger
+  handleLongPress(element, event, position) {
+    const taskId = element.dataset.taskId;
+    if (!taskId) return;
+
+    const task = this.findTask(taskId);
+    if (!task) return;
+
+    // Check if we're in delete mode - just edit quickly
+    const isDeleteMode = task.list === 'today' ? this.deleteModeToday : this.deleteModeTomorrow;
+    if (isDeleteMode) {
+      setTimeout(() => this.enterEditMode(taskId), 10);
+      return;
     }
 
-    this.longPressTimer = setTimeout(() => {
-      if (this.devMode) {
-        console.log('⏱️ LONG PRESS TIMER FIRED:', {
-          taskId: id,
-          isScrolling: this.isScrolling,
-          willBlock: this.isScrolling
-        });
-      }
+    // Show context menu
+    this.contextMenu.show(position, task);
+    this.wasLongPress = true;
 
-      // No scroll blocking - let long press work naturally
+    if (this.devMode) {
+      console.log('✅ LONG PRESS TRIGGERED - CONTEXT MENU:', {
+        taskId,
+        position,
+        isImportant: task.important
+      });
+    }
+  }
 
-      // Only prevent default when actually entering edit mode
-      if (isTouchEvent && event.cancelable) {
-        event.preventDefault();
-      }
+  // Handle long press cancellation
+  handleLongPressCancel(reason) {
+    if (this.devMode && reason !== 'normal') {
+      console.log('❌ LONG PRESS CANCELLED:', reason);
+    }
+  }
 
-      if (this.devMode) {
-        console.log('✏️ ENTERING EDIT MODE:', { taskId: id });
-      }
+  // Handle menu edit action
+  handleMenuEdit(taskId) {
+    this.contextMenu.hide();
+    setTimeout(() => this.enterEditMode(taskId), 50);
+  }
 
-      // If already editing a different task, cancel that first and wait
-      if (this.editingTask && this.editingTask !== id) {
-        if (this.devMode) {
-          console.log('🔄 SWITCHING EDIT MODE:', { from: this.editingTask, to: id });
+  // Handle menu toggle important action
+  handleMenuToggleImportant(taskId) {
+    const task = this.findTask(taskId);
+    if (!task) return;
+
+    const wasImportant = task.important;
+    task.important = !task.important;
+    this.contextMenu.hide();
+    this.save();
+
+    // Phase 3: Add importance animation trigger
+    if (task.important && !wasImportant) {
+      // First render to add the important class
+      this.render();
+
+      // Then trigger the glow animation
+      setTimeout(() => {
+        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskElement) {
+          taskElement.classList.add('importance-added');
+
+          // Remove the animation class after it completes
+          setTimeout(() => {
+            taskElement.classList.remove('importance-added');
+          }, 600);
         }
-        this.cancelEdit();
-        // Small delay to ensure DOM is cleaned up
-        setTimeout(() => {
-          this.enterEditMode(id);
-        }, 10);
-        return;
-      }
+      }, 50);
+    } else {
+      // Just render normally for removing importance
+      this.render();
+    }
 
-      this.enterEditMode(id);
-      this.wasLongPress = true;
-    }, 300); // 300ms for long press (shorter to reduce accidental triggers)
+    const action = task.important ? 'marked as important' : 'importance removed';
+    this.showNotification(`Task ${action}`, 'success');
+
+    if (this.devMode) {
+      console.log('⭐ IMPORTANCE TOGGLED:', {
+        taskId,
+        isImportant: task.important,
+        text: task.text,
+        animationTriggered: task.important && !wasImportant
+      });
+    }
+  }
+
+  // Handle menu close
+  handleMenuClose() {
+    // Menu handles its own hiding
+  }
+
+  // Legacy methods for backward compatibility
+  startLongPress(id, event) {
+    const element = event.target.closest('[data-task-id]');
+    if (element) {
+      this.longPressManager.start(element, event);
+    }
   }
 
   endLongPress() {
-    if (this.longPressTimer) {
-      if (this.devMode) {
-        console.log('❌ LONG PRESS CANCELLED');
-      }
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
-    }
+    this.longPressManager.cancel('normal');
   }
 
   // Enter edit mode for a task
@@ -1427,6 +1537,80 @@ class DoItTomorrowApp {
     }
   }
 
+  // Test important tasks feature (dev mode only)
+  testImportantTasks() {
+    if (!this.devMode) return;
+
+    console.log('🧪 Testing important tasks feature - Phase 4 List Sorting + Visual Effects...');
+
+    // Add test tasks with visual gradient effects and sorting demonstration
+    const testTasks = [
+      {
+        id: this.generateId(),
+        text: '📅 Normal task added first',
+        completed: false,
+        important: false,
+        createdAt: Date.now() - 300000 // 5 minutes ago
+      },
+      {
+        id: this.generateId(),
+        text: '⭐ Important: High priority task',
+        completed: false,
+        important: true,
+        createdAt: Date.now() - 200000 // 3+ minutes ago
+      },
+      {
+        id: this.generateId(),
+        text: '🔥 Important: Most recent urgent task',
+        completed: false,
+        important: true,
+        createdAt: Date.now() - 100000 // 1+ minutes ago
+      },
+      {
+        id: this.generateId(),
+        text: '📅 Another normal task',
+        completed: false,
+        important: false,
+        createdAt: Date.now() - 50000 // 50 seconds ago
+      },
+      {
+        id: this.generateId(),
+        text: '✅ Completed important task',
+        completed: true,
+        important: true,
+        createdAt: Date.now() - 400000 // 6+ minutes ago
+      },
+      {
+        id: this.generateId(),
+        text: '✅ Completed normal task',
+        completed: true,
+        important: false,
+        createdAt: Date.now() - 250000 // 4+ minutes ago
+      }
+    ];
+
+    // Add to both lists for comprehensive sorting testing
+    this.data.today.push(...testTasks.slice(0, 3));
+    this.data.tomorrow.push(...testTasks.slice(3));
+    this.save();
+    this.render();
+
+    // Test QR generation
+    const qrData = Sync.generateQRData(this.data);
+    console.log('📱 QR Data with important task:', qrData);
+
+    // Test parsing the QR data back
+    try {
+      const parsed = Sync.parseQRData(qrData);
+      console.log('✅ Parsed QR data:', parsed);
+      console.log('🎯 Important task preserved:', parsed.tomorrow.find(t => t.important));
+    } catch (error) {
+      console.error('❌ QR parsing failed:', error);
+    }
+
+    this.showNotification('Important tasks test completed - check console', 'info');
+  }
+
   // Clear browser cache and reload
   async clearCache() {
     try {
@@ -1525,6 +1709,19 @@ class DoItTomorrowApp {
         resetCountBtn.addEventListener('click', () => this.resetCompletedCount());
         syncControls.appendChild(resetCountBtn);
         console.log('Reset completed count button added to sync controls');
+
+        // Add test important tasks button
+        const testImportantBtn = document.createElement('button');
+        testImportantBtn.className = 'sync-btn dev-mode-btn';
+        testImportantBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5V2z"/>
+          </svg>
+          Test Important
+        `;
+        testImportantBtn.addEventListener('click', () => this.testImportantTasks());
+        syncControls.appendChild(testImportantBtn);
+        console.log('Test important tasks button added to sync controls');
       } else {
         console.error('Could not find sync controls element');
       }
@@ -2143,6 +2340,393 @@ class DoItTomorrowApp {
   }
 
   // Removed detectTextOverflow function
+}
+
+// Phase 2: Ultra-Comprehensive Long Press Manager
+class LongPressManager {
+  constructor(options = {}) {
+    this.timeout = options.timeout || 600; // Accessibility optimized
+    this.tolerance = options.tolerance || 10; // Movement tolerance in pixels
+    this.onLongPress = options.onLongPress || (() => {});
+    this.onCancel = options.onCancel || (() => {});
+    this.devMode = options.devMode || false;
+
+    // State tracking
+    this.isActive = false;
+    this.timer = null;
+    this.startPosition = null;
+    this.currentElement = null;
+    this.startEvent = null;
+
+    // Device detection
+    this.isTouchDevice = 'ontouchstart' in window;
+    this.isPointerDevice = 'onpointerdown' in window;
+
+    if (this.devMode) {
+      console.log('🎯 LongPressManager initialized:', {
+        timeout: this.timeout,
+        tolerance: this.tolerance,
+        isTouchDevice: this.isTouchDevice,
+        isPointerDevice: this.isPointerDevice
+      });
+    }
+  }
+
+  // Start long press detection
+  start(element, event) {
+    if (!element || this.isActive) return;
+
+    this.isActive = true;
+    this.currentElement = element;
+    this.startEvent = event;
+
+    // Get position from touch or mouse event
+    const position = this.getEventPosition(event);
+    this.startPosition = position;
+
+    // Add visual feedback
+    element.classList.add('button-pressed');
+
+    // Set up movement detection
+    this.setupMovementDetection(event);
+
+    // Start timer
+    this.timer = setTimeout(() => {
+      if (this.isActive) {
+        this.triggerLongPress();
+      }
+    }, this.timeout);
+
+    if (this.devMode) {
+      console.log('⏱️ LONG PRESS START:', {
+        element: element.dataset.taskId,
+        position,
+        eventType: event.type,
+        timeout: this.timeout
+      });
+    }
+  }
+
+  // Cancel long press
+  cancel(reason = 'manual') {
+    if (!this.isActive) return;
+
+    this.cleanup();
+    this.onCancel(reason);
+
+    if (this.devMode && reason !== 'normal') {
+      console.log('❌ LONG PRESS CANCELLED:', reason);
+    }
+  }
+
+  // Trigger long press
+  triggerLongPress() {
+    if (!this.isActive || !this.currentElement) return;
+
+    const position = this.startPosition;
+    const element = this.currentElement;
+    const event = this.startEvent;
+
+    this.cleanup();
+    this.onLongPress(element, event, position);
+
+    // Haptic feedback on supported devices
+    if ('vibrate' in navigator) {
+      navigator.vibrate(50);
+    }
+  }
+
+  // Setup movement detection for different device types
+  setupMovementDetection(startEvent) {
+    if (startEvent.type === 'touchstart') {
+      this.setupTouchMovement();
+    } else {
+      this.setupMouseMovement();
+    }
+  }
+
+  // Touch movement detection
+  setupTouchMovement() {
+    const moveHandler = (e) => {
+      if (!this.isActive) return;
+      const position = this.getEventPosition(e);
+      if (this.isMovementExceeded(position)) {
+        this.cancel('movement');
+      }
+    };
+
+    const endHandler = () => {
+      document.removeEventListener('touchmove', moveHandler);
+      document.removeEventListener('touchend', endHandler);
+      document.removeEventListener('touchcancel', endHandler);
+      if (this.isActive) {
+        this.cancel('touchend');
+      }
+    };
+
+    document.addEventListener('touchmove', moveHandler, { passive: true });
+    document.addEventListener('touchend', endHandler);
+    document.addEventListener('touchcancel', endHandler);
+  }
+
+  // Mouse movement detection
+  setupMouseMovement() {
+    const moveHandler = (e) => {
+      if (!this.isActive) return;
+      const position = this.getEventPosition(e);
+      if (this.isMovementExceeded(position)) {
+        this.cancel('movement');
+      }
+    };
+
+    const upHandler = () => {
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', upHandler);
+      document.removeEventListener('mouseleave', upHandler);
+      if (this.isActive) {
+        this.cancel('mouseup');
+      }
+    };
+
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+    document.addEventListener('mouseleave', upHandler);
+  }
+
+  // Check if movement exceeds tolerance
+  isMovementExceeded(currentPosition) {
+    if (!this.startPosition || !currentPosition) return false;
+
+    const deltaX = Math.abs(currentPosition.x - this.startPosition.x);
+    const deltaY = Math.abs(currentPosition.y - this.startPosition.y);
+
+    return deltaX > this.tolerance || deltaY > this.tolerance;
+  }
+
+  // Get position from event (cross-platform)
+  getEventPosition(event) {
+    if (event.touches && event.touches.length > 0) {
+      return {
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY
+      };
+    }
+    return {
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+
+  // Cleanup state and timers
+  cleanup() {
+    this.isActive = false;
+
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+
+    if (this.currentElement) {
+      this.currentElement.classList.remove('button-pressed');
+      this.currentElement = null;
+    }
+
+    this.startPosition = null;
+    this.startEvent = null;
+  }
+}
+
+// Phase 2: Ultra-Comprehensive Context Menu
+class ContextMenu {
+  constructor(options = {}) {
+    this.onEdit = options.onEdit || (() => {});
+    this.onToggleImportant = options.onToggleImportant || (() => {});
+    this.onClose = options.onClose || (() => {});
+    this.devMode = options.devMode || false;
+
+    // Menu state
+    this.isVisible = false;
+    this.currentTask = null;
+    this.menuElement = null;
+    this.backdropElement = null;
+
+    if (this.devMode) {
+      console.log('📋 ContextMenu initialized');
+    }
+  }
+
+  // Show context menu
+  show(position, task) {
+    if (this.isVisible) this.hide();
+
+    this.currentTask = task;
+    this.isVisible = true;
+
+    this.createMenuElement(position, task);
+    this.setupMenuInteractions();
+
+    if (this.devMode) {
+      console.log('📋 CONTEXT MENU SHOWN:', {
+        taskId: task.id,
+        position,
+        isImportant: task.important
+      });
+    }
+  }
+
+  // Hide context menu
+  hide() {
+    if (!this.isVisible) return;
+
+    this.isVisible = false;
+    this.removeMenuElement();
+    this.currentTask = null;
+    this.onClose();
+
+    if (this.devMode) {
+      console.log('📋 CONTEXT MENU HIDDEN');
+    }
+  }
+
+  // Create menu DOM element
+  createMenuElement(position, task) {
+    // Create backdrop
+    this.backdropElement = document.createElement('div');
+    this.backdropElement.className = 'context-menu-backdrop';
+
+    // Create menu
+    this.menuElement = document.createElement('div');
+    this.menuElement.className = 'context-menu';
+    this.menuElement.setAttribute('role', 'menu');
+    this.menuElement.setAttribute('aria-label', `Task options for "${task.text}"`);
+
+    // Menu content
+    this.menuElement.innerHTML = `
+      <div class="context-menu-item" role="menuitem" data-action="edit" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+          <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+        </svg>
+        <span>Edit Task</span>
+      </div>
+      <div class="context-menu-item" role="menuitem" data-action="important" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+        <span>${task.important ? 'Remove Importance' : 'Mark as Important'}</span>
+      </div>
+    `;
+
+    // Position menu
+    this.positionMenu(position);
+
+    // Add to DOM
+    document.body.appendChild(this.backdropElement);
+    document.body.appendChild(this.menuElement);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      this.backdropElement.style.opacity = '1';
+      this.menuElement.style.opacity = '1';
+      this.menuElement.style.transform = 'scale(1)';
+    });
+  }
+
+  // Position menu with viewport awareness
+  positionMenu(position) {
+    const menuWidth = 200; // Estimated menu width
+    const menuHeight = 100; // Estimated menu height
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const margin = 20; // Margin from viewport edges
+
+    let x = position.x;
+    let y = position.y - 50; // Offset above touch point
+
+    // Horizontal viewport constraints
+    if (x + menuWidth > viewportWidth - margin) {
+      x = viewportWidth - menuWidth - margin;
+    }
+    if (x < margin) {
+      x = margin;
+    }
+
+    // Vertical viewport constraints
+    if (y + menuHeight > viewportHeight - margin) {
+      y = position.y - menuHeight - 10; // Flip above touch point
+    }
+    if (y < margin) {
+      y = margin;
+    }
+
+    this.menuElement.style.left = `${x}px`;
+    this.menuElement.style.top = `${y}px`;
+  }
+
+  // Setup menu interactions
+  setupMenuInteractions() {
+    // Click handlers
+    this.menuElement.addEventListener('click', (e) => {
+      const item = e.target.closest('.context-menu-item');
+      if (!item) return;
+
+      const action = item.dataset.action;
+      this.handleMenuAction(action);
+      e.stopPropagation();
+    });
+
+    // Keyboard navigation
+    this.menuElement.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.hide();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        const focused = e.target.closest('.context-menu-item');
+        if (focused) {
+          e.preventDefault();
+          this.handleMenuAction(focused.dataset.action);
+        }
+      }
+    });
+
+    // Backdrop click to close
+    this.backdropElement.addEventListener('click', () => {
+      this.hide();
+    });
+
+    // Focus first item
+    setTimeout(() => {
+      const firstItem = this.menuElement.querySelector('.context-menu-item');
+      if (firstItem) {
+        firstItem.focus();
+      }
+    }, 100);
+  }
+
+  // Handle menu action
+  handleMenuAction(action) {
+    if (!this.currentTask) return;
+
+    switch (action) {
+      case 'edit':
+        this.onEdit(this.currentTask.id);
+        break;
+      case 'important':
+        this.onToggleImportant(this.currentTask.id);
+        break;
+    }
+  }
+
+  // Remove menu from DOM
+  removeMenuElement() {
+    if (this.menuElement) {
+      this.menuElement.remove();
+      this.menuElement = null;
+    }
+    if (this.backdropElement) {
+      this.backdropElement.remove();
+      this.backdropElement = null;
+    }
+  }
 }
 
 // Initialize app when DOM is ready
