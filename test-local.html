@@ -2,16 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
-    <title>Do It (Later)</title>
-    <meta name="description" content="Simple two-list todo app - Today and Later">
-    
-    <!-- PWA Configuration -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="icon" href="icons/favicon.ico">
-    
-    <!-- Styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Do It (Later) - Local Test</title>
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/mobile.css">
 </head>
@@ -19,7 +11,7 @@
     <div id="app">
         <header>
             <div class="header-top">
-                <h1 class="app-title">Do It (Later)</h1>
+                <h1 class="app-title">Do It (Later) - Testing Phase 1</h1>
                 <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
                     <div class="toggle-track">
                         <div class="toggle-thumb">
@@ -34,21 +26,13 @@
                     <small class="theme-label">Dark</small>
                 </button>
             </div>
-
             <div class="header-metadata">
                 <div id="current-date" class="date"></div>
                 <div id="completed-counter" class="task-count">0 tasks completed</div>
             </div>
-
-            <!-- Mobile day navigation -->
-            <div class="mobile-nav" id="mobile-nav">
-                <button class="nav-btn" id="today-nav" data-day="today">Today</button>
-                <button class="nav-btn" id="tomorrow-nav" data-day="tomorrow">Later</button>
-            </div>
         </header>
-        
+
         <main>
-            <!-- Phase 1: Basic structure placeholder -->
             <div class="lists-container">
                 <section class="list-section" id="today-section">
                     <div class="section-header">
@@ -61,13 +45,7 @@
                         </button>
                     </div>
                     <div class="add-task-container">
-                        <input
-                            type="text"
-                            id="today-task-input"
-                            placeholder="What are you doing today?"
-                            maxlength="200"
-                            autocomplete="off"
-                            class="notebook-input">
+                        <input type="text" id="today-task-input" placeholder="What are you doing today?" maxlength="200" autocomplete="off" class="notebook-input">
                     </div>
                     <ul id="today-list"></ul>
                 </section>
@@ -83,86 +61,21 @@
                         </button>
                     </div>
                     <div class="add-task-container">
-                        <input
-                            type="text"
-                            id="tomorrow-task-input"
-                            placeholder="What are you doing later?"
-                            maxlength="200"
-                            autocomplete="off"
-                            class="notebook-input">
+                        <input type="text" id="tomorrow-task-input" placeholder="What are you doing later?" maxlength="200" autocomplete="off" class="notebook-input">
                     </div>
                     <ul id="tomorrow-list"></ul>
                 </section>
             </div>
         </main>
-        
+
         <footer>
             <div class="sync-controls">
-                <button id="export-file-btn" class="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M4 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5l-3-3H5a1 1 0 0 0-1 1z"/>
-                        <path d="M9 2v3h3"/>
-                        <path d="M6 10l2 2 2-2"/>
-                        <path d="M8 7v5"/>
-                    </svg>
-                    Export File
-                </button>
-                <button id="export-clipboard-btn" class="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="4" y="2" width="8" height="12" rx="1"/>
-                        <rect x="6" y="1" width="4" height="2" rx="0.5"/>
-                        <path d="M6 8l2 2 4-4"/>
-                    </svg>
-                    Copy
-                </button>
-                <label for="import-file" class="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M4 2v12a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5l-3-3H5a1 1 0 0 0-1 1z"/>
-                        <path d="M9 2v3h3"/>
-                        <path d="M10 8l-2-2-2 2"/>
-                        <path d="M8 11V6"/>
-                    </svg>
-                    Import File
-                </label>
-                <input type="file" id="import-file" accept=".txt" style="display: none;">
-                <button id="import-clipboard-btn" class="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <rect x="4" y="2" width="8" height="12" rx="1"/>
-                        <rect x="6" y="1" width="4" height="2" rx="0.5"/>
-                        <path d="M6 7h4"/>
-                        <path d="M6 9h4"/>
-                        <path d="M6 11h2"/>
-                    </svg>
-                    Paste
-                </button>
-                <button id="qr-btn" class="sync-btn">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M1 1h6v6H1z"/>
-                        <path d="M9 1h6v6H9z"/>
-                        <path d="M1 9h6v6H1z"/>
-                        <path d="M9 9h2v2H9z"/>
-                        <path d="M13 9h2v2h-2z"/>
-                        <path d="M9 13h2v2H9z"/>
-                        <path d="M13 13h2v2h-2z"/>
-                        <path d="M3 3h2v2H3z"/>
-                        <path d="M11 3h2v2h-2z"/>
-                        <path d="M3 11h2v2H3z"/>
-                    </svg>
-                    QR Sync
-                </button>
+                <button id="export-file-btn" class="sync-btn">Export File</button>
+                <button id="export-clipboard-btn" class="sync-btn">Copy</button>
+                <button id="import-clipboard-btn" class="sync-btn">Paste</button>
+                <button id="qr-btn" class="sync-btn">QR Sync</button>
             </div>
-
-            <div class="donation-section">
-                <small class="donation-text">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 4px;">
-                        <path d="M8 14.5a.5.5 0 0 1-.3-.1l-5.2-4.7A4.5 4.5 0 1 1 8 3.1a4.5 4.5 0 1 1 5.5 6.6l-5.2 4.7a.5.5 0 0 1-.3.1z"/>
-                    </svg>
-                    Enjoying Do It (Later)?
-                    <a href="https://github.com/sponsors/YOUR_USERNAME" target="_blank" rel="noopener" class="donation-link">Buy me coffee!</a>
-                </small>
-            </div>
-
-            <small class="storage-notice">Tasks stored locally - clearing browser data resets lists</small>
+            <small class="storage-notice">Local Test Version - Phase 1 Testing</small>
             <div class="version-info" style="text-align: center; margin-top: 0.8rem; padding: 0.5rem;">
                 <small id="version-display" style="opacity: 0.8; font-size: 0.8rem; background: rgba(0,0,0,0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">Loading...</small>
             </div>
@@ -189,7 +102,7 @@
     <script>
       if (typeof Config !== 'undefined') {
         const versionEl = document.getElementById('version-display');
-        if (versionEl) versionEl.textContent = 'v' + Config.VERSION;
+        if (versionEl) versionEl.textContent = 'v' + Config.VERSION + '-test';
       }
     </script>
 </body>

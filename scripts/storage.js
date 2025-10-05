@@ -1,44 +1,62 @@
 // Do It (Later) - Storage Utilities
-// Phase 1: Basic localStorage foundation
+// Handles all localStorage operations with error handling
 
 const Storage = {
-  KEY: 'do-it-later-data',
-  
-  // Get data from localStorage
+  /**
+   * Load data from localStorage
+   * @returns {Object} Application data or default data if not found
+   */
   load() {
     try {
-      const data = localStorage.getItem(this.KEY);
-      return data ? JSON.parse(data) : this.getDefaultData();
+      const data = localStorage.getItem(Config.STORAGE_KEY);
+      return data ? Utils.safeJsonParse(data, this.getDefaultData()) : this.getDefaultData();
     } catch (error) {
       console.warn('Failed to load data:', error);
       return this.getDefaultData();
     }
   },
-  
-  // Save data to localStorage
+
+  /**
+   * Save data to localStorage
+   * @param {Object} data - Application data to save
+   * @returns {boolean} True if save successful, false otherwise
+   */
   save(data) {
     try {
-      localStorage.setItem(this.KEY, JSON.stringify(data));
+      const jsonString = Utils.safeJsonStringify(data);
+      localStorage.setItem(Config.STORAGE_KEY, jsonString);
       return true;
     } catch (error) {
       console.error('Failed to save data:', error);
       return false;
     }
   },
-  
-  // Get default empty state
+
+  /**
+   * Get default empty application state
+   * @returns {Object} Default data structure
+   */
   getDefaultData() {
     return {
       today: [],
       tomorrow: [],
       lastUpdated: Date.now(),
-      currentDate: new Date().toISOString().split('T')[0],
+      currentDate: Utils.getTodayISO(),
       totalCompleted: 0
     };
   },
-  
-  // Clear all data
+
+  /**
+   * Clear all application data from localStorage
+   */
   clear() {
-    localStorage.removeItem(this.KEY);
+    try {
+      localStorage.removeItem(Config.STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to clear storage:', error);
+    }
   }
 };
+
+// Freeze to prevent modifications
+Object.freeze(Storage);

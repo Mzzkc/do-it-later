@@ -1,18 +1,17 @@
 // Do It (Later) - Sync Utilities
-// Phase 4: Maintenance-free sync system
+// Handles data export/import in multiple formats
 
 const Sync = {
-  // Export data to human-readable text format
+  /**
+   * Export data to human-readable text format
+   * @param {Object} data - Application data to export
+   * @returns {string} Formatted text export
+   */
   exportToText(data) {
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const dateStr = Utils.formatDate(now);
 
-    let output = `Do It (Later) - ${dateStr}\n`;
+    let output = `${Config.APP_NAME} - ${dateStr}\n`;
     output += `Exported: ${now.toLocaleString()}\n`;
     output += `Tasks Completed Lifetime: ${data.totalCompleted || 0}\n\n`;
 
@@ -43,20 +42,24 @@ const Sync = {
     }
 
     output += `\n---\n`;
-    output += `This file can be imported back into Do It (Later)\n`;
+    output += `This file can be imported back into ${Config.APP_NAME}\n`;
     output += `or edited manually and re-imported.\n`;
 
     return output;
   },
 
-  // Parse text format back to data structure
+  /**
+   * Parse text format back to data structure
+   * @param {string} text - Exported text to parse
+   * @returns {Object} Parsed application data
+   */
   parseFromText(text) {
     const lines = text.split('\n').map(line => line.trim());
     const data = {
       today: [],
       tomorrow: [],
       totalCompleted: 0,
-      currentDate: new Date().toISOString().split('T')[0],
+      currentDate: Utils.getTodayISO(),
       lastUpdated: Date.now()
     };
 
@@ -88,7 +91,7 @@ const Sync = {
 
         if (text) {
           data[currentSection].push({
-            id: this.generateId(),
+            id: Utils.generateId(),
             text: text,
             completed: completed,
             createdAt: Date.now()
@@ -100,20 +103,19 @@ const Sync = {
     return data;
   },
 
-  // Generate unique ID
-  generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  },
-
-  // Export to downloadable file
+  /**
+   * Export data to downloadable file
+   * @param {Object} data - Application data to export
+   * @returns {string} Downloaded filename
+   */
   exportToFile(data) {
     const textData = this.exportToText(data);
-    const blob = new Blob([textData], { type: 'text/plain' });
+    const blob = new Blob([textData], { type: Config.EXPORT_MIME_TYPE });
     const url = URL.createObjectURL(blob);
 
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    const filename = `do-it-later-${dateStr}.txt`;
+    const dateStr = Utils.getTodayISO();
+    const filename = `${Config.EXPORT_FILE_PREFIX}${dateStr}${Config.EXPORT_FILE_EXTENSION}`;
 
     // Create download link
     const a = document.createElement('a');
@@ -130,10 +132,14 @@ const Sync = {
     return filename;
   },
 
-  // Import from file
+  /**
+   * Import data from file
+   * @param {File} file - File object to import
+   * @returns {Promise<Object>} Promise resolving to parsed data
+   */
   importFromFile(file) {
     return new Promise((resolve, reject) => {
-      if (!file || file.type !== 'text/plain') {
+      if (!file || file.type !== Config.EXPORT_MIME_TYPE) {
         reject(new Error('Please select a valid text file'));
         return;
       }
@@ -152,32 +158,44 @@ const Sync = {
     });
   },
 
-  // Generate QR code data (ultra-compressed format)
+  /**
+   * Generate QR code data in ultra-compressed format
+   * @param {Object} data - Application data to compress
+   * @returns {string} Compressed QR data string
+   */
   generateQRData(data) {
     // Ultra-compressed format: T:task1|task2~L:task3|task4~C:5
     // Only include incomplete tasks (completed ones aren't needed for sync)
     // Skip task IDs (regenerate on import)
 
+    const delimiter = new RegExp(`[${Config.SYNC.TASK_DELIMITER}${Config.SYNC.SECTION_DELIMITER}]`, 'g');
+
     const activeTodayTasks = data.today
       .filter(task => !task.completed)
-      .map(task => task.text.replace(/[|~]/g, '')) // Remove delimiters from text
-      .join('|');
+      .map(task => {
+        const cleanText = Utils.cleanText(task.text, delimiter);
+        return (task.important ? Config.SYNC.IMPORTANT_PREFIX : '') + cleanText;
+      })
+      .join(Config.SYNC.TASK_DELIMITER);
 
     const activeTomorrowTasks = data.tomorrow
       .filter(task => !task.completed)
-      .map(task => task.text.replace(/[|~]/g, '')) // Remove delimiters from text
-      .join('|');
+      .map(task => {
+        const cleanText = Utils.cleanText(task.text, delimiter);
+        return (task.important ? Config.SYNC.IMPORTANT_PREFIX : '') + cleanText;
+      })
+      .join(Config.SYNC.TASK_DELIMITER);
 
     // Format: T:tasks~L:tasks~C:count
     const parts = [];
-    if (activeTodayTasks) parts.push(`T:${activeTodayTasks}`);
-    if (activeTomorrowTasks) parts.push(`L:${activeTomorrowTasks}`);
-    if (data.totalCompleted) parts.push(`C:${data.totalCompleted}`);
+    if (activeTodayTasks) parts.push(`${Config.SYNC.TODAY_PREFIX}${activeTodayTasks}`);
+    if (activeTomorrowTasks) parts.push(`${Config.SYNC.LATER_PREFIX}${activeTomorrowTasks}`);
+    if (data.totalCompleted) parts.push(`${Config.SYNC.COUNT_PREFIX}${data.totalCompleted}`);
 
-    const compressed = parts.join('~');
+    const compressed = parts.join(Config.SYNC.SECTION_DELIMITER);
 
     // Fallback to JSON if custom format would be larger (rare edge case)
-    const jsonFallback = JSON.stringify({
+    const jsonFallback = Utils.safeJsonStringify({
       t: data.today.filter(t => !t.completed).map(t => t.text),
       l: data.tomorrow.filter(t => !t.completed).map(t => t.text),
       c: data.totalCompleted || 0
@@ -186,48 +204,66 @@ const Sync = {
     return compressed.length < jsonFallback.length ? compressed : jsonFallback;
   },
 
-  // Parse QR code data (supports both new ultra-compressed and legacy formats)
+  /**
+   * Parse QR code data (supports both ultra-compressed and legacy formats)
+   * @param {string} qrData - QR code data string
+   * @returns {Object} Parsed application data
+   */
   parseQRData(qrData) {
     try {
       // Try new ultra-compressed format first: T:task1|task2~L:task3~C:5
-      if (qrData.includes('T:') || qrData.includes('L:') || qrData.includes('C:')) {
-        const parts = qrData.split('~');
+      if (qrData.includes(Config.SYNC.TODAY_PREFIX) || qrData.includes(Config.SYNC.LATER_PREFIX) || qrData.includes(Config.SYNC.COUNT_PREFIX)) {
+        const parts = qrData.split(Config.SYNC.SECTION_DELIMITER);
         const result = {
           today: [],
           tomorrow: [],
           totalCompleted: 0,
-          currentDate: new Date().toISOString().split('T')[0],
+          currentDate: Utils.getTodayISO(),
           lastUpdated: Date.now()
         };
 
         parts.forEach(part => {
-          if (part.startsWith('T:')) {
+          if (part.startsWith(Config.SYNC.TODAY_PREFIX)) {
             // Today tasks
             const tasksText = part.substring(2);
             if (tasksText) {
-              result.today = tasksText.split('|')
+              result.today = tasksText.split(Config.SYNC.TASK_DELIMITER)
                 .filter(text => text.trim())
-                .map(text => ({
-                  id: this.generateId(),
-                  text: text.trim(),
-                  completed: false,
-                  createdAt: Date.now()
-                }));
+                .map(text => {
+                  const trimmedText = text.trim();
+                  const isImportant = trimmedText.startsWith(Config.SYNC.IMPORTANT_PREFIX);
+                  const taskText = isImportant ? trimmedText.substring(1) : trimmedText;
+
+                  return {
+                    id: Utils.generateId(),
+                    text: taskText,
+                    completed: false,
+                    important: isImportant,
+                    createdAt: Date.now()
+                  };
+                });
             }
-          } else if (part.startsWith('L:')) {
+          } else if (part.startsWith(Config.SYNC.LATER_PREFIX)) {
             // Tomorrow/Later tasks
             const tasksText = part.substring(2);
             if (tasksText) {
-              result.tomorrow = tasksText.split('|')
+              result.tomorrow = tasksText.split(Config.SYNC.TASK_DELIMITER)
                 .filter(text => text.trim())
-                .map(text => ({
-                  id: this.generateId(),
-                  text: text.trim(),
-                  completed: false,
-                  createdAt: Date.now()
-                }));
+                .map(text => {
+                  const trimmedText = text.trim();
+                  const isImportant = trimmedText.startsWith(Config.SYNC.IMPORTANT_PREFIX);
+                  const taskText = isImportant ? trimmedText.substring(1) : trimmedText;
+
+                  return {
+                    id: Utils.generateId(),
+                    text: taskText,
+                    completed: false,
+                    important: isImportant,
+                    createdAt: Date.now()
+                  };
+                });
             }
-          } else if (part.startsWith('C:')) {
+          } else if (part.startsWith(Config.SYNC.COUNT_PREFIX)) {
             // Completed count
             result.totalCompleted = parseInt(part.substring(2)) || 0;
           }
@@ -237,10 +273,10 @@ const Sync = {
       }
 
       // Fallback: Try legacy JSON format
-      const compressed = JSON.parse(qrData);
+      const compressed = Utils.safeJsonParse(qrData);
 
       // Handle old compressed format with i,x,c structure
-      if (compressed.t && Array.isArray(compressed.t) && compressed.t[0] && compressed.t[0].i) {
+      if (compressed && compressed.t && Array.isArray(compressed.t) && compressed.t[0] && compressed.t[0].i) {
         return {
           today: compressed.t.map(task => ({
             id: task.i,
@@ -255,28 +291,28 @@ const Sync = {
             createdAt: compressed.ts || Date.now()
           })),
           totalCompleted: compressed.tc || 0,
-          currentDate: new Date().toISOString().split('T')[0],
+          currentDate: Utils.getTodayISO(),
           lastUpdated: compressed.ts || Date.now()
         };
       }
 
       // Handle simplified JSON format (t: [strings], l: [strings])
-      if (compressed.t && Array.isArray(compressed.t)) {
+      if (compressed && compressed.t && Array.isArray(compressed.t)) {
         return {
           today: compressed.t.map(text => ({
-            id: this.generateId(),
+            id: Utils.generateId(),
             text: text,
             completed: false,
             createdAt: Date.now()
           })),
           tomorrow: (compressed.l || []).map(text => ({
-            id: this.generateId(),
+            id: Utils.generateId(),
             text: text,
             completed: false,
             createdAt: Date.now()
           })),
           totalCompleted: compressed.c || 0,
-          currentDate: new Date().toISOString().split('T')[0],
+          currentDate: Utils.getTodayISO(),
           lastUpdated: Date.now()
         };
       }
@@ -288,3 +324,6 @@ const Sync = {
     }
   }
 };
+
+// Freeze to prevent modifications
+Object.freeze(Sync);

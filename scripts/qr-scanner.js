@@ -1,5 +1,5 @@
 // Simple QR Scanner using jsQR
-// Lightweight implementation for Do It (Later)
+// Lightweight implementation for scanning QR codes
 
 class QRScanner {
   constructor() {
@@ -12,6 +12,13 @@ class QRScanner {
     this.frameCount = 0; // For throttled logging
   }
 
+  /**
+   * Initialize the QR scanner with camera access
+   * @param {HTMLVideoElement} videoElement - Video element for camera feed
+   * @param {Function} onScanSuccess - Callback for successful scan
+   * @param {Function} onError - Callback for errors
+   * @returns {Promise} Promise resolving when camera is ready
+   */
   async init(videoElement, onScanSuccess, onError) {
     this.video = videoElement;
     this.onScanSuccess = onScanSuccess;
@@ -25,9 +32,9 @@ class QRScanner {
       // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // Prefer back camera
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: Config.QR_SCANNER.FACING_MODE,
+          width: { ideal: Config.QR_SCANNER.IDEAL_WIDTH },
+          height: { ideal: Config.QR_SCANNER.IDEAL_HEIGHT }
         }
       });
 
@@ -49,6 +56,9 @@ class QRScanner {
     }
   }
 
+  /**
+   * Start scanning for QR codes
+   */
   startScanning() {
     if (this.scanning) return;
     this.scanning = true;
@@ -56,6 +66,9 @@ class QRScanner {
     this.scan();
   }
 
+  /**
+   * Stop scanning and release camera
+   */
   stopScanning() {
     this.scanning = false;
     if (this.video && this.video.srcObject) {
@@ -81,13 +94,13 @@ class QRScanner {
     this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
     const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    // Log every 60 frames (about once per second)
+    // Log every N frames (about once per second at 60fps)
     this.frameCount++;
-    if (this.frameCount % 60 === 0) {
+    if (this.frameCount % Config.QR_SCANNER.FRAME_LOG_INTERVAL === 0) {
       console.log('QR Scanner: Processing frames...', this.canvas.width + 'x' + this.canvas.height, 'frame', this.frameCount);
     }
 
-    // Simple QR detection (basic pattern recognition)
+    // Detect QR code in frame
     const qrData = this.detectQRCode(imageData);
 
     if (qrData) {
@@ -101,7 +114,11 @@ class QRScanner {
     requestAnimationFrame(() => this.scan());
   }
 
-  // QR detection using jsQR library
+  /**
+   * Detect QR code using jsQR library
+   * @param {ImageData} imageData - Canvas image data
+   * @returns {string|null} QR code data or null
+   */
   detectQRCode(imageData) {
     try {
       // Check if jsQR library is loaded
@@ -116,7 +133,7 @@ class QRScanner {
 
       // Use jsQR library for real QR code detection
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert", // Don't invert colors for better performance
+        inversionAttempts: Config.QR_SCANNER.INVERSION_ATTEMPTS
       });
 
       if (code && code.data) {
@@ -137,15 +154,19 @@ class QRScanner {
     }
   }
 
-  // Validate QR code contains task data
+  /**
+   * Validate QR code contains task data in expected format
+   * @param {string} data - QR code data to validate
+   * @returns {boolean} True if valid task data format
+   */
   isValidTaskData(data) {
     console.log('Validating QR data:', data);
 
     // Check new ultra-compressed format first: T:task1|task2~L:task3~C:5
-    if (data.includes('T:') || data.includes('L:') || data.includes('C:')) {
-      const parts = data.split('~');
+    if (data.includes(Config.SYNC.TODAY_PREFIX) || data.includes(Config.SYNC.LATER_PREFIX) || data.includes(Config.SYNC.COUNT_PREFIX)) {
+      const parts = data.split(Config.SYNC.SECTION_DELIMITER);
       const validParts = parts.filter(part =>
-        part.startsWith('T:') || part.startsWith('L:') || part.startsWith('C:')
+        part.startsWith(Config.SYNC.TODAY_PREFIX) || part.startsWith(Config.SYNC.LATER_PREFIX) || part.startsWith(Config.SYNC.COUNT_PREFIX)
       );
 
       const isValid = validParts.length > 0;
@@ -159,7 +180,7 @@ class QRScanner {
 
     // Fallback: Check legacy JSON formats
     try {
-      const parsed = JSON.parse(data);
+      const parsed = Utils.safeJsonParse(data);
       console.log('Parsed QR data:', parsed);
 
       // Check if it has the expected compressed task data structure
@@ -181,3 +202,6 @@ class QRScanner {
     }
   }
 }
+
+// Freeze to prevent modifications
+Object.freeze(QRScanner.prototype);
