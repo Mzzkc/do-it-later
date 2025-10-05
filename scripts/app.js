@@ -15,6 +15,15 @@ class DoItTomorrowApp {
     // Simple scroll detection
     this.isScrolling = false;
 
+    // Pomodoro timer state
+    this.pomodoroState = {
+      isActive: false,
+      taskId: null,
+      timeRemaining: 0, // in seconds
+      intervalId: null,
+      roundCount: 0
+    };
+
     this.setupLogging();
     this.initializeLongPressSystem();
     this.init();
@@ -1007,6 +1016,7 @@ class DoItTomorrowApp {
       onEdit: (taskId) => this.handleMenuEdit(taskId),
       onToggleImportant: (taskId) => this.handleMenuToggleImportant(taskId),
       onSetDeadline: (taskId) => this.handleMenuSetDeadline(taskId),
+      onStartPomodoro: (taskId) => this.handleMenuStartPomodoro(taskId),
       onClose: () => this.handleMenuClose(),
       devMode: this.devMode
     });
@@ -1102,6 +1112,12 @@ class DoItTomorrowApp {
   handleMenuSetDeadline(taskId) {
     this.contextMenu.hide();
     setTimeout(() => this.showDeadlinePicker(taskId), 50);
+  }
+
+  // Handle menu start pomodoro action
+  handleMenuStartPomodoro(taskId) {
+    this.contextMenu.hide();
+    setTimeout(() => this.startPomodoro(taskId), 50);
   }
 
   // Handle menu close
@@ -2036,6 +2052,183 @@ class DoItTomorrowApp {
     this.render();
   }
 
+  // Start pomodoro timer for a task
+  startPomodoro(taskId) {
+    const taskInfo = this.findTask(taskId);
+    if (!taskInfo) return;
+
+    // Stop existing timer if any
+    this.stopPomodoro();
+
+    // Initialize timer
+    this.pomodoroState = {
+      isActive: true,
+      taskId: taskId,
+      timeRemaining: Config.POMODORO_WORK_MINUTES * 60,
+      intervalId: null,
+      roundCount: 1
+    };
+
+    // Start countdown
+    this.pomodoroState.intervalId = setInterval(() => this.tickPomodoro(), 1000);
+
+    // Show timer UI
+    this.showPomodoroTimer();
+
+    this.showNotification(`Pomodoro started for "${taskInfo.task.text}"`, Config.NOTIFICATION_TYPES.SUCCESS);
+  }
+
+  // Timer tick
+  tickPomodoro() {
+    if (!this.pomodoroState.isActive) return;
+
+    this.pomodoroState.timeRemaining--;
+
+    if (this.pomodoroState.timeRemaining <= 0) {
+      // Round complete
+      this.handlePomodoroComplete();
+    } else {
+      // Update display
+      this.updatePomodoroDisplay();
+    }
+  }
+
+  // Handle round completion
+  handlePomodoroComplete() {
+    // Stop interval
+    if (this.pomodoroState.intervalId) {
+      clearInterval(this.pomodoroState.intervalId);
+      this.pomodoroState.intervalId = null;
+    }
+
+    // Haptic feedback
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200]);
+    }
+
+    // Show completion prompt
+    this.showPomodoroCompletionPrompt();
+  }
+
+  // Show completion prompt
+  showPomodoroCompletionPrompt() {
+    const taskInfo = this.findTask(this.pomodoroState.taskId);
+    if (!taskInfo) {
+      this.stopPomodoro();
+      return;
+    }
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'pomodoro-prompt-modal';
+    modal.innerHTML = `
+      <div class="pomodoro-prompt-content">
+        <h3>Pomodoro Complete!</h3>
+        <p>Round ${this.pomodoroState.roundCount} finished for:</p>
+        <p class="task-name">"${Utils.escapeHtml(taskInfo.task.text)}"</p>
+        <div class="pomodoro-prompt-actions">
+          <button id="pomodoro-complete-btn" class="pomodoro-btn pomodoro-btn-success">Task Done</button>
+          <button id="pomodoro-stop-btn" class="pomodoro-btn pomodoro-btn-secondary">Stop Timer</button>
+          <button id="pomodoro-continue-btn" class="pomodoro-btn pomodoro-btn-primary">Continue</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle actions
+    document.getElementById('pomodoro-complete-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      this.completePomodoroTask();
+    });
+
+    document.getElementById('pomodoro-stop-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      this.stopPomodoro();
+    });
+
+    document.getElementById('pomodoro-continue-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      this.continuePomodoroTask();
+    });
+  }
+
+  // Complete task and stop timer
+  completePomodoroTask() {
+    const taskId = this.pomodoroState.taskId;
+    this.stopPomodoro();
+    this.toggleTask(taskId);
+  }
+
+  // Stop timer
+  stopPomodoro() {
+    if (this.pomodoroState.intervalId) {
+      clearInterval(this.pomodoroState.intervalId);
+    }
+
+    this.pomodoroState = {
+      isActive: false,
+      taskId: null,
+      timeRemaining: 0,
+      intervalId: null,
+      roundCount: 0
+    };
+
+    this.hidePomodoroTimer();
+  }
+
+  // Continue with next round
+  continuePomodoroTask() {
+    this.pomodoroState.roundCount++;
+    this.pomodoroState.timeRemaining = Config.POMODORO_WORK_MINUTES * 60;
+    this.pomodoroState.intervalId = setInterval(() => this.tickPomodoro(), 1000);
+    this.updatePomodoroDisplay();
+  }
+
+  // Show timer UI
+  showPomodoroTimer() {
+    let timerEl = document.getElementById('pomodoro-timer');
+    if (!timerEl) {
+      timerEl = document.createElement('div');
+      timerEl.id = 'pomodoro-timer';
+      timerEl.className = 'pomodoro-timer';
+      document.body.appendChild(timerEl);
+    }
+
+    this.updatePomodoroDisplay();
+    timerEl.style.display = 'flex';
+  }
+
+  // Hide timer UI
+  hidePomodoroTimer() {
+    const timerEl = document.getElementById('pomodoro-timer');
+    if (timerEl) {
+      timerEl.style.display = 'none';
+    }
+  }
+
+  // Update timer display
+  updatePomodoroDisplay() {
+    const timerEl = document.getElementById('pomodoro-timer');
+    if (!timerEl) return;
+
+    const minutes = Math.floor(this.pomodoroState.timeRemaining / 60);
+    const seconds = this.pomodoroState.timeRemaining % 60;
+    const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    const taskInfo = this.findTask(this.pomodoroState.taskId);
+    const taskText = taskInfo ? taskInfo.task.text : 'Unknown task';
+
+    timerEl.innerHTML = `
+      <div class="pomodoro-timer-content">
+        <div class="pomodoro-timer-round">Round ${this.pomodoroState.roundCount}</div>
+        <div class="pomodoro-timer-time">${timeStr}</div>
+        <div class="pomodoro-timer-task">${Utils.escapeHtml(taskText)}</div>
+        <button class="pomodoro-timer-stop" onclick="app.stopPomodoro()">×</button>
+      </div>
+    `;
+  }
+
   // Show paste dialog when clipboard API fails
   showPasteDialog() {
     return new Promise((resolve) => {
@@ -2749,6 +2942,7 @@ class ContextMenu {
     this.onEdit = options.onEdit || (() => {});
     this.onToggleImportant = options.onToggleImportant || (() => {});
     this.onSetDeadline = options.onSetDeadline || (() => {});
+    this.onStartPomodoro = options.onStartPomodoro || (() => {});
     this.onClose = options.onClose || (() => {});
     this.devMode = options.devMode || false;
 
@@ -2829,6 +3023,13 @@ class ContextMenu {
           <path d="M6.445 11.688V6.354h-.633A12.6 12.6 0 0 0 4.5 7.16v.695c.375-.257.969-.62 1.258-.777h.012v4.61h.675zm1.188-1.305c.047.64.594 1.406 1.703 1.406 1.258 0 2-1.066 2-2.871 0-1.934-.781-2.668-1.953-2.668-.926 0-1.797.672-1.797 1.809 0 1.16.824 1.77 1.676 1.77.746 0 1.23-.376 1.383-.79h.027c-.004 1.316-.461 2.164-1.305 2.164-.664 0-1.008-.45-1.05-.82h-.684zm2.953-2.317c0 .696-.559 1.18-1.184 1.18-.601 0-1.144-.383-1.144-1.2 0-.823.582-1.21 1.168-1.21.633 0 1.16.398 1.16 1.23z"/>
         </svg>
         <span>${task.deadline ? 'Change Deadline' : 'Set Deadline'}</span>
+      </div>
+      <div class="context-menu-item" role="menuitem" data-action="pomodoro" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+          <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5H4a.5.5 0 0 1 0-1h3.5V4a.5.5 0 0 1 .5-.5z"/>
+        </svg>
+        <span>Start Pomodoro</span>
       </div>
     `;
 
@@ -2944,6 +3145,9 @@ class ContextMenu {
         break;
       case 'deadline':
         this.onSetDeadline(this.currentTask.id);
+        break;
+      case 'pomodoro':
+        this.onStartPomodoro(this.currentTask.id);
         break;
     }
   }
