@@ -194,6 +194,38 @@ class DoItTomorrowApp {
       // Update Later list with remaining tasks
       this.data.tomorrow = remainingLaterTasks;
 
+      // Check deadlines on all tasks
+      const allTasks = [...this.data.today, ...this.data.tomorrow];
+      const todayDate = new Date(today);
+      const threeDaysFromNow = new Date(todayDate);
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+      let deadlineTasksMoved = 0;
+      let tasksMarkedImportant = 0;
+
+      allTasks.forEach(task => {
+        if (task.deadline) {
+          const deadlineDate = new Date(task.deadline);
+
+          // If deadline is today, move to Today list
+          if (task.deadline === today) {
+            // Move from Later to Today if not already there
+            const laterIndex = this.data.tomorrow.findIndex(t => t.id === task.id);
+            if (laterIndex !== -1) {
+              this.data.tomorrow.splice(laterIndex, 1);
+              this.data.today.push(task);
+              deadlineTasksMoved++;
+            }
+          }
+
+          // If deadline is within 3 days, mark as important
+          if (deadlineDate <= threeDaysFromNow && !task.important) {
+            task.important = true;
+            tasksMarkedImportant++;
+          }
+        }
+      });
+
       // Update date
       this.data.currentDate = today;
 
@@ -205,10 +237,16 @@ class DoItTomorrowApp {
       if (weekOldTasks.length > 0) {
         notificationParts.push(`${weekOldTasks.length} week-old tasks moved to Today`);
       }
+      if (deadlineTasksMoved > 0) {
+        notificationParts.push(`${deadlineTasksMoved} deadline tasks moved to Today`);
+      }
+      if (tasksMarkedImportant > 0) {
+        notificationParts.push(`${tasksMarkedImportant} tasks marked important (deadline approaching)`);
+      }
 
       // Log cleanup for dev mode
-      if (this.devMode && (completedToday > 0 || completedLater > 0 || weekOldTasks.length > 0)) {
-        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedLater} completed tasks, moved ${weekOldTasks.length} week-old tasks to Today`);
+      if (this.devMode && (completedToday > 0 || completedLater > 0 || weekOldTasks.length > 0 || deadlineTasksMoved > 0 || tasksMarkedImportant > 0)) {
+        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedLater} completed tasks, moved ${weekOldTasks.length} week-old tasks to Today, moved ${deadlineTasksMoved} deadline tasks, marked ${tasksMarkedImportant} tasks important`);
       }
 
       this.save();
@@ -627,8 +665,41 @@ class DoItTomorrowApp {
         `<span class="move-icon" data-action="push" data-task-id="${task.id}" title="Push to Later">→</span>` :
         `<span class="move-icon" data-action="pull" data-task-id="${task.id}" title="Pull to Today">←</span>`);
 
+    // Deadline display
+    let deadlineHTML = '';
+    if (task.deadline) {
+      const deadlineDate = new Date(task.deadline);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deadline = new Date(task.deadline);
+      deadline.setHours(0, 0, 0, 0);
+
+      const daysUntil = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
+
+      let deadlineClass = 'deadline-indicator';
+      let deadlineText = '';
+
+      if (daysUntil < 0) {
+        deadlineClass += ' overdue';
+        deadlineText = `Overdue ${Math.abs(daysUntil)} ${Math.abs(daysUntil) === 1 ? 'day' : 'days'}`;
+      } else if (daysUntil === 0) {
+        deadlineClass += ' today';
+        deadlineText = 'Due today';
+      } else if (daysUntil === 1) {
+        deadlineClass += ' tomorrow';
+        deadlineText = 'Due tomorrow';
+      } else if (daysUntil <= 3) {
+        deadlineClass += ' soon';
+        deadlineText = `Due in ${daysUntil} days`;
+      } else {
+        deadlineText = `Due ${deadlineDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+      }
+
+      deadlineHTML = `<span class="${deadlineClass}" title="${deadlineDate.toLocaleDateString()}">${deadlineText}</span>`;
+    }
+
     return `
-      <span class="task-text">${this.escapeHtml(task.text)}</span>
+      <span class="task-text">${this.escapeHtml(task.text)}${deadlineHTML}</span>
       <div class="task-actions">
         ${moveBtnHTML}
       </div>
@@ -935,6 +1006,7 @@ class DoItTomorrowApp {
     this.contextMenu = new ContextMenu({
       onEdit: (taskId) => this.handleMenuEdit(taskId),
       onToggleImportant: (taskId) => this.handleMenuToggleImportant(taskId),
+      onSetDeadline: (taskId) => this.handleMenuSetDeadline(taskId),
       onClose: () => this.handleMenuClose(),
       devMode: this.devMode
     });
@@ -1024,6 +1096,12 @@ class DoItTomorrowApp {
         animationTriggered: task.important && !wasImportant
       });
     }
+  }
+
+  // Handle menu set deadline action
+  handleMenuSetDeadline(taskId) {
+    this.contextMenu.hide();
+    setTimeout(() => this.showDeadlinePicker(taskId), 50);
   }
 
   // Handle menu close
@@ -1825,6 +1903,139 @@ class DoItTomorrowApp {
     }
   }
 
+  // Show deadline picker dialog
+  showDeadlinePicker(taskId) {
+    const taskInfo = this.findTask(taskId);
+    if (!taskInfo) return;
+
+    // Create modal backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    backdrop.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'deadline-modal';
+    modal.style.cssText = `
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    `;
+
+    // Get current deadline or default to tomorrow
+    const currentDeadline = taskInfo.deadline || '';
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + 1); // Minimum is tomorrow
+    const minDateStr = minDate.toISOString().split('T')[0];
+
+    modal.innerHTML = `
+      <h3 style="margin: 0 0 16px 0; color: var(--text);">Set Deadline</h3>
+      <p style="margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.9rem;">
+        Task will be marked important 3 days before and moved to Today on the deadline date.
+      </p>
+      <input type="date" id="deadline-input" value="${currentDeadline}" min="${minDateStr}"
+        style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--background); color: var(--text); font-size: 1rem; margin-bottom: 16px;">
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        ${currentDeadline ? '<button id="remove-deadline-btn" style="padding: 10px 20px; border: 1px solid #dc2626; background: transparent; color: #dc2626; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Remove</button>' : ''}
+        <button id="cancel-deadline-btn" style="padding: 10px 20px; border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Cancel</button>
+        <button id="set-deadline-btn" style="padding: 10px 20px; border: none; background: var(--primary-color); color: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Set Deadline</button>
+      </div>
+    `;
+
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const input = modal.querySelector('#deadline-input');
+    const setBtn = modal.querySelector('#set-deadline-btn');
+    const cancelBtn = modal.querySelector('#cancel-deadline-btn');
+    const removeBtn = modal.querySelector('#remove-deadline-btn');
+
+    // Focus input
+    setTimeout(() => input.focus(), 100);
+
+    // Set deadline
+    setBtn.addEventListener('click', () => {
+      const deadline = input.value;
+      if (deadline) {
+        this.setTaskDeadline(taskId, deadline);
+        backdrop.remove();
+      }
+    });
+
+    // Cancel
+    cancelBtn.addEventListener('click', () => {
+      backdrop.remove();
+    });
+
+    // Remove deadline
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => {
+        this.setTaskDeadline(taskId, null);
+        backdrop.remove();
+      });
+    }
+
+    // Close on backdrop click
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) {
+        backdrop.remove();
+      }
+    });
+
+    // Close on escape
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        backdrop.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+  }
+
+  // Set task deadline
+  setTaskDeadline(taskId, deadline) {
+    // Find the actual task object to update
+    let actualTask = null;
+    let taskIndex = this.data.today.findIndex(t => t.id === taskId);
+    if (taskIndex !== -1) {
+      actualTask = this.data.today[taskIndex];
+    } else {
+      taskIndex = this.data.tomorrow.findIndex(t => t.id === taskId);
+      if (taskIndex !== -1) {
+        actualTask = this.data.tomorrow[taskIndex];
+      }
+    }
+
+    if (!actualTask) return;
+
+    if (deadline) {
+      actualTask.deadline = deadline;
+      this.showNotification(`Deadline set for ${new Date(deadline).toLocaleDateString()}`, Config.NOTIFICATION_TYPES.SUCCESS);
+    } else {
+      delete actualTask.deadline;
+      // Don't auto-remove importance when removing deadline
+      this.showNotification('Deadline removed', Config.NOTIFICATION_TYPES.SUCCESS);
+    }
+
+    this.save();
+    this.render();
+  }
+
   // Show paste dialog when clipboard API fails
   showPasteDialog() {
     return new Promise((resolve) => {
@@ -2537,6 +2748,7 @@ class ContextMenu {
   constructor(options = {}) {
     this.onEdit = options.onEdit || (() => {});
     this.onToggleImportant = options.onToggleImportant || (() => {});
+    this.onSetDeadline = options.onSetDeadline || (() => {});
     this.onClose = options.onClose || (() => {});
     this.devMode = options.devMode || false;
 
@@ -2610,6 +2822,13 @@ class ContextMenu {
           <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
         </svg>
         <span>${task.important ? 'Remove Importance' : 'Mark as Important'}</span>
+      </div>
+      <div class="context-menu-item" role="menuitem" data-action="deadline" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+          <path d="M6.445 11.688V6.354h-.633A12.6 12.6 0 0 0 4.5 7.16v.695c.375-.257.969-.62 1.258-.777h.012v4.61h.675zm1.188-1.305c.047.64.594 1.406 1.703 1.406 1.258 0 2-1.066 2-2.871 0-1.934-.781-2.668-1.953-2.668-.926 0-1.797.672-1.797 1.809 0 1.16.824 1.77 1.676 1.77.746 0 1.23-.376 1.383-.79h.027c-.004 1.316-.461 2.164-1.305 2.164-.664 0-1.008-.45-1.05-.82h-.684zm2.953-2.317c0 .696-.559 1.18-1.184 1.18-.601 0-1.144-.383-1.144-1.2 0-.823.582-1.21 1.168-1.21.633 0 1.16.398 1.16 1.23z"/>
+        </svg>
+        <span>${task.deadline ? 'Change Deadline' : 'Set Deadline'}</span>
       </div>
     `;
 
@@ -2722,6 +2941,9 @@ class ContextMenu {
         break;
       case 'important':
         this.onToggleImportant(this.currentTask.id);
+        break;
+      case 'deadline':
+        this.onSetDeadline(this.currentTask.id);
         break;
     }
   }
