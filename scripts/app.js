@@ -424,7 +424,10 @@ class DoItTomorrowApp {
       return;
     }
 
-    tasks.forEach(task => {
+    // Filter to only show top-level tasks (no parentId)
+    const topLevelTasks = tasks.filter(task => !task.parentId);
+
+    topLevelTasks.forEach(task => {
       const li = document.createElement('li');
       // Phase 3: Add importance class for visual gradient effects
       const classes = ['task-item'];
@@ -568,8 +571,57 @@ class DoItTomorrowApp {
         }, 300);
       }
 
-      li.innerHTML = this.getTaskHTML(task, listName);
+      // Check if task has children
+      const children = this.getChildren(task.id, listName);
+      const hasChildren = children.length > 0;
+
+      // Add expand/collapse icon if has children
+      const expandIcon = hasChildren ?
+        `<span class="expand-icon" data-task-id="${task.id}">${task.isExpanded ? '▼' : '▶'}</span>` : '';
+
+      li.innerHTML = expandIcon + this.getTaskHTML(task, listName);
       listEl.appendChild(li);
+
+      // Add expand/collapse click handler
+      if (hasChildren) {
+        const expandBtn = li.querySelector('.expand-icon');
+        if (expandBtn) {
+          expandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleSubtaskExpansion(task.id);
+          });
+        }
+      }
+
+      // Render subtasks if this task has children
+      if (children.length > 0) {
+        const subtaskContainer = document.createElement('ul');
+        subtaskContainer.className = 'subtask-list';
+        subtaskContainer.style.display = task.isExpanded ? 'block' : 'none';
+
+        // Sort and render children
+        const sortedChildren = this.sortTasks(children);
+        sortedChildren.forEach(childTask => {
+          const childLi = document.createElement('li');
+          childLi.className = 'subtask-item task-item';
+          if (childTask.completed) childLi.classList.add('completed');
+          if (childTask.important) childLi.classList.add('important');
+          childLi.setAttribute('data-task-id', childTask.id);
+          childLi.setAttribute('data-parent-id', task.id);
+          childLi.innerHTML = this.getTaskHTML(childTask, listName);
+
+          // Add click handler for subtask completion
+          childLi.addEventListener('click', (e) => {
+            if (!e.target.closest('.move-icon')) {
+              this.completeTask(childTask.id, e);
+            }
+          });
+
+          subtaskContainer.appendChild(childLi);
+        });
+
+        listEl.appendChild(subtaskContainer);
+      }
 
       // Add event listeners for arrow buttons
       const moveIcon = li.querySelector('.move-icon');
@@ -874,7 +926,7 @@ class DoItTomorrowApp {
   // Core Task Management Functions
 
   // Add new task (always to Later list unless specified)
-  addTask(text, list = 'tomorrow') {
+  addTask(text, list = 'tomorrow', parentId = null) {
     if (!text || !text.trim()) return false;
 
     const task = {
@@ -882,7 +934,9 @@ class DoItTomorrowApp {
       text: text.trim(),
       completed: false,
       important: false,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      parentId: parentId,
+      isExpanded: true
     };
 
     this.data[list].push(task);
@@ -930,6 +984,11 @@ class DoItTomorrowApp {
       else if (wasCompleted && !task.completed) {
         this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
         this.updateCompletedCounter();
+      }
+
+      // Check if parent should auto-complete
+      if (task.parentId) {
+        this.checkParentCompletion(task.parentId, listName);
       }
 
       this.save();
@@ -1017,6 +1076,7 @@ class DoItTomorrowApp {
       onToggleImportant: (taskId) => this.handleMenuToggleImportant(taskId),
       onSetDeadline: (taskId) => this.handleMenuSetDeadline(taskId),
       onStartPomodoro: (taskId) => this.handleMenuStartPomodoro(taskId),
+      onAddSubtask: (taskId) => this.handleMenuAddSubtask(taskId),
       onClose: () => this.handleMenuClose(),
       devMode: this.devMode
     });
@@ -1118,6 +1178,12 @@ class DoItTomorrowApp {
   handleMenuStartPomodoro(taskId) {
     this.contextMenu.hide();
     setTimeout(() => this.startPomodoro(taskId), 50);
+  }
+
+  // Handle menu add subtask action
+  handleMenuAddSubtask(taskId) {
+    this.contextMenu.hide();
+    setTimeout(() => this.showAddSubtaskDialog(taskId), 50);
   }
 
   // Handle menu close
@@ -1320,6 +1386,40 @@ class DoItTomorrowApp {
       if (fromIndex === -1) return false;
 
       const task = this.data[fromList].splice(fromIndex, 1)[0];
+
+      // Handle subtask movement
+      if (task.parentId) {
+        const originalParentId = task.parentId; // Store original parent ID before modification
+
+        // Find or create parent in target list
+        let parent = this.data[toList].find(t => t.id === task.parentId);
+        if (!parent) {
+          // Parent doesn't exist in target list, create it
+          const sourceParent = this.data[fromList].find(t => t.id === task.parentId);
+          if (sourceParent) {
+            parent = { ...sourceParent, id: this.generateId(), parentId: null };
+            this.data[toList].push(parent);
+          }
+        }
+        // Update subtask's parentId to new parent
+        if (parent) {
+          task.parentId = parent.id;
+        }
+
+        // Check if source parent is now empty (use original parent ID)
+        const sourceParent = this.data[fromList].find(t => t.id === originalParentId);
+        if (sourceParent) {
+          const remainingChildren = this.data[fromList].filter(t => t.parentId === sourceParent.id);
+          if (remainingChildren.length === 0) {
+            // Remove empty parent
+            const parentIndex = this.data[fromList].findIndex(t => t.id === sourceParent.id);
+            if (parentIndex !== -1) {
+              this.data[fromList].splice(parentIndex, 1);
+            }
+          }
+        }
+      }
+
       this.data[toList].push(task);
       this.save();
 
@@ -2229,6 +2329,94 @@ class DoItTomorrowApp {
     `;
   }
 
+  // Subtask Management Methods
+
+  // Show dialog to add subtask
+  showAddSubtaskDialog(taskId) {
+    const taskInfo = this.findTask(taskId);
+    if (!taskInfo) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'subtask-modal';
+    modal.innerHTML = `
+      <div class="subtask-modal-content">
+        <h3>Add Subtask</h3>
+        <p>Adding subtask to: "${Utils.escapeHtml(taskInfo.text)}"</p>
+        <input type="text" id="subtask-input" placeholder="Enter subtask..." maxlength="200" autocomplete="off">
+        <div class="subtask-modal-actions">
+          <button id="cancel-subtask-btn">Cancel</button>
+          <button id="add-subtask-btn" class="primary">Add</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const input = document.getElementById('subtask-input');
+    input.focus();
+
+    document.getElementById('cancel-subtask-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    const addSubtask = () => {
+      const text = input.value.trim();
+      if (text) {
+        this.addSubtask(taskId, text);
+        document.body.removeChild(modal);
+      }
+    };
+
+    document.getElementById('add-subtask-btn').addEventListener('click', addSubtask);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addSubtask();
+    });
+  }
+
+  // Add subtask to a task
+  addSubtask(parentTaskId, text) {
+    const taskInfo = this.findTask(parentTaskId);
+    if (!taskInfo) return;
+
+    // Just create a new task with parentId set
+    this.addTask(text, taskInfo.list, parentTaskId);
+    this.showNotification('Subtask added', Config.NOTIFICATION_TYPES.SUCCESS);
+  }
+
+  // Toggle subtask expansion
+  toggleSubtaskExpansion(taskId) {
+    const taskInfo = this.findTask(taskId);
+    if (!taskInfo) return;
+
+    // Find the actual task in the data array (not the copy)
+    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
+    if (actualTask) {
+      actualTask.isExpanded = !actualTask.isExpanded;
+      this.save();
+      this.render();
+    }
+  }
+
+  // Get children of a task
+  getChildren(parentId, listName) {
+    return this.data[listName].filter(task => task.parentId === parentId);
+  }
+
+  // Check if parent should auto-complete
+  checkParentCompletion(parentId, listName) {
+    const children = this.getChildren(parentId, listName);
+    if (children.length === 0) return;
+
+    const allComplete = children.every(child => child.completed);
+    if (allComplete) {
+      const parent = this.data[listName].find(t => t.id === parentId);
+      if (parent && !parent.completed) {
+        parent.completed = true;
+        this.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
+      }
+    }
+  }
+
   // Show paste dialog when clipboard API fails
   showPasteDialog() {
     return new Promise((resolve) => {
@@ -2943,6 +3131,7 @@ class ContextMenu {
     this.onToggleImportant = options.onToggleImportant || (() => {});
     this.onSetDeadline = options.onSetDeadline || (() => {});
     this.onStartPomodoro = options.onStartPomodoro || (() => {});
+    this.onAddSubtask = options.onAddSubtask || (() => {});
     this.onClose = options.onClose || (() => {});
     this.devMode = options.devMode || false;
 
@@ -3030,6 +3219,12 @@ class ContextMenu {
           <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5H4a.5.5 0 0 1 0-1h3.5V4a.5.5 0 0 1 .5-.5z"/>
         </svg>
         <span>Start Pomodoro</span>
+      </div>
+      <div class="context-menu-item" role="menuitem" data-action="add-subtask" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+        </svg>
+        <span>Add Subtask</span>
       </div>
     `;
 
@@ -3148,6 +3343,9 @@ class ContextMenu {
         break;
       case 'pomodoro':
         this.onStartPomodoro(this.currentTask.id);
+        break;
+      case 'add-subtask':
+        this.onAddSubtask(this.currentTask.id);
         break;
     }
   }
