@@ -1382,8 +1382,8 @@ class DoItTomorrowApp {
   handleMenuDelete(taskId) {
     console.log('🐛 [DELETE] handleMenuDelete called', { taskId });
 
-    const taskInfo = this.findTask(taskId);
-    if (!taskInfo) {
+    const task = this.findTask(taskId);
+    if (!task) {
       console.error('🐛 [DELETE] Task not found!');
       return;
     }
@@ -1391,7 +1391,7 @@ class DoItTomorrowApp {
     this.contextMenu.hide();
 
     // Confirm deletion
-    const confirmMessage = `Delete "${taskInfo.task.text}"?`;
+    const confirmMessage = `Delete "${task.text}"?`;
     if (!confirm(confirmMessage)) {
       console.log('🐛 [DELETE] Deletion cancelled by user');
       return;
@@ -2442,7 +2442,7 @@ class DoItTomorrowApp {
     console.log('🐛 [POMODORO] Showing timer UI...');
     this.showPomodoroTimer();
 
-    this.showNotification(`Pomodoro started for "${taskInfo.task.text}"`, Config.NOTIFICATION_TYPES.SUCCESS);
+    this.showNotification(`Pomodoro started for "${taskInfo.text}"`, Config.NOTIFICATION_TYPES.SUCCESS);
     console.log('🐛 [POMODORO] Pomodoro started successfully!');
   }
 
@@ -2505,7 +2505,7 @@ class DoItTomorrowApp {
       <div class="pomodoro-prompt-content">
         <h3>Pomodoro Complete!</h3>
         <p>Round ${this.pomodoroState.roundCount} finished for:</p>
-        <p class="task-name">"${Utils.escapeHtml(taskInfo.task.text)}"</p>
+        <p class="task-name">"${Utils.escapeHtml(taskInfo.text)}"</p>
         <div class="pomodoro-prompt-actions">
           <button id="pomodoro-complete-btn" class="pomodoro-btn pomodoro-btn-success">Task Done</button>
           <button id="pomodoro-stop-btn" class="pomodoro-btn pomodoro-btn-secondary">Stop Timer</button>
@@ -2625,7 +2625,7 @@ class DoItTomorrowApp {
     });
 
     const taskInfo = this.findTask(this.pomodoroState.taskId);
-    const taskText = taskInfo ? taskInfo.task.text : 'Unknown task';
+    const taskText = taskInfo ? taskInfo.text : 'Unknown task';
 
     console.log('🐛 [POMODORO] Task:', { taskId: this.pomodoroState.taskId, taskText });
 

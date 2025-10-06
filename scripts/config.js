@@ -3,7 +3,7 @@
 
 const Config = {
   // Application metadata
-  VERSION: '1.9.3',
+  VERSION: '1.9.4',
   APP_NAME: 'Do It (Later)',
   APP_SHORT_NAME: 'DoIt(Later)',
 
