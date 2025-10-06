@@ -81,7 +81,39 @@ class DoItTomorrowApp {
   generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
   }
-  
+
+  // Helper methods for new data structure
+  getTasksByList(listName) {
+    return this.data.tasks.filter(t => t.list === listName);
+  }
+
+  findTaskById(id) {
+    return this.data.tasks.find(t => t.id === id);
+  }
+
+  addTaskToList(task, listName) {
+    task.list = listName;
+    this.data.tasks.push(task);
+  }
+
+  removeTaskById(id) {
+    const index = this.data.tasks.findIndex(t => t.id === id);
+    if (index !== -1) {
+      this.data.tasks.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  moveTaskToList(id, toList) {
+    const task = this.findTaskById(id);
+    if (task) {
+      task.list = toList;
+      return true;
+    }
+    return false;
+  }
+
   init() {
     this.initTheme();
     this.updateCurrentDate();
@@ -169,42 +201,33 @@ class DoItTomorrowApp {
     const today = new Date().toISOString().split('T')[0];
     if (this.data.currentDate !== today) {
       // New day detected - perform daily cleanup
-      const completedToday = this.data.today.filter(task => task.completed).length;
-      const completedLater = this.data.tomorrow.filter(task => task.completed).length;
+      const completedToday = this.data.tasks.filter(task => task.list === 'today' && task.completed).length;
+      const completedLater = this.data.tasks.filter(task => task.list === 'tomorrow' && task.completed).length;
 
       // Remove completed tasks from Today
-      this.data.today = this.data.today.filter(task => !task.completed);
+      this.data.tasks = this.data.tasks.filter(task => !(task.list === 'today' && task.completed));
 
       // Remove completed tasks from Later, but keep incomplete ones there
-      const incompleteLaterTasks = this.data.tomorrow.filter(task => !task.completed);
+      const incompleteLaterTasks = this.data.tasks.filter(task => task.list === 'tomorrow' && !task.completed);
 
       // Check for week-old Later tasks (7+ days old) and move them to Today
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       const weekAgoTimestamp = weekAgo.getTime();
 
-      const weekOldTasks = [];
-      const remainingLaterTasks = [];
-
+      let weekOldTasksMoved = 0;
       incompleteLaterTasks.forEach(task => {
         const taskAge = task.createdAt || Date.now(); // Fallback for tasks without timestamp
         if (taskAge < weekAgoTimestamp) {
           // Task is 7+ days old, move to Today
-          weekOldTasks.push(task);
-        } else {
-          // Keep in Later
-          remainingLaterTasks.push(task);
+          task.list = 'today';
+          weekOldTasksMoved++;
         }
+        // Task is already in the list, just update the list property
       });
 
-      // Add week-old tasks to Today
-      this.data.today.push(...weekOldTasks);
-
-      // Update Later list with remaining tasks
-      this.data.tomorrow = remainingLaterTasks;
-
       // Check deadlines on all tasks
-      const allTasks = [...this.data.today, ...this.data.tomorrow];
+      const allTasks = this.data.tasks;
       const todayDate = new Date(today);
       const threeDaysFromNow = new Date(todayDate);
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
@@ -219,10 +242,8 @@ class DoItTomorrowApp {
           // If deadline is today, move to Today list
           if (task.deadline === today) {
             // Move from Later to Today if not already there
-            const laterIndex = this.data.tomorrow.findIndex(t => t.id === task.id);
-            if (laterIndex !== -1) {
-              this.data.tomorrow.splice(laterIndex, 1);
-              this.data.today.push(task);
+            if (task.list === 'tomorrow') {
+              task.list = 'today';
               deadlineTasksMoved++;
             }
           }
@@ -243,8 +264,8 @@ class DoItTomorrowApp {
       if (completedToday > 0 || completedLater > 0) {
         notificationParts.push(`${completedToday + completedLater} completed tasks cleaned up`);
       }
-      if (weekOldTasks.length > 0) {
-        notificationParts.push(`${weekOldTasks.length} week-old tasks moved to Today`);
+      if (weekOldTasksMoved > 0) {
+        notificationParts.push(`${weekOldTasksMoved} week-old tasks moved to Today`);
       }
       if (deadlineTasksMoved > 0) {
         notificationParts.push(`${deadlineTasksMoved} deadline tasks moved to Today`);
@@ -254,8 +275,8 @@ class DoItTomorrowApp {
       }
 
       // Log cleanup for dev mode
-      if (this.devMode && (completedToday > 0 || completedLater > 0 || weekOldTasks.length > 0 || deadlineTasksMoved > 0 || tasksMarkedImportant > 0)) {
-        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedLater} completed tasks, moved ${weekOldTasks.length} week-old tasks to Today, moved ${deadlineTasksMoved} deadline tasks, marked ${tasksMarkedImportant} tasks important`);
+      if (this.devMode && (completedToday > 0 || completedLater > 0 || weekOldTasksMoved > 0 || deadlineTasksMoved > 0 || tasksMarkedImportant > 0)) {
+        console.log(`🗑️ Daily cleanup: Removed ${completedToday + completedLater} completed tasks, moved ${weekOldTasksMoved} week-old tasks to Today, moved ${deadlineTasksMoved} deadline tasks, marked ${tasksMarkedImportant} tasks important`);
       }
 
       this.save();
@@ -323,7 +344,7 @@ class DoItTomorrowApp {
       }
 
       // Prevent duplicate tasks in the same list
-      const existingTasks = this.data[list];
+      const existingTasks = this.getTasksByList(list);
       if (existingTasks.some(task => task.text.toLowerCase() === text.toLowerCase())) {
         this.showNotification('This task already exists in this list!', 'warning');
         return;
@@ -1100,7 +1121,7 @@ class DoItTomorrowApp {
       isExpanded: true
     };
 
-    this.data[list].push(task);
+    this.addTaskToList(task, list);
     this.save();
     this.render();
     return task;
@@ -1114,23 +1135,7 @@ class DoItTomorrowApp {
     }
 
     // Find the actual task object (not a copy) in the data arrays
-    let task = null;
-    let taskIndex = -1;
-    let listName = '';
-
-    // Check today list
-    taskIndex = this.data.today.findIndex(t => t.id === id);
-    if (taskIndex !== -1) {
-      task = this.data.today[taskIndex];
-      listName = 'today';
-    } else {
-      // Check tomorrow list
-      taskIndex = this.data.tomorrow.findIndex(t => t.id === id);
-      if (taskIndex !== -1) {
-        task = this.data.tomorrow[taskIndex];
-        listName = 'tomorrow';
-      }
-    }
+    const task = this.findTaskById(id);
 
     if (task) {
       const wasCompleted = task.completed;
@@ -1147,9 +1152,24 @@ class DoItTomorrowApp {
         this.updateCompletedCounter();
       }
 
+      // If this is a parent task being marked incomplete, also mark all children incomplete
+      if (wasCompleted && !task.completed && !task.parentId) {
+        const children = this.getChildren(id, task.list);
+        if (children.length > 0) {
+          children.forEach(child => {
+            if (child.completed) {
+              child.completed = false;
+              // Decrement counter for each child
+              this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
+            }
+          });
+          this.updateCompletedCounter();
+        }
+      }
+
       // Check if parent should auto-complete
       if (task.parentId) {
-        this.checkParentCompletion(task.parentId, listName);
+        this.checkParentCompletion(task.parentId, task.list);
       }
 
       this.save();
@@ -1289,18 +1309,12 @@ class DoItTomorrowApp {
   handleMenuToggleImportant(taskId) {
     console.log('🐛 [IMPORTANT] handleMenuToggleImportant called', { taskId });
 
-    const taskInfo = this.findTask(taskId);
-    console.log('🐛 [IMPORTANT] findTask result:', taskInfo);
+    // Find the ACTUAL task in the data array (not a copy)
+    const actualTask = this.findTaskById(taskId);
+    console.log('🐛 [IMPORTANT] findTaskById result:', actualTask);
 
-    if (!taskInfo) {
-      console.error('🐛 [IMPORTANT] Task not found!');
-      return;
-    }
-
-    // Find the ACTUAL task in the data array (not the copy)
-    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
     if (!actualTask) {
-      console.error('🐛 [IMPORTANT] Actual task not found in data array!');
+      console.error('🐛 [IMPORTANT] Task not found!');
       return;
     }
 
@@ -1478,19 +1492,7 @@ class DoItTomorrowApp {
     if (!this.editingTask) return;
 
     // Find the actual task object to update
-    let actualTask = null;
-
-    // Check today list
-    let taskIndex = this.data.today.findIndex(t => t.id === this.editingTask);
-    if (taskIndex !== -1) {
-      actualTask = this.data.today[taskIndex];
-    } else {
-      // Check tomorrow list
-      taskIndex = this.data.tomorrow.findIndex(t => t.id === this.editingTask);
-      if (taskIndex !== -1) {
-        actualTask = this.data.tomorrow[taskIndex];
-      }
-    }
+    const actualTask = this.findTaskById(this.editingTask);
 
     if (!actualTask) return;
 
@@ -1595,10 +1597,8 @@ class DoItTomorrowApp {
 
     // Wait for animation, then move the task
     setTimeout(() => {
-      const fromIndex = this.data[fromList].findIndex(task => task.id === id);
-      if (fromIndex === -1) return false;
-
-      const task = this.data[fromList].splice(fromIndex, 1)[0];
+      const task = this.findTaskById(id);
+      if (!task) return false;
 
       console.log('🐛 [MOVE] Moving task:', {
         id: task.id,
@@ -1610,72 +1610,35 @@ class DoItTomorrowApp {
 
       // Handle subtask movement (task being moved IS a subtask)
       if (task.parentId) {
-        console.log('🐛 [MOVE] This is a subtask, handling parent...');
-        const originalParentId = task.parentId;
-        const sourceParent = this.data[fromList].find(t => t.id === originalParentId);
+        console.log('🐛 [MOVE] This is a subtask, moving individually...');
+        const parent = this.findTaskById(task.parentId);
 
-        if (!sourceParent) {
-          console.error('🐛 [MOVE] Source parent not found!');
+        if (!parent) {
+          console.error('🐛 [MOVE] Parent not found!');
           return false;
         }
 
-        // Try to find an existing parent in target list with matching text
-        let parent = this.data[toList].find(t =>
-          !t.parentId && // Must be a parent task (no parentId)
-          t.text === sourceParent.text // Same text as source parent
-        );
-
-        if (parent) {
-          console.log('🐛 [MOVE] Found existing parent in target list, merging');
-        } else {
-          // No matching parent exists, create a new one
-          console.log('🐛 [MOVE] Creating new parent in target list');
-          parent = {
-            ...sourceParent,
-            id: this.generateId(),
-            parentId: null,
-            // Preserve important task properties from source parent
-            important: sourceParent.important || false,
-            deadline: sourceParent.deadline,
-            completed: false // Don't carry over completion status for parent
-          };
-          this.data[toList].push(parent);
-        }
-
-        // Update subtask's parentId to target parent
-        task.parentId = parent.id;
-        console.log(`🐛 [MOVE] Updated subtask parent from ${originalParentId} to ${parent.id}`);
-
-        // Check if source parent is now empty
-        const remainingChildren = this.data[fromList].filter(t => t.parentId === sourceParent.id);
-        if (remainingChildren.length === 0) {
-          console.log('🐛 [MOVE] Source parent is empty, removing it');
-          const parentIndex = this.data[fromList].findIndex(t => t.id === sourceParent.id);
-          if (parentIndex !== -1) {
-            this.data[fromList].splice(parentIndex, 1);
-          }
-        }
+        // Just change the subtask's list property
+        // Parent stays where it is, child can be in different list
+        task.list = toList;
+        console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent remains in ${parent.list}`);
       } else {
         // Handle parent task movement - move all children with it
-        const children = this.data[fromList].filter(t => t.parentId === task.id);
+        const children = this.data.tasks.filter(t => t.parentId === task.id);
         if (children.length > 0) {
           console.log(`🐛 [MOVE] This is a parent task with ${children.length} children, moving them all`);
 
           // Move all children to the target list
           children.forEach(child => {
-            const childIndex = this.data[fromList].findIndex(t => t.id === child.id);
-            if (childIndex !== -1) {
-              const movedChild = this.data[fromList].splice(childIndex, 1)[0];
-              // Update child's parentId to point to the moved parent
-              movedChild.parentId = task.id;
-              this.data[toList].push(movedChild);
-              console.log(`🐛 [MOVE] Moved child: ${movedChild.text.substring(0, 20)}`);
-            }
+            child.list = toList;
+            console.log(`🐛 [MOVE] Moved child: ${child.text.substring(0, 20)}`);
           });
         }
+
+        // Move the parent task
+        task.list = toList;
       }
 
-      this.data[toList].push(task);
       this.save();
 
       // Mark task for moving-in animation from opposite direction
@@ -1689,109 +1652,58 @@ class DoItTomorrowApp {
 
   // Helper function to find task by ID across both lists
   findTask(id) {
-    const todayTask = this.data.today.find(task => task.id === id);
-    if (todayTask) {
-      return { ...todayTask, list: 'today' };
-    }
-
-    const tomorrowTask = this.data.tomorrow.find(task => task.id === id);
-    if (tomorrowTask) {
-      return { ...tomorrowTask, list: 'tomorrow' };
-    }
-
-    return null;
+    const task = this.findTaskById(id);
+    return task ? { ...task } : null;
   }
 
   // Delete task with all its subtasks (recursively)
   deleteTaskWithSubtasks(id) {
     console.log('🐛 [DELETE] deleteTaskWithSubtasks called', { id });
 
-    let found = false;
     let deletedCount = 0;
+    const task = this.findTaskById(id);
 
-    // Helper function to delete from a specific list
-    const deleteFromList = (listName) => {
-      const list = this.data[listName];
-
-      // Find the task
-      const taskIndex = list.findIndex(task => task.id === id);
-      if (taskIndex !== -1) {
-        const task = list[taskIndex];
-        console.log(`🐛 [DELETE] Found task in ${listName}:`, {
-          id: task.id,
-          text: task.text.substring(0, 30),
-          hasParent: !!task.parentId
-        });
-
-        // If this is a parent task, delete all its children first
-        if (!task.parentId) {
-          const children = list.filter(t => t.parentId === id);
-          console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
-
-          children.forEach(child => {
-            const childIndex = list.findIndex(t => t.id === child.id);
-            if (childIndex !== -1) {
-              list.splice(childIndex, 1);
-              deletedCount++;
-              console.log(`🐛 [DELETE] Deleted child: ${child.text.substring(0, 20)}`);
-            }
-          });
-
-          // Also check the OTHER list for orphaned children
-          const otherList = listName === 'today' ? 'tomorrow' : 'today';
-          const orphanedChildren = this.data[otherList].filter(t => t.parentId === id);
-          console.log(`🐛 [DELETE] Found ${orphanedChildren.length} orphaned children in ${otherList}`);
-
-          orphanedChildren.forEach(child => {
-            const childIndex = this.data[otherList].findIndex(t => t.id === child.id);
-            if (childIndex !== -1) {
-              this.data[otherList].splice(childIndex, 1);
-              deletedCount++;
-              console.log(`🐛 [DELETE] Deleted orphaned child from ${otherList}: ${child.text.substring(0, 20)}`);
-            }
-          });
-        }
-
-        // Delete the task itself
-        list.splice(taskIndex, 1);
-        deletedCount++;
-        found = true;
-        console.log(`🐛 [DELETE] Deleted main task`);
-      }
-    };
-
-    // Check both lists
-    deleteFromList('today');
-    deleteFromList('tomorrow');
-
-    if (found) {
-      console.log(`🐛 [DELETE] Total tasks deleted: ${deletedCount}`);
-      this.save();
-      this.render();
-    } else {
-      console.error('🐛 [DELETE] Task not found in either list');
+    if (!task) {
+      console.error('🐛 [DELETE] Task not found');
+      return false;
     }
 
-    return found;
+    console.log(`🐛 [DELETE] Found task:`, {
+      id: task.id,
+      text: task.text.substring(0, 30),
+      hasParent: !!task.parentId
+    });
+
+    // If this is a parent task, delete all its children first
+    if (!task.parentId) {
+      // Find all children (across all lists)
+      const children = this.data.tasks.filter(t => t.parentId === id);
+      console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
+
+      children.forEach(child => {
+        this.removeTaskById(child.id);
+        deletedCount++;
+        console.log(`🐛 [DELETE] Deleted child: ${child.text.substring(0, 20)}`);
+      });
+    }
+
+    // Delete the task itself
+    const removed = this.removeTaskById(id);
+    if (removed) {
+      deletedCount++;
+      console.log(`🐛 [DELETE] Deleted main task`);
+    }
+
+    console.log(`🐛 [DELETE] Total tasks deleted: ${deletedCount}`);
+    this.save();
+    this.render();
+
+    return true;
   }
 
   // Delete task (simple version without subtasks)
   deleteTask(id) {
-    let found = false;
-
-    // Check today list
-    const todayIndex = this.data.today.findIndex(task => task.id === id);
-    if (todayIndex !== -1) {
-      this.data.today.splice(todayIndex, 1);
-      found = true;
-    }
-
-    // Check tomorrow list
-    const tomorrowIndex = this.data.tomorrow.findIndex(task => task.id === id);
-    if (tomorrowIndex !== -1) {
-      this.data.tomorrow.splice(tomorrowIndex, 1);
-      found = true;
-    }
+    const found = this.removeTaskById(id);
 
     if (found) {
       this.save();
@@ -1846,7 +1758,10 @@ class DoItTomorrowApp {
       if (!file) return;
 
       try {
-        const importedData = await Sync.importFromFile(file);
+        let importedData = await Sync.importFromFile(file);
+
+        // Migrate old format to new format if needed
+        importedData = Storage.migrateData(importedData);
 
         // Merge with existing data
         const shouldReplace = confirm(
@@ -1858,18 +1773,23 @@ class DoItTomorrowApp {
           this.data = importedData;
         } else {
           // Merge: add imported tasks to existing ones (avoid duplicates)
-          this.data.today.push(...importedData.today.filter(task =>
-            !this.data.today.some(existing => existing.text === task.text)
-          ));
-          this.data.tomorrow.push(...importedData.tomorrow.filter(task =>
-            !this.data.tomorrow.some(existing => existing.text === task.text)
-          ));
-          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+          const importedTasks = importedData.tasks || [];
+          importedTasks.forEach(task => {
+            const isDuplicate = this.data.tasks.some(existing =>
+              existing.text === task.text && existing.list === task.list
+            );
+            if (!isDuplicate) {
+              this.data.tasks.push(task);
+            }
+          });
+          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted || 0);
         }
 
         this.save();
         this.render();
-        this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks`, 'success');
+
+        const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+        this.showNotification(`Imported ${taskCount} tasks`, 'success');
 
         // Clear file input
         importFile.value = '';
@@ -1926,6 +1846,9 @@ class DoItTomorrowApp {
           }
         }
 
+        // Migrate old format to new format if needed
+        importedData = Storage.migrateData(importedData);
+
         // Merge with existing data
         const shouldReplace = confirm(
           'Replace your current tasks with clipboard data?\n\n' +
@@ -1936,18 +1859,23 @@ class DoItTomorrowApp {
           this.data = importedData;
         } else {
           // Merge: add imported tasks to existing ones (avoid duplicates)
-          this.data.today.push(...importedData.today.filter(task =>
-            !this.data.today.some(existing => existing.text === task.text)
-          ));
-          this.data.tomorrow.push(...importedData.tomorrow.filter(task =>
-            !this.data.tomorrow.some(existing => existing.text === task.text)
-          ));
-          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+          const importedTasks = importedData.tasks || [];
+          importedTasks.forEach(task => {
+            const isDuplicate = this.data.tasks.some(existing =>
+              existing.text === task.text && existing.list === task.list
+            );
+            if (!isDuplicate) {
+              this.data.tasks.push(task);
+            }
+          });
+          this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted || 0);
         }
 
         this.save();
         this.render();
-        this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from clipboard`, 'success');
+
+        const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+        this.showNotification(`Imported ${taskCount} tasks from clipboard`, 'success');
 
       } catch (error) {
         console.error('Clipboard import error:', error);
@@ -2108,8 +2036,8 @@ class DoItTomorrowApp {
     ];
 
     // Add to both lists for comprehensive sorting testing
-    this.data.today.push(...testTasks.slice(0, 3));
-    this.data.tomorrow.push(...testTasks.slice(3));
+    testTasks.slice(0, 3).forEach(task => { task.list = "today"; this.data.tasks.push(task); });
+    testTasks.slice(3).forEach(task => { task.list = "tomorrow"; this.data.tasks.push(task); }); // this.data.tomorrow.push(...testTasks.slice(3));
     this.save();
     this.render();
 
@@ -2453,17 +2381,8 @@ class DoItTomorrowApp {
 
   // Set task deadline
   setTaskDeadline(taskId, deadline) {
-    // Find the actual task object to update
-    let actualTask = null;
-    let taskIndex = this.data.today.findIndex(t => t.id === taskId);
-    if (taskIndex !== -1) {
-      actualTask = this.data.today[taskIndex];
-    } else {
-      taskIndex = this.data.tomorrow.findIndex(t => t.id === taskId);
-      if (taskIndex !== -1) {
-        actualTask = this.data.tomorrow[taskIndex];
-      }
-    }
+    // Find the actual task object to update using helper method
+    const actualTask = this.findTaskById(taskId);
 
     if (!actualTask) return;
 
@@ -2642,7 +2561,7 @@ class DoItTomorrowApp {
     this.pomodoroState.roundCount++;
     this.pomodoroState.timeRemaining = Config.POMODORO_WORK_MINUTES * 60;
     this.pomodoroState.intervalId = setInterval(() => this.tickPomodoro(), 1000);
-    this.updatePomodoroDisplay();
+    this.showPomodoroTimer(); // Use showPomodoroTimer to ensure timer is visible
   }
 
   // Show timer UI
@@ -2661,11 +2580,13 @@ class DoItTomorrowApp {
       console.log('🐛 [POMODORO] Timer element created and appended to body');
     }
 
+    // Set display to flex BEFORE updating content to ensure visibility
+    console.log('🐛 [POMODORO] Setting display to flex');
+    timerEl.style.display = 'flex';
+
     console.log('🐛 [POMODORO] Updating display...');
     this.updatePomodoroDisplay();
 
-    console.log('🐛 [POMODORO] Setting display to flex');
-    timerEl.style.display = 'flex';
     console.log('🐛 [POMODORO] Timer element style:', {
       display: timerEl.style.display,
       position: window.getComputedStyle(timerEl).position,
@@ -2731,8 +2652,8 @@ class DoItTomorrowApp {
       return;
     }
 
-    // Find the actual task in the data array
-    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
+    // Find the actual task in the data array using helper method
+    const actualTask = this.findTaskById(taskId);
     if (!actualTask) {
       console.error('🐛 [SUBTASK] Actual task not found in data!');
       return;
@@ -2784,8 +2705,8 @@ class DoItTomorrowApp {
 
     console.log('🐛 [SUBTASK] Created new subtask:', newTask);
 
-    // Add to the same list as the parent
-    this.data[taskInfo.list].push(newTask);
+    // Add to the same list as the parent using helper method
+    this.addTaskToList(newTask, taskInfo.list);
     this.save();
 
     // Re-render to show the new subtask
@@ -2808,8 +2729,8 @@ class DoItTomorrowApp {
     const taskInfo = this.findTask(taskId);
     if (!taskInfo) return;
 
-    // Find the actual task in the data array (not the copy)
-    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
+    // Find the actual task in the data array (not the copy) using helper method
+    const actualTask = this.findTaskById(taskId);
     if (actualTask) {
       actualTask.isExpanded = !actualTask.isExpanded;
       this.save();
@@ -2834,7 +2755,7 @@ class DoItTomorrowApp {
 
   // Get children of a task
   getChildren(parentId, listName) {
-    return this.data[listName].filter(task => task.parentId === parentId);
+    return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
   }
 
   // Check if parent should auto-complete
@@ -2844,7 +2765,7 @@ class DoItTomorrowApp {
 
     const allComplete = children.every(child => child.completed);
     if (allComplete) {
-      const parent = this.data[listName].find(t => t.id === parentId);
+      const parent = this.data.tasks.find(t => t.id === parentId && t.list === listName);
       if (parent && !parent.completed) {
         parent.completed = true;
         this.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
@@ -3000,7 +2921,7 @@ class DoItTomorrowApp {
           </div>
         </div>
         <p class="qr-stats">
-          ${this.data.today.length + this.data.tomorrow.length} tasks
+          ${this.data.tasks.length} tasks
         </p>
       </div>
 
@@ -3330,7 +3251,10 @@ class DoItTomorrowApp {
   // Import QR data with confirmation
   importQRData(qrData, modal, style) {
     try {
-      const importedData = Sync.parseQRData(qrData);
+      let importedData = Sync.parseQRData(qrData);
+
+      // Migrate old format to new format if needed
+      importedData = Storage.migrateData(importedData);
 
       const shouldReplace = confirm(
         'Replace your current tasks with scanned data?\n\n' +
@@ -3341,14 +3265,23 @@ class DoItTomorrowApp {
         this.data = importedData;
       } else {
         // Merge: add imported tasks to existing ones
-        this.data.today.push(...importedData.today);
-        this.data.tomorrow.push(...importedData.tomorrow);
-        this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
+        const importedTasks = importedData.tasks || [];
+        importedTasks.forEach(task => {
+          const isDuplicate = this.data.tasks.some(existing =>
+            existing.text === task.text && existing.list === task.list
+          );
+          if (!isDuplicate) {
+            this.data.tasks.push(task);
+          }
+        });
+        this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted || 0);
       }
 
       this.save();
       this.render();
-      this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from QR scan`, 'success');
+
+      const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+      this.showNotification(`Imported ${taskCount} tasks from QR scan`, 'success');
 
       // Close modal
       document.body.removeChild(modal);
