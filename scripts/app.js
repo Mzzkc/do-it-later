@@ -613,8 +613,8 @@ class DoItTomorrowApp {
         }
       }
 
-      // Render subtasks if this task has children
-      if (children.length > 0) {
+      // Render subtasks if this task has children OR if we're adding a subtask
+      if (children.length > 0 || task._addingSubtask) {
         const subtaskContainer = document.createElement('ul');
         subtaskContainer.className = 'subtask-list';
         subtaskContainer.style.display = task.isExpanded ? 'block' : 'none';
@@ -655,6 +655,50 @@ class DoItTomorrowApp {
 
           subtaskContainer.appendChild(childLi);
         });
+
+        // Add inline input if we're in subtask-adding mode
+        if (task._addingSubtask) {
+          const inputLi = document.createElement('li');
+          inputLi.className = 'subtask-input-container';
+          inputLi.innerHTML = `
+            <input
+              type="text"
+              id="subtask-input-${task.id}"
+              class="subtask-input"
+              placeholder="Add a subtask..."
+              maxlength="200"
+              autocomplete="off"
+            />
+          `;
+
+          const input = inputLi.querySelector('input');
+
+          // Handle adding subtask on Enter
+          input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              const text = input.value.trim();
+              if (text) {
+                console.log('🐛 [SUBTASK] Adding subtask:', text);
+                this.addSubtask(task.id, text);
+                // Clear input but keep it visible
+                input.value = '';
+                input.focus();
+              }
+            }
+          });
+
+          // Handle Escape to close the input
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              console.log('🐛 [SUBTASK] Closing subtask input');
+              task._addingSubtask = false;
+              this.save();
+              this.render();
+            }
+          });
+
+          subtaskContainer.appendChild(inputLi);
+        }
 
         listEl.appendChild(subtaskContainer);
       }
@@ -2597,55 +2641,85 @@ class DoItTomorrowApp {
 
   // Subtask Management Methods
 
-  // Show dialog to add subtask
+  // Show inline input to add subtask
   showAddSubtaskDialog(taskId) {
+    console.log('🐛 [SUBTASK] showAddSubtaskDialog called', { taskId });
+
     const taskInfo = this.findTask(taskId);
-    if (!taskInfo) return;
+    if (!taskInfo) {
+      console.error('🐛 [SUBTASK] Task not found!');
+      return;
+    }
 
-    const modal = document.createElement('div');
-    modal.className = 'subtask-modal';
-    modal.innerHTML = `
-      <div class="subtask-modal-content">
-        <h3>Add Subtask</h3>
-        <p>Adding subtask to: "${Utils.escapeHtml(taskInfo.text)}"</p>
-        <input type="text" id="subtask-input" placeholder="Enter subtask..." maxlength="200" autocomplete="off">
-        <div class="subtask-modal-actions">
-          <button id="cancel-subtask-btn">Cancel</button>
-          <button id="add-subtask-btn" class="primary">Add</button>
-        </div>
-      </div>
-    `;
+    // Find the actual task in the data array
+    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
+    if (!actualTask) {
+      console.error('🐛 [SUBTASK] Actual task not found in data!');
+      return;
+    }
 
-    document.body.appendChild(modal);
+    // Mark this task as having an active subtask input
+    actualTask._addingSubtask = true;
 
-    const input = document.getElementById('subtask-input');
-    input.focus();
+    // Make sure the task is expanded so we can see the input
+    if (!actualTask.isExpanded) {
+      actualTask.isExpanded = true;
+    }
 
-    document.getElementById('cancel-subtask-btn').addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
+    console.log('🐛 [SUBTASK] Marked task for subtask input, re-rendering...');
+    this.save();
+    this.render();
 
-    const addSubtask = () => {
-      const text = input.value.trim();
-      if (text) {
-        this.addSubtask(taskId, text);
-        document.body.removeChild(modal);
+    // Focus the input after render
+    setTimeout(() => {
+      const input = document.getElementById(`subtask-input-${taskId}`);
+      if (input) {
+        input.focus();
+        console.log('🐛 [SUBTASK] Focused subtask input');
+      } else {
+        console.error('🐛 [SUBTASK] Could not find subtask input after render');
       }
-    };
-
-    document.getElementById('add-subtask-btn').addEventListener('click', addSubtask);
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') addSubtask();
-    });
+    }, 50);
   }
 
   // Add subtask to a task
   addSubtask(parentTaskId, text) {
-    const taskInfo = this.findTask(parentTaskId);
-    if (!taskInfo) return;
+    console.log('🐛 [SUBTASK] addSubtask called', { parentTaskId, text });
 
-    // Just create a new task with parentId set
-    this.addTask(text, taskInfo.list, parentTaskId);
+    const taskInfo = this.findTask(parentTaskId);
+    if (!taskInfo) {
+      console.error('🐛 [SUBTASK] Parent task not found!');
+      return;
+    }
+
+    // Create a new task with parentId set
+    const newTask = {
+      id: this.generateId(),
+      text: text,
+      completed: false,
+      important: false,
+      parentId: parentTaskId,
+      createdAt: Date.now()
+    };
+
+    console.log('🐛 [SUBTASK] Created new subtask:', newTask);
+
+    // Add to the same list as the parent
+    this.data[taskInfo.list].push(newTask);
+    this.save();
+
+    // Re-render to show the new subtask
+    this.render();
+
+    // Re-focus the input after render
+    setTimeout(() => {
+      const input = document.getElementById(`subtask-input-${parentTaskId}`);
+      if (input) {
+        input.focus();
+        console.log('🐛 [SUBTASK] Re-focused input after adding subtask');
+      }
+    }, 50);
+
     this.showNotification('Subtask added', Config.NOTIFICATION_TYPES.SUCCESS);
   }
 

@@ -864,6 +864,36 @@ ul {
   border-left-color: var(--notebook-yellow);
 }
 
+/* Inline subtask input */
+.subtask-input-container {
+  list-style: none;
+  margin: 0.5rem 0 0.5rem 0;
+  padding: 0;
+}
+
+.subtask-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--background);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.subtask-input:focus {
+  border-color: var(--notebook-yellow);
+  box-shadow: 0 0 0 2px rgba(249, 247, 237, 0.1);
+}
+
+.subtask-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
 .task-actions {
   display: flex;
   gap: 0.25rem;
