@@ -11,6 +11,7 @@ Ultra-simple task management that gets out of your way. Add tasks, complete them
 - **Two Lists Only:** Today and Later
 - **Three Actions:** Add, Complete, Push to Later
 - **Task Deadlines:** Set deadlines that auto-prioritize and move tasks
+- **Pomodoro Timer:** Focus on tasks with built-in 25-minute timer
 - **Maintenance-Free Sync:** Export/import files + QR codes
 - **Offline-First:** Works without internet
 - **Your Data:** Stored locally, export anytime
@@ -27,6 +28,19 @@ Tasks can have deadlines that automatically manage themselves:
   - Orange: Due today
   - Yellow: Due soon (tomorrow or within 3 days)
   - Blue: Future deadline
+
+### 🍅 Pomodoro Timer
+
+Stay focused with the built-in Pomodoro technique:
+- **Start via Long Press:** Hold task → Start Pomodoro
+- **25-Minute Rounds:** Standard Pomodoro work interval
+- **Persistent Timer:** Always visible in bottom corner
+- **Round Counter:** Track multiple consecutive rounds
+- **After Each Round, Choose:**
+  - **Task Done**: Mark complete and stop
+  - **Stop Timer**: End the session
+  - **Continue**: Start next round immediately
+- **Haptic Feedback:** Vibration on completion (mobile)
 
 ## 🚀 Live App
 

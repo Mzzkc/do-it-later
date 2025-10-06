@@ -3,7 +3,7 @@
 
 const Config = {
   // Application metadata
-  VERSION: '1.6.0',
+  VERSION: '1.7.0',
   APP_NAME: 'Do It (Later)',
   APP_SHORT_NAME: 'DoIt(Later)',
 
@@ -28,6 +28,8 @@ const Config = {
   COMPLETED_TASK_RETENTION_DAYS: 0, // Clean up immediately on rollover
   LATER_TASK_REMINDER_DAYS: 7,
   MAX_LOG_ENTRIES: 500,
+  POMODORO_WORK_MINUTES: 25,
+  POMODORO_BREAK_MINUTES: 5,
 
   // UI constraints
   MAX_TASK_LENGTH: 200,
