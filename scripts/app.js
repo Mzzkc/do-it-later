@@ -2871,6 +2871,9 @@ class DoItTomorrowApp {
   // Show QR code modal with actual QR generation and scanning
   showQRModal() {
     const qrData = Sync.generateQRData(this.data);
+    const dataSize = qrData.length;
+    const maxSize = 2300; // QR code practical limit with Medium error correction
+    const isTooBig = dataSize > maxSize;
 
     // Create modal
     const modal = document.createElement('div');
@@ -2915,14 +2918,29 @@ class DoItTomorrowApp {
 
       <!-- Share Panel -->
       <div id="share-panel" class="qr-panel">
-        <div class="qr-container">
-          <div id="qr-code" class="qr-code-display">
-            <div class="qr-loading">Generating QR code...</div>
+        ${isTooBig ? `
+          <div class="qr-error" style="padding: 2rem; text-align: center; color: var(--text);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+            <h4 style="margin: 0 0 0.5rem 0;">Too Many Tasks for QR Code</h4>
+            <p style="margin: 0 0 1rem 0; opacity: 0.8;">
+              ${dataSize} bytes (max ${maxSize} bytes)<br>
+              Try exporting to file or clipboard instead
+            </p>
+            <button onclick="document.getElementById('export-file-btn').click(); document.querySelector('.qr-close').click();"
+                    style="padding: 0.5rem 1rem; background: var(--notebook-yellow); border: none; border-radius: 4px; cursor: pointer;">
+              Export to File
+            </button>
           </div>
-        </div>
-        <p class="qr-stats">
-          ${this.data.tasks.length} tasks
-        </p>
+        ` : `
+          <div class="qr-container">
+            <div id="qr-code" class="qr-code-display">
+              <div class="qr-loading">Generating QR code...</div>
+            </div>
+          </div>
+          <p class="qr-stats" style="margin-top: 1rem; opacity: 0.7;">
+            ${this.data.tasks.filter(t => !t.completed).length} tasks • ${dataSize} bytes
+          </p>
+        `}
       </div>
 
       <!-- Scan Panel -->
@@ -2975,8 +2993,10 @@ class DoItTomorrowApp {
 
     // QR tab styles are now handled in main.css
 
-    // Generate QR code with multiple fallbacks
-    this.generateQRCode(qrData);
+    // Generate QR code with multiple fallbacks (only if not too big)
+    if (!isTooBig) {
+      this.generateQRCode(qrData);
+    }
 
     // Tab switching
     const shareTab = content.querySelector('#share-tab');
@@ -3107,7 +3127,12 @@ class DoItTomorrowApp {
   // QR Code generation with fallbacks
   generateQRCode(data) {
     const qrElement = document.getElementById('qr-code');
-    if (!qrElement) return;
+    if (!qrElement) {
+      console.error('❌ QR element not found');
+      return;
+    }
+
+    console.log(`📊 Generating QR code... (${data.length} bytes)`);
 
     // Method 1: Try local QRCode library
     setTimeout(() => {
@@ -3115,6 +3140,8 @@ class DoItTomorrowApp {
         qrElement.innerHTML = '';
 
         if (typeof QRCode !== 'undefined') {
+          console.log('✅ QRCode library loaded');
+
           const qr = new QRCode(qrElement, {
             text: data,
             width: 200,
@@ -3130,6 +3157,11 @@ class DoItTomorrowApp {
             const qrCanvas = qrElement.querySelector('canvas');
             const qrTable = qrElement.querySelector('table');
 
+            if (!qrImg && !qrCanvas && !qrTable) {
+              console.error('❌ QR code element not created');
+              throw new Error('QR code generation failed - no output');
+            }
+
             // Remove all existing content and styling
             qrElement.style.padding = '0';
             qrElement.style.margin = '0';
@@ -3137,29 +3169,31 @@ class DoItTomorrowApp {
 
             if (qrImg) {
               // Clean image-based QR codes
+              console.log('✅ QR generated as image');
               qrElement.innerHTML = '';
               qrImg.style.cssText = 'display: block; margin: 0; padding: 0; width: 200px; height: 200px;';
               qrElement.appendChild(qrImg);
             } else if (qrCanvas) {
               // Clean canvas-based QR codes
+              console.log('✅ QR generated as canvas');
               qrElement.innerHTML = '';
               qrCanvas.style.cssText = 'display: block; margin: 0; padding: 0; width: 200px; height: 200px;';
               qrElement.appendChild(qrCanvas);
             } else if (qrTable) {
               // Clean table-based QR codes (older browsers)
+              console.log('✅ QR generated as table');
               qrElement.innerHTML = '';
               qrTable.style.cssText = 'margin: 0; padding: 0; border-collapse: collapse; width: 200px; height: 200px;';
               qrElement.appendChild(qrTable);
             }
           }, 100);
 
-          console.log('QR generated with local library');
           return;
         }
         throw new Error('Local QRCode library not available');
 
       } catch (error) {
-        console.log('Local QR generation failed:', error.message);
+        console.error('❌ Local QR generation failed:', error.message);
         this.generateQRCodeFallback(data);
       }
     }, 100);
