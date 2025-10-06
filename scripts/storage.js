@@ -9,7 +9,14 @@ const Storage = {
   load() {
     try {
       const data = localStorage.getItem(Config.STORAGE_KEY);
-      return data ? Utils.safeJsonParse(data, this.getDefaultData()) : this.getDefaultData();
+      if (!data) {
+        return this.getDefaultData();
+      }
+
+      const parsed = Utils.safeJsonParse(data, this.getDefaultData());
+
+      // Automatically migrate old data format to new format
+      return this.migrateData(parsed);
     } catch (error) {
       console.warn('Failed to load data:', error);
       return this.getDefaultData();
@@ -38,11 +45,57 @@ const Storage = {
    */
   getDefaultData() {
     return {
-      today: [],
-      tomorrow: [],
+      tasks: [], // Single array of all tasks
       lastUpdated: Date.now(),
       currentDate: Utils.getTodayISO(),
-      totalCompleted: 0
+      totalCompleted: 0,
+      version: 2 // Data structure version for migrations
+    };
+  },
+
+  /**
+   * Migrate old data format (today/tomorrow arrays) to new format (tasks array with list property)
+   * @param {Object} oldData - Old format data
+   * @returns {Object} New format data
+   */
+  migrateData(oldData) {
+    // If already in new format, return as-is
+    if (oldData.tasks && oldData.version === 2) {
+      return oldData;
+    }
+
+    console.log('🔄 Migrating data from old format to new format...');
+
+    const tasks = [];
+
+    // Migrate today tasks
+    if (oldData.today && Array.isArray(oldData.today)) {
+      oldData.today.forEach(task => {
+        tasks.push({
+          ...task,
+          list: 'today'
+        });
+      });
+    }
+
+    // Migrate tomorrow tasks
+    if (oldData.tomorrow && Array.isArray(oldData.tomorrow)) {
+      oldData.tomorrow.forEach(task => {
+        tasks.push({
+          ...task,
+          list: 'tomorrow'
+        });
+      });
+    }
+
+    console.log(`✅ Migrated ${tasks.length} tasks to new format`);
+
+    return {
+      tasks,
+      lastUpdated: oldData.lastUpdated || Date.now(),
+      currentDate: oldData.currentDate || Utils.getTodayISO(),
+      totalCompleted: oldData.totalCompleted || 0,
+      version: 2
     };
   },
 

@@ -973,9 +973,12 @@ class DoItTomorrowApp {
     }
 
     this.renderTimeout = setTimeout(() => {
-      // Phase 4: Sort tasks before rendering
-      const sortedToday = this.sortTasks([...this.data.today]);
-      const sortedTomorrow = this.sortTasks([...this.data.tomorrow]);
+      // Phase 4: Filter and sort tasks by list property
+      const todayTasks = this.data.tasks.filter(t => t.list === 'today');
+      const tomorrowTasks = this.data.tasks.filter(t => t.list === 'tomorrow');
+
+      const sortedToday = this.sortTasks(todayTasks);
+      const sortedTomorrow = this.sortTasks(tomorrowTasks);
 
       this.renderList('today', sortedToday);
       this.renderList('tomorrow', sortedTomorrow);
@@ -1608,35 +1611,48 @@ class DoItTomorrowApp {
       // Handle subtask movement (task being moved IS a subtask)
       if (task.parentId) {
         console.log('🐛 [MOVE] This is a subtask, handling parent...');
-        const originalParentId = task.parentId; // Store original parent ID before modification
-
-        // Find or create parent in target list
-        let parent = this.data[toList].find(t => t.id === task.parentId);
-        if (!parent) {
-          // Parent doesn't exist in target list, create it
-          const sourceParent = this.data[fromList].find(t => t.id === originalParentId);
-          if (sourceParent) {
-            console.log('🐛 [MOVE] Creating new parent in target list');
-            parent = { ...sourceParent, id: this.generateId(), parentId: null };
-            this.data[toList].push(parent);
-          }
-        }
-        // Update subtask's parentId to new parent
-        if (parent) {
-          task.parentId = parent.id;
-        }
-
-        // Check if source parent is now empty (use original parent ID)
+        const originalParentId = task.parentId;
         const sourceParent = this.data[fromList].find(t => t.id === originalParentId);
-        if (sourceParent) {
-          const remainingChildren = this.data[fromList].filter(t => t.parentId === sourceParent.id);
-          if (remainingChildren.length === 0) {
-            console.log('🐛 [MOVE] Source parent is empty, removing it');
-            // Remove empty parent
-            const parentIndex = this.data[fromList].findIndex(t => t.id === sourceParent.id);
-            if (parentIndex !== -1) {
-              this.data[fromList].splice(parentIndex, 1);
-            }
+
+        if (!sourceParent) {
+          console.error('🐛 [MOVE] Source parent not found!');
+          return false;
+        }
+
+        // Try to find an existing parent in target list with matching text
+        let parent = this.data[toList].find(t =>
+          !t.parentId && // Must be a parent task (no parentId)
+          t.text === sourceParent.text // Same text as source parent
+        );
+
+        if (parent) {
+          console.log('🐛 [MOVE] Found existing parent in target list, merging');
+        } else {
+          // No matching parent exists, create a new one
+          console.log('🐛 [MOVE] Creating new parent in target list');
+          parent = {
+            ...sourceParent,
+            id: this.generateId(),
+            parentId: null,
+            // Preserve important task properties from source parent
+            important: sourceParent.important || false,
+            deadline: sourceParent.deadline,
+            completed: false // Don't carry over completion status for parent
+          };
+          this.data[toList].push(parent);
+        }
+
+        // Update subtask's parentId to target parent
+        task.parentId = parent.id;
+        console.log(`🐛 [MOVE] Updated subtask parent from ${originalParentId} to ${parent.id}`);
+
+        // Check if source parent is now empty
+        const remainingChildren = this.data[fromList].filter(t => t.parentId === sourceParent.id);
+        if (remainingChildren.length === 0) {
+          console.log('🐛 [MOVE] Source parent is empty, removing it');
+          const parentIndex = this.data[fromList].findIndex(t => t.id === sourceParent.id);
+          if (parentIndex !== -1) {
+            this.data[fromList].splice(parentIndex, 1);
           }
         }
       } else {
