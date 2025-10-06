@@ -630,10 +630,18 @@ class DoItTomorrowApp {
           childLi.setAttribute('data-parent-id', task.id);
           childLi.innerHTML = this.getTaskHTML(childTask, listName);
 
-          // Add click handler for subtask completion
+          // Add click handler for subtask (supports both delete mode and completion)
           childLi.addEventListener('click', (e) => {
             if (!e.target.closest('.move-icon')) {
-              this.completeTask(childTask.id, e);
+              // Check if we're in delete mode
+              if (this.deleteMode[listName]) {
+                console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
+                this.deleteTaskWithSubtasks(childTask.id);
+                this.showNotification('Subtask deleted', 'success');
+              } else {
+                // Normal mode - complete the subtask
+                this.completeTask(childTask.id, e);
+              }
             }
           });
 
