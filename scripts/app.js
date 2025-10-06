@@ -400,6 +400,12 @@ class DoItTomorrowApp {
   }
 
   renderList(listName, tasks) {
+    console.log(`🐛 [RENDER] renderList called for ${listName}`, {
+      totalTasks: tasks.length,
+      importantCount: tasks.filter(t => t.important).length,
+      tasks: tasks.map(t => ({ id: t.id, text: t.text.substring(0, 20), important: t.important, completed: t.completed }))
+    });
+
     const listEl = document.getElementById(`${listName}-list`);
     if (!listEl) return;
 
@@ -426,16 +432,30 @@ class DoItTomorrowApp {
 
     // Filter to only show top-level tasks (no parentId)
     const topLevelTasks = tasks.filter(task => !task.parentId);
+    console.log(`🐛 [RENDER] Top-level tasks for ${listName}:`, topLevelTasks.length);
 
-    topLevelTasks.forEach(task => {
+    topLevelTasks.forEach((task, index) => {
       const li = document.createElement('li');
       // Phase 3: Add importance class for visual gradient effects
       const classes = ['task-item'];
       if (task.completed) classes.push('completed');
-      if (task.important) classes.push('important');
+      if (task.important) {
+        classes.push('important');
+        console.log(`🐛 [RENDER] Adding 'important' class to task ${index}:`, {
+          id: task.id,
+          text: task.text.substring(0, 30),
+          classes: classes.join(' ')
+        });
+      }
 
       li.className = classes.join(' ');
       li.setAttribute('data-task-id', task.id);
+
+      console.log(`🐛 [RENDER] Task ${index} element:`, {
+        id: task.id,
+        className: li.className,
+        important: task.important
+      });
 
       // Unified touch handling with tap detection and long press
       let taskStartX, taskStartY, taskStartTime;
@@ -796,16 +816,36 @@ class DoItTomorrowApp {
 
   // Phase 4: Smart task sorting system
   sortTasks(tasks) {
-    return tasks.sort((a, b) => {
+    console.log('🐛 [SORT] sortTasks called with tasks:', {
+      total: tasks.length,
+      important: tasks.filter(t => t.important).length,
+      taskDetails: tasks.map(t => ({
+        id: t.id,
+        text: t.text.substring(0, 20),
+        important: t.important,
+        completed: t.completed,
+        createdAt: t.createdAt
+      }))
+    });
+
+    const sorted = tasks.sort((a, b) => {
       // First level: Importance (important tasks first, regardless of completion)
       if (a.important !== b.important) {
-        return b.important ? 1 : -1;
+        const result = b.important ? 1 : -1;
+        console.log(`🐛 [SORT] Comparing importance: ${a.text.substring(0, 15)} (${a.important}) vs ${b.text.substring(0, 15)} (${b.important}) = ${result}`);
+        return result;
       }
 
       // Second level: Creation time (newest first for better UX)
       // Completed tasks stay in order with incomplete tasks
       return (b.createdAt || 0) - (a.createdAt || 0);
     });
+
+    console.log('🐛 [SORT] After sorting:', {
+      order: sorted.map((t, i) => `${i}: ${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
+    });
+
+    return sorted;
   }
 
   // Debounced render for performance
@@ -1125,13 +1165,32 @@ class DoItTomorrowApp {
 
   // Handle menu toggle important action
   handleMenuToggleImportant(taskId) {
-    const task = this.findTask(taskId);
-    if (!task) return;
+    console.log('🐛 [IMPORTANT] handleMenuToggleImportant called', { taskId });
 
+    const taskInfo = this.findTask(taskId);
+    console.log('🐛 [IMPORTANT] findTask result:', taskInfo);
+
+    if (!taskInfo) {
+      console.error('🐛 [IMPORTANT] Task not found!');
+      return;
+    }
+
+    const task = taskInfo.task;
     const wasImportant = task.important;
     task.important = !task.important;
+
+    console.log('🐛 [IMPORTANT] Toggled importance:', {
+      taskId,
+      text: task.text,
+      wasImportant,
+      nowImportant: task.important,
+      taskObject: task
+    });
+
     this.contextMenu.hide();
     this.save();
+
+    console.log('🐛 [IMPORTANT] Saved to storage, now rendering...');
 
     // Phase 3: Add importance animation trigger
     if (task.important && !wasImportant) {
@@ -1141,8 +1200,11 @@ class DoItTomorrowApp {
       // Then trigger the glow animation
       setTimeout(() => {
         const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        console.log('🐛 [IMPORTANT] Found task element for animation:', taskElement);
         if (taskElement) {
+          console.log('🐛 [IMPORTANT] Element classes before:', taskElement.className);
           taskElement.classList.add('importance-added');
+          console.log('🐛 [IMPORTANT] Element classes after:', taskElement.className);
 
           // Remove the animation class after it completes
           setTimeout(() => {
@@ -1152,20 +1214,19 @@ class DoItTomorrowApp {
       }, 50);
     } else {
       // Just render normally for removing importance
+      console.log('🐛 [IMPORTANT] Removing importance, rendering...');
       this.render();
     }
 
     const action = task.important ? 'marked as important' : 'importance removed';
     this.showNotification(`Task ${action}`, 'success');
 
-    if (this.devMode) {
-      console.log('⭐ IMPORTANCE TOGGLED:', {
-        taskId,
-        isImportant: task.important,
-        text: task.text,
-        animationTriggered: task.important && !wasImportant
-      });
-    }
+    console.log('🐛 [IMPORTANT] Done with toggle, final state:', {
+      taskId,
+      isImportant: task.important,
+      text: task.text,
+      animationTriggered: task.important && !wasImportant
+    });
   }
 
   // Handle menu set deadline action
@@ -2154,10 +2215,18 @@ class DoItTomorrowApp {
 
   // Start pomodoro timer for a task
   startPomodoro(taskId) {
+    console.log('🐛 [POMODORO] startPomodoro called', { taskId });
+
     const taskInfo = this.findTask(taskId);
-    if (!taskInfo) return;
+    console.log('🐛 [POMODORO] Task info:', taskInfo);
+
+    if (!taskInfo) {
+      console.error('🐛 [POMODORO] Task not found!');
+      return;
+    }
 
     // Stop existing timer if any
+    console.log('🐛 [POMODORO] Stopping any existing timer...');
     this.stopPomodoro();
 
     // Initialize timer
@@ -2169,26 +2238,50 @@ class DoItTomorrowApp {
       roundCount: 1
     };
 
+    console.log('🐛 [POMODORO] Initialized state:', {
+      isActive: this.pomodoroState.isActive,
+      taskId: this.pomodoroState.taskId,
+      timeRemaining: this.pomodoroState.timeRemaining,
+      workMinutes: Config.POMODORO_WORK_MINUTES,
+      roundCount: this.pomodoroState.roundCount
+    });
+
     // Start countdown
+    console.log('🐛 [POMODORO] Setting up interval...');
     this.pomodoroState.intervalId = setInterval(() => this.tickPomodoro(), 1000);
+    console.log('🐛 [POMODORO] Interval ID:', this.pomodoroState.intervalId);
 
     // Show timer UI
+    console.log('🐛 [POMODORO] Showing timer UI...');
     this.showPomodoroTimer();
 
     this.showNotification(`Pomodoro started for "${taskInfo.task.text}"`, Config.NOTIFICATION_TYPES.SUCCESS);
+    console.log('🐛 [POMODORO] Pomodoro started successfully!');
   }
 
   // Timer tick
   tickPomodoro() {
-    if (!this.pomodoroState.isActive) return;
+    console.log('🐛 [POMODORO] tickPomodoro called', {
+      isActive: this.pomodoroState.isActive,
+      timeRemaining: this.pomodoroState.timeRemaining,
+      intervalId: this.pomodoroState.intervalId
+    });
+
+    if (!this.pomodoroState.isActive) {
+      console.log('🐛 [POMODORO] Timer not active, skipping tick');
+      return;
+    }
 
     this.pomodoroState.timeRemaining--;
+    console.log('🐛 [POMODORO] Time remaining after decrement:', this.pomodoroState.timeRemaining);
 
     if (this.pomodoroState.timeRemaining <= 0) {
       // Round complete
+      console.log('🐛 [POMODORO] Round complete!');
       this.handlePomodoroComplete();
     } else {
       // Update display
+      console.log('🐛 [POMODORO] Updating display...');
       this.updatePomodoroDisplay();
     }
   }
@@ -2287,16 +2380,30 @@ class DoItTomorrowApp {
 
   // Show timer UI
   showPomodoroTimer() {
+    console.log('🐛 [POMODORO] showPomodoroTimer called');
+
     let timerEl = document.getElementById('pomodoro-timer');
+    console.log('🐛 [POMODORO] Existing timer element:', timerEl);
+
     if (!timerEl) {
+      console.log('🐛 [POMODORO] Creating new timer element');
       timerEl = document.createElement('div');
       timerEl.id = 'pomodoro-timer';
       timerEl.className = 'pomodoro-timer';
       document.body.appendChild(timerEl);
+      console.log('🐛 [POMODORO] Timer element created and appended to body');
     }
 
+    console.log('🐛 [POMODORO] Updating display...');
     this.updatePomodoroDisplay();
+
+    console.log('🐛 [POMODORO] Setting display to flex');
     timerEl.style.display = 'flex';
+    console.log('🐛 [POMODORO] Timer element style:', {
+      display: timerEl.style.display,
+      position: window.getComputedStyle(timerEl).position,
+      visibility: window.getComputedStyle(timerEl).visibility
+    });
   }
 
   // Hide timer UI
@@ -2309,15 +2416,29 @@ class DoItTomorrowApp {
 
   // Update timer display
   updatePomodoroDisplay() {
+    console.log('🐛 [POMODORO] updatePomodoroDisplay called');
+
     const timerEl = document.getElementById('pomodoro-timer');
-    if (!timerEl) return;
+    if (!timerEl) {
+      console.error('🐛 [POMODORO] Timer element not found!');
+      return;
+    }
 
     const minutes = Math.floor(this.pomodoroState.timeRemaining / 60);
     const seconds = this.pomodoroState.timeRemaining % 60;
     const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
+    console.log('🐛 [POMODORO] Time display:', {
+      timeRemaining: this.pomodoroState.timeRemaining,
+      minutes,
+      seconds,
+      timeStr
+    });
+
     const taskInfo = this.findTask(this.pomodoroState.taskId);
     const taskText = taskInfo ? taskInfo.task.text : 'Unknown task';
+
+    console.log('🐛 [POMODORO] Task:', { taskId: this.pomodoroState.taskId, taskText });
 
     timerEl.innerHTML = `
       <div class="pomodoro-timer-content">
@@ -2327,6 +2448,8 @@ class DoItTomorrowApp {
         <button class="pomodoro-timer-stop" onclick="app.stopPomodoro()">×</button>
       </div>
     `;
+
+    console.log('🐛 [POMODORO] Display updated successfully');
   }
 
   // Subtask Management Methods
