@@ -1390,13 +1390,7 @@ class DoItTomorrowApp {
 
     this.contextMenu.hide();
 
-    // Confirm deletion
-    const confirmMessage = `Delete "${task.text}"?`;
-    if (!confirm(confirmMessage)) {
-      console.log('🐛 [DELETE] Deletion cancelled by user');
-      return;
-    }
-
+    // Delete directly - no confirmation needed (long press + menu selection is intentional enough)
     console.log('🐛 [DELETE] Deleting task and all subtasks...');
     this.deleteTaskWithSubtasks(taskId);
     this.showNotification('Task deleted', 'success');
