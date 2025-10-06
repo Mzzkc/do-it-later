@@ -612,8 +612,8 @@ class DoItTomorrowApp {
         }, 300);
       }
 
-      // Check if task has children
-      const children = this.getChildren(task.id, listName);
+      // Check if task has children (get ALL children, regardless of list)
+      const children = this.getChildren(task.id);
       const hasChildren = children.length > 0;
 
       // Add expand/collapse icon if has children
@@ -691,7 +691,8 @@ class DoItTomorrowApp {
             const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
 
             if (isTap && !e.target.closest('.move-icon')) {
-              if (this.deleteMode[listName]) {
+              // Check delete mode for the child's actual list (not parent's list)
+              if (this.deleteMode[childTask.list]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
                 this.deleteTaskWithSubtasks(childTask.id);
                 this.showNotification('Subtask deleted', 'success');
@@ -704,8 +705,8 @@ class DoItTomorrowApp {
           // Add click handler for subtask (supports both delete mode and completion)
           childLi.addEventListener('click', (e) => {
             if (!e.target.closest('.move-icon')) {
-              // Check if we're in delete mode
-              if (this.deleteMode[listName]) {
+              // Check delete mode for the child's actual list (not parent's list)
+              if (this.deleteMode[childTask.list]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
                 this.deleteTaskWithSubtasks(childTask.id);
                 this.showNotification('Subtask deleted', 'success');
@@ -2754,8 +2755,13 @@ class DoItTomorrowApp {
   }
 
   // Get children of a task
-  getChildren(parentId, listName) {
-    return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
+  getChildren(parentId, listName = null) {
+    // If listName is provided, filter by list (for backward compatibility)
+    // If not provided, get ALL children regardless of list
+    if (listName) {
+      return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
+    }
+    return this.data.tasks.filter(task => task.parentId === parentId);
   }
 
   // Check if parent should auto-complete
@@ -3709,22 +3715,22 @@ class ContextMenu {
 
     switch (action) {
       case 'edit':
-        this.onEdit(this.currentTask.id);
+        this.handleMenuEdit(this.currentTask.id);
         break;
       case 'important':
-        this.onToggleImportant(this.currentTask.id);
+        this.handleMenuToggleImportant(this.currentTask.id);
         break;
       case 'deadline':
-        this.onSetDeadline(this.currentTask.id);
+        this.handleMenuSetDeadline(this.currentTask.id);
         break;
       case 'pomodoro':
-        this.onStartPomodoro(this.currentTask.id);
+        this.handleMenuStartPomodoro(this.currentTask.id);
         break;
       case 'add-subtask':
-        this.onAddSubtask(this.currentTask.id);
+        this.handleMenuAddSubtask(this.currentTask.id);
         break;
       case 'delete':
-        this.onDelete(this.currentTask.id);
+        this.handleMenuDelete(this.currentTask.id);
         break;
     }
   }
