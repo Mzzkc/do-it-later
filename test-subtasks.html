@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subtasks Test - Do It (Later)</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>Subtasks Test</h1>
+        </header>
+        <main>
+            <section id="today-section" class="list-section active">
+                <div class="section-header">
+                    <h2>Today</h2>
+                </div>
+                <div class="add-task-container">
+                    <input type="text" id="today-task-input" placeholder="Add task for today..." maxlength="200">
+                </div>
+                <ul id="today-list" class="task-list"></ul>
+            </section>
+
+            <section id="tomorrow-section" class="list-section">
+                <div class="section-header">
+                    <h2>Later</h2>
+                </div>
+                <div class="add-task-container">
+                    <input type="text" id="tomorrow-task-input" placeholder="Add task for later..." maxlength="200">
+                </div>
+                <ul id="tomorrow-list" class="task-list"></ul>
+            </section>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+
+    <script src="scripts/config.js"></script>
+    <script src="scripts/app.js"></script>
+    <script src="scripts/sync.js"></script>
+    <script>
+        // Initialize app with test data
+        const app = new DoItLater();
+
+        // Test 1: Create a parent task
+        console.log('Test 1: Creating parent task...');
+        const parent = app.addTask('Parent Task', 'today', null);
+        console.log('✓ Parent created:', parent);
+
+        // Test 2: Create subtasks
+        console.log('Test 2: Creating subtasks...');
+        app.addSubtask(parent.id, 'Subtask 1');
+        app.addSubtask(parent.id, 'Subtask 2');
+        app.addSubtask(parent.id, 'Subtask 3');
+        console.log('✓ Subtasks created');
+
+        // Test 3: Check rendering
+        console.log('Test 3: Checking render...');
+        const todayList = document.getElementById('today-list');
+        const taskItems = todayList.querySelectorAll('.task-item');
+        console.log('✓ Task items rendered:', taskItems.length);
+
+        // Test 4: Check expand icon
+        const expandIcon = todayList.querySelector('.expand-icon');
+        console.log('✓ Expand icon present:', expandIcon !== null);
+
+        // Test 5: Check subtask list
+        const subtaskList = todayList.querySelector('.subtask-list');
+        console.log('✓ Subtask list present:', subtaskList !== null);
+        console.log('✓ Subtask count:', subtaskList?.children.length || 0);
+
+        // Test 6: Toggle expansion
+        console.log('Test 4: Testing expand/collapse...');
+        if (expandIcon) {
+            expandIcon.click();
+            setTimeout(() => {
+                const isHidden = subtaskList.style.display === 'none';
+                console.log('✓ Collapsed:', isHidden);
+                expandIcon.click();
+                setTimeout(() => {
+                    const isVisible = subtaskList.style.display === 'block';
+                    console.log('✓ Expanded:', isVisible);
+                }, 100);
+            }, 100);
+        }
+
+        // Test 7: Complete subtasks and check auto-completion
+        setTimeout(() => {
+            console.log('Test 5: Testing auto-completion...');
+            const children = app.getChildren(parent.id, 'today');
+            console.log('Children before completion:', children.length);
+
+            // Complete all subtasks
+            children.forEach(child => {
+                app.completeTask(child.id);
+            });
+
+            // Check if parent is completed
+            const taskInfo = app.findTask(parent.id);
+            console.log('✓ Parent auto-completed:', taskInfo.task.completed);
+        }, 500);
+
+        // Test 8: Test subtask movement
+        setTimeout(() => {
+            console.log('Test 6: Testing subtask movement...');
+
+            // Create new parent with subtask
+            const parent2 = app.addTask('Parent Task 2', 'today', null);
+            app.addSubtask(parent2.id, 'Moving Subtask');
+
+            const movingSubtask = app.getChildren(parent2.id, 'today')[0];
+            console.log('Moving subtask from today to tomorrow...');
+
+            // Move subtask
+            app.animateTaskMovement(movingSubtask.id, 'today', 'tomorrow', Config.DIRECTIONS.RIGHT);
+
+            setTimeout(() => {
+                // Check if parent was created in tomorrow
+                const tomorrowParent = app.data.tomorrow.find(t => t.text === 'Parent Task 2' && !t.parentId);
+                console.log('✓ Parent created in tomorrow:', tomorrowParent !== undefined);
+
+                // Check if subtask has new parentId
+                const movedSubtask = app.data.tomorrow.find(t => t.text === 'Moving Subtask');
+                console.log('✓ Subtask moved:', movedSubtask !== undefined);
+                console.log('✓ Subtask has parent:', movedSubtask?.parentId !== null);
+
+                // Check if original parent was removed (should have no children)
+                const originalParentExists = app.data.today.find(t => t.id === parent2.id);
+                console.log('✓ Original empty parent removed:', originalParentExists === undefined);
+            }, 500);
+        }, 1000);
+
+        // Test 9: Test important subtask sorting
+        setTimeout(() => {
+            console.log('Test 7: Testing important subtask sorting...');
+
+            const parent3 = app.addTask('Parent Task 3', 'today', null);
+            app.addSubtask(parent3.id, 'Normal Subtask');
+            app.addSubtask(parent3.id, 'Important Subtask');
+
+            const children = app.getChildren(parent3.id, 'today');
+            const importantSubtask = children.find(c => c.text === 'Important Subtask');
+
+            // Mark as important
+            app.toggleImportant(importantSubtask.id);
+
+            // Check sorting
+            const sortedChildren = app.sortTasks(app.getChildren(parent3.id, 'today'));
+            console.log('✓ Important subtask first:', sortedChildren[0].important === true);
+        }, 2000);
+
+        console.log('\n=== All tests initiated ===');
+        console.log('Check console for results and visually inspect the page');
+    </script>
+</body>
+</html>

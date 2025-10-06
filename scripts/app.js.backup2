@@ -612,8 +612,8 @@ class DoItTomorrowApp {
         }, 300);
       }
 
-      // Check if task has children (get ALL children, regardless of list)
-      const children = this.getChildren(task.id);
+      // Check if task has children
+      const children = this.getChildren(task.id, listName);
       const hasChildren = children.length > 0;
 
       // Add expand/collapse icon if has children
@@ -691,8 +691,7 @@ class DoItTomorrowApp {
             const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
 
             if (isTap && !e.target.closest('.move-icon')) {
-              // Check delete mode for the child's actual list (not parent's list)
-              if (this.deleteMode[childTask.list]) {
+              if (this.deleteMode[listName]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
                 this.deleteTaskWithSubtasks(childTask.id);
                 this.showNotification('Subtask deleted', 'success');
@@ -705,8 +704,8 @@ class DoItTomorrowApp {
           // Add click handler for subtask (supports both delete mode and completion)
           childLi.addEventListener('click', (e) => {
             if (!e.target.closest('.move-icon')) {
-              // Check delete mode for the child's actual list (not parent's list)
-              if (this.deleteMode[childTask.list]) {
+              // Check if we're in delete mode
+              if (this.deleteMode[listName]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
                 this.deleteTaskWithSubtasks(childTask.id);
                 this.showNotification('Subtask deleted', 'success');
@@ -1151,21 +1150,6 @@ class DoItTomorrowApp {
       else if (wasCompleted && !task.completed) {
         this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
         this.updateCompletedCounter();
-      }
-
-      // If this is a parent task being marked incomplete, also mark all children incomplete
-      if (wasCompleted && !task.completed && !task.parentId) {
-        const children = this.getChildren(id, task.list);
-        if (children.length > 0) {
-          children.forEach(child => {
-            if (child.completed) {
-              child.completed = false;
-              // Decrement counter for each child
-              this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
-            }
-          });
-          this.updateCompletedCounter();
-        }
       }
 
       // Check if parent should auto-complete
@@ -2037,8 +2021,8 @@ class DoItTomorrowApp {
     ];
 
     // Add to both lists for comprehensive sorting testing
-    testTasks.slice(0, 3).forEach(task => { task.list = "today"; this.data.tasks.push(task); });
-    testTasks.slice(3).forEach(task => { task.list = "tomorrow"; this.data.tasks.push(task); }); // this.data.tomorrow.push(...testTasks.slice(3));
+    testTasks.slice(0, 3).forEach(task => { task.list = "today"; this.data.tasks.push(task); }); // this.data.today.push(...testTasks.slice(0, 3));
+    this.data.tomorrow.push(...testTasks.slice(3));
     this.save();
     this.render();
 
@@ -2562,7 +2546,7 @@ class DoItTomorrowApp {
     this.pomodoroState.roundCount++;
     this.pomodoroState.timeRemaining = Config.POMODORO_WORK_MINUTES * 60;
     this.pomodoroState.intervalId = setInterval(() => this.tickPomodoro(), 1000);
-    this.showPomodoroTimer(); // Use showPomodoroTimer to ensure timer is visible
+    this.updatePomodoroDisplay();
   }
 
   // Show timer UI
@@ -2581,13 +2565,11 @@ class DoItTomorrowApp {
       console.log('🐛 [POMODORO] Timer element created and appended to body');
     }
 
-    // Set display to flex BEFORE updating content to ensure visibility
-    console.log('🐛 [POMODORO] Setting display to flex');
-    timerEl.style.display = 'flex';
-
     console.log('🐛 [POMODORO] Updating display...');
     this.updatePomodoroDisplay();
 
+    console.log('🐛 [POMODORO] Setting display to flex');
+    timerEl.style.display = 'flex';
     console.log('🐛 [POMODORO] Timer element style:', {
       display: timerEl.style.display,
       position: window.getComputedStyle(timerEl).position,
@@ -2755,13 +2737,8 @@ class DoItTomorrowApp {
   }
 
   // Get children of a task
-  getChildren(parentId, listName = null) {
-    // If listName is provided, filter by list (for backward compatibility)
-    // If not provided, get ALL children regardless of list
-    if (listName) {
-      return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
-    }
-    return this.data.tasks.filter(task => task.parentId === parentId);
+  getChildren(parentId, listName) {
+    return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
   }
 
   // Check if parent should auto-complete
@@ -2927,7 +2904,7 @@ class DoItTomorrowApp {
           </div>
         </div>
         <p class="qr-stats">
-          ${this.data.tasks.length} tasks
+          ${this.data.today.length + this.data.tomorrow.length} tasks
         </p>
       </div>
 
@@ -3257,10 +3234,7 @@ class DoItTomorrowApp {
   // Import QR data with confirmation
   importQRData(qrData, modal, style) {
     try {
-      let importedData = Sync.parseQRData(qrData);
-
-      // Migrate old format to new format if needed
-      importedData = Storage.migrateData(importedData);
+      const importedData = Sync.parseQRData(qrData);
 
       const shouldReplace = confirm(
         'Replace your current tasks with scanned data?\n\n' +
@@ -3271,23 +3245,14 @@ class DoItTomorrowApp {
         this.data = importedData;
       } else {
         // Merge: add imported tasks to existing ones
-        const importedTasks = importedData.tasks || [];
-        importedTasks.forEach(task => {
-          const isDuplicate = this.data.tasks.some(existing =>
-            existing.text === task.text && existing.list === task.list
-          );
-          if (!isDuplicate) {
-            this.data.tasks.push(task);
-          }
-        });
-        this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted || 0);
+        this.data.today.push(...importedData.today);
+        this.data.tomorrow.push(...importedData.tomorrow);
+        this.data.totalCompleted = Math.max(this.data.totalCompleted, importedData.totalCompleted);
       }
 
       this.save();
       this.render();
-
-      const taskCount = importedData.tasks ? importedData.tasks.length : 0;
-      this.showNotification(`Imported ${taskCount} tasks from QR scan`, 'success');
+      this.showNotification(`Imported ${importedData.today.length + importedData.tomorrow.length} tasks from QR scan`, 'success');
 
       // Close modal
       document.body.removeChild(modal);
