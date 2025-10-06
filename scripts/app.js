@@ -630,6 +630,56 @@ class DoItTomorrowApp {
           childLi.setAttribute('data-parent-id', task.id);
           childLi.innerHTML = this.getTaskHTML(childTask, listName);
 
+          // Add unified touch handling for subtasks (long press support)
+          let subtaskStartX, subtaskStartY, subtaskStartTime;
+
+          childLi.addEventListener('touchstart', (e) => {
+            subtaskStartX = e.touches[0].clientX;
+            subtaskStartY = e.touches[0].clientY;
+            subtaskStartTime = Date.now();
+            childLi.classList.add('button-pressed');
+            this.startLongPress(childTask.id, e);
+          });
+
+          childLi.addEventListener('touchmove', (e) => {
+            if (subtaskStartX !== undefined && subtaskStartY !== undefined) {
+              const currentX = e.touches[0].clientX;
+              const currentY = e.touches[0].clientY;
+              const deltaX = Math.abs(currentX - subtaskStartX);
+              const deltaY = Math.abs(currentY - subtaskStartY);
+
+              if (deltaY > 15 || deltaX > 15) {
+                childLi.classList.remove('button-pressed');
+                this.endLongPress();
+              }
+            }
+          }, { passive: true });
+
+          childLi.addEventListener('touchend', (e) => {
+            childLi.classList.remove('button-pressed');
+            this.endLongPress();
+
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            const endTime = Date.now();
+
+            const deltaX = Math.abs(endX - subtaskStartX);
+            const deltaY = Math.abs(endY - subtaskStartY);
+            const deltaTime = endTime - subtaskStartTime;
+
+            const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
+
+            if (isTap && !e.target.closest('.move-icon')) {
+              if (this.deleteMode[listName]) {
+                console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
+                this.deleteTaskWithSubtasks(childTask.id);
+                this.showNotification('Subtask deleted', 'success');
+              } else {
+                this.completeTask(childTask.id, e);
+              }
+            }
+          });
+
           // Add click handler for subtask (supports both delete mode and completion)
           childLi.addEventListener('click', (e) => {
             if (!e.target.closest('.move-icon')) {
@@ -1244,16 +1294,22 @@ class DoItTomorrowApp {
       return;
     }
 
-    const task = taskInfo.task;
-    const wasImportant = task.important;
-    task.important = !task.important;
+    // Find the ACTUAL task in the data array (not the copy)
+    const actualTask = this.data[taskInfo.list].find(t => t.id === taskId);
+    if (!actualTask) {
+      console.error('🐛 [IMPORTANT] Actual task not found in data array!');
+      return;
+    }
+
+    const wasImportant = actualTask.important;
+    actualTask.important = !actualTask.important;
 
     console.log('🐛 [IMPORTANT] Toggled importance:', {
       taskId,
-      text: task.text,
+      text: actualTask.text,
       wasImportant,
-      nowImportant: task.important,
-      taskObject: task
+      nowImportant: actualTask.important,
+      taskObject: actualTask
     });
 
     this.contextMenu.hide();
@@ -1262,7 +1318,7 @@ class DoItTomorrowApp {
     console.log('🐛 [IMPORTANT] Saved to storage, now rendering...');
 
     // Phase 3: Add importance animation trigger
-    if (task.important && !wasImportant) {
+    if (actualTask.important && !wasImportant) {
       // First render to add the important class
       this.render();
 
@@ -1287,14 +1343,14 @@ class DoItTomorrowApp {
       this.render();
     }
 
-    const action = task.important ? 'marked as important' : 'importance removed';
+    const action = actualTask.important ? 'marked as important' : 'importance removed';
     this.showNotification(`Task ${action}`, 'success');
 
     console.log('🐛 [IMPORTANT] Done with toggle, final state:', {
       taskId,
-      isImportant: task.important,
-      text: task.text,
-      animationTriggered: task.important && !wasImportant
+      isImportant: actualTask.important,
+      text: actualTask.text,
+      animationTriggered: actualTask.important && !wasImportant
     });
   }
 
