@@ -637,6 +637,22 @@ class DoItTomorrowApp {
             }
           });
 
+          // Add event listeners for subtask move icons
+          const childMoveIcon = childLi.querySelector('.move-icon');
+          if (childMoveIcon) {
+            childMoveIcon.addEventListener('click', (e) => {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              const action = childMoveIcon.dataset.action;
+              const taskId = childMoveIcon.dataset.taskId;
+              if (action === 'push') {
+                this.pushToTomorrow(taskId);
+              } else if (action === 'pull') {
+                this.pullToToday(taskId);
+              }
+            });
+          }
+
           subtaskContainer.appendChild(childLi);
         });
 
@@ -1117,6 +1133,7 @@ class DoItTomorrowApp {
       onSetDeadline: (taskId) => this.handleMenuSetDeadline(taskId),
       onStartPomodoro: (taskId) => this.handleMenuStartPomodoro(taskId),
       onAddSubtask: (taskId) => this.handleMenuAddSubtask(taskId),
+      onDelete: (taskId) => this.handleMenuDelete(taskId),
       onClose: () => this.handleMenuClose(),
       devMode: this.devMode
     });
@@ -1233,6 +1250,30 @@ class DoItTomorrowApp {
   handleMenuSetDeadline(taskId) {
     this.contextMenu.hide();
     setTimeout(() => this.showDeadlinePicker(taskId), 50);
+  }
+
+  // Handle menu delete action
+  handleMenuDelete(taskId) {
+    console.log('🐛 [DELETE] handleMenuDelete called', { taskId });
+
+    const taskInfo = this.findTask(taskId);
+    if (!taskInfo) {
+      console.error('🐛 [DELETE] Task not found!');
+      return;
+    }
+
+    this.contextMenu.hide();
+
+    // Confirm deletion
+    const confirmMessage = `Delete "${taskInfo.task.text}"?`;
+    if (!confirm(confirmMessage)) {
+      console.log('🐛 [DELETE] Deletion cancelled by user');
+      return;
+    }
+
+    console.log('🐛 [DELETE] Deleting task and all subtasks...');
+    this.deleteTaskWithSubtasks(taskId);
+    this.showNotification('Task deleted', 'success');
   }
 
   // Handle menu start pomodoro action
@@ -1448,16 +1489,26 @@ class DoItTomorrowApp {
 
       const task = this.data[fromList].splice(fromIndex, 1)[0];
 
-      // Handle subtask movement
+      console.log('🐛 [MOVE] Moving task:', {
+        id: task.id,
+        text: task.text.substring(0, 30),
+        hasParent: !!task.parentId,
+        fromList,
+        toList
+      });
+
+      // Handle subtask movement (task being moved IS a subtask)
       if (task.parentId) {
+        console.log('🐛 [MOVE] This is a subtask, handling parent...');
         const originalParentId = task.parentId; // Store original parent ID before modification
 
         // Find or create parent in target list
         let parent = this.data[toList].find(t => t.id === task.parentId);
         if (!parent) {
           // Parent doesn't exist in target list, create it
-          const sourceParent = this.data[fromList].find(t => t.id === task.parentId);
+          const sourceParent = this.data[fromList].find(t => t.id === originalParentId);
           if (sourceParent) {
+            console.log('🐛 [MOVE] Creating new parent in target list');
             parent = { ...sourceParent, id: this.generateId(), parentId: null };
             this.data[toList].push(parent);
           }
@@ -1472,12 +1523,31 @@ class DoItTomorrowApp {
         if (sourceParent) {
           const remainingChildren = this.data[fromList].filter(t => t.parentId === sourceParent.id);
           if (remainingChildren.length === 0) {
+            console.log('🐛 [MOVE] Source parent is empty, removing it');
             // Remove empty parent
             const parentIndex = this.data[fromList].findIndex(t => t.id === sourceParent.id);
             if (parentIndex !== -1) {
               this.data[fromList].splice(parentIndex, 1);
             }
           }
+        }
+      } else {
+        // Handle parent task movement - move all children with it
+        const children = this.data[fromList].filter(t => t.parentId === task.id);
+        if (children.length > 0) {
+          console.log(`🐛 [MOVE] This is a parent task with ${children.length} children, moving them all`);
+
+          // Move all children to the target list
+          children.forEach(child => {
+            const childIndex = this.data[fromList].findIndex(t => t.id === child.id);
+            if (childIndex !== -1) {
+              const movedChild = this.data[fromList].splice(childIndex, 1)[0];
+              // Update child's parentId to point to the moved parent
+              movedChild.parentId = task.id;
+              this.data[toList].push(movedChild);
+              console.log(`🐛 [MOVE] Moved child: ${movedChild.text.substring(0, 20)}`);
+            }
+          });
         }
       }
 
@@ -1508,7 +1578,80 @@ class DoItTomorrowApp {
     return null;
   }
 
-  // Delete task (not in requirements but useful for cleanup)
+  // Delete task with all its subtasks (recursively)
+  deleteTaskWithSubtasks(id) {
+    console.log('🐛 [DELETE] deleteTaskWithSubtasks called', { id });
+
+    let found = false;
+    let deletedCount = 0;
+
+    // Helper function to delete from a specific list
+    const deleteFromList = (listName) => {
+      const list = this.data[listName];
+
+      // Find the task
+      const taskIndex = list.findIndex(task => task.id === id);
+      if (taskIndex !== -1) {
+        const task = list[taskIndex];
+        console.log(`🐛 [DELETE] Found task in ${listName}:`, {
+          id: task.id,
+          text: task.text.substring(0, 30),
+          hasParent: !!task.parentId
+        });
+
+        // If this is a parent task, delete all its children first
+        if (!task.parentId) {
+          const children = list.filter(t => t.parentId === id);
+          console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
+
+          children.forEach(child => {
+            const childIndex = list.findIndex(t => t.id === child.id);
+            if (childIndex !== -1) {
+              list.splice(childIndex, 1);
+              deletedCount++;
+              console.log(`🐛 [DELETE] Deleted child: ${child.text.substring(0, 20)}`);
+            }
+          });
+
+          // Also check the OTHER list for orphaned children
+          const otherList = listName === 'today' ? 'tomorrow' : 'today';
+          const orphanedChildren = this.data[otherList].filter(t => t.parentId === id);
+          console.log(`🐛 [DELETE] Found ${orphanedChildren.length} orphaned children in ${otherList}`);
+
+          orphanedChildren.forEach(child => {
+            const childIndex = this.data[otherList].findIndex(t => t.id === child.id);
+            if (childIndex !== -1) {
+              this.data[otherList].splice(childIndex, 1);
+              deletedCount++;
+              console.log(`🐛 [DELETE] Deleted orphaned child from ${otherList}: ${child.text.substring(0, 20)}`);
+            }
+          });
+        }
+
+        // Delete the task itself
+        list.splice(taskIndex, 1);
+        deletedCount++;
+        found = true;
+        console.log(`🐛 [DELETE] Deleted main task`);
+      }
+    };
+
+    // Check both lists
+    deleteFromList('today');
+    deleteFromList('tomorrow');
+
+    if (found) {
+      console.log(`🐛 [DELETE] Total tasks deleted: ${deletedCount}`);
+      this.save();
+      this.render();
+    } else {
+      console.error('🐛 [DELETE] Task not found in either list');
+    }
+
+    return found;
+  }
+
+  // Delete task (simple version without subtasks)
   deleteTask(id) {
     let found = false;
 
@@ -2516,7 +2659,22 @@ class DoItTomorrowApp {
     if (actualTask) {
       actualTask.isExpanded = !actualTask.isExpanded;
       this.save();
-      this.render();
+
+      // Instead of full render, just toggle the subtask list display and update icon
+      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+      if (taskElement) {
+        // Find the expand icon and update it
+        const expandIcon = taskElement.querySelector('.expand-icon');
+        if (expandIcon) {
+          expandIcon.textContent = actualTask.isExpanded ? '▼' : '▶';
+        }
+
+        // Find the subtask container (it's the next sibling after the task element)
+        const subtaskList = taskElement.nextElementSibling;
+        if (subtaskList && subtaskList.classList.contains('subtask-list')) {
+          subtaskList.style.display = actualTask.isExpanded ? 'block' : 'none';
+        }
+      }
     }
   }
 
@@ -3255,6 +3413,7 @@ class ContextMenu {
     this.onSetDeadline = options.onSetDeadline || (() => {});
     this.onStartPomodoro = options.onStartPomodoro || (() => {});
     this.onAddSubtask = options.onAddSubtask || (() => {});
+    this.onDelete = options.onDelete || (() => {});
     this.onClose = options.onClose || (() => {});
     this.devMode = options.devMode || false;
 
@@ -3348,6 +3507,13 @@ class ContextMenu {
           <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
         </svg>
         <span>Add Subtask</span>
+      </div>
+      <div class="context-menu-item" role="menuitem" data-action="delete" tabindex="0">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+          <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+        </svg>
+        <span>Delete Task</span>
       </div>
     `;
 
@@ -3469,6 +3635,9 @@ class ContextMenu {
         break;
       case 'add-subtask':
         this.onAddSubtask(this.currentTask.id);
+        break;
+      case 'delete':
+        this.onDelete(this.currentTask.id);
         break;
     }
   }
