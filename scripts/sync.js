@@ -158,74 +158,144 @@ const Sync = {
   },
 
   /**
-   * Generate QR code data in ultra-compressed format
+   * Generate QR code data in hyper-compressed format (v4)
    * @param {Object} data - Application data to compress
    * @returns {string} Compressed QR data string
    */
   generateQRData(data) {
-    // Ultra-compressed format to fit more tasks in QR code
+    // Hyper-compressed format v4 - aggressive optimization
     // Only include incomplete tasks to reduce size
     const incompleteTasks = data.tasks ? data.tasks.filter(task => !task.completed) : [];
 
-    const qrData = {
-      t: incompleteTasks.map(task => {
-        const compressed = {
-          i: task.id,                    // id
-          x: task.text,                  // text
-          l: task.list === 'today' ? 0 : 1  // list: 0=today, 1=tomorrow
-        };
+    // Create ID→index mapping (reduces ID size from ~18 chars to 1-2 chars)
+    const idMap = new Map();
+    incompleteTasks.forEach((task, idx) => {
+      idMap.set(task.id, idx);
+    });
 
-        // Only include non-default values to save space
-        if (task.important) compressed.m = 1;                    // important (mark)
-        if (task.deadline) compressed.d = task.deadline;         // deadline
-        if (task.parentId) compressed.p = task.parentId;         // parentId
-        if (task.isExpanded === false) compressed.e = 0;         // isExpanded
-
-        return compressed;
-      }),
-      c: data.totalCompleted || 0,     // totalCompleted
-      v: 3  // version 3 = compressed format
+    // Helper: convert ISO date to days-from-today
+    const dateToDaysOffset = (isoDate) => {
+      if (!isoDate) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deadline = new Date(isoDate);
+      deadline.setHours(0, 0, 0, 0);
+      return Math.round((deadline - today) / 86400000); // milliseconds per day
     };
 
-    const jsonStr = Utils.safeJsonStringify(qrData);
-    console.log(`📊 QR Data: ${incompleteTasks.length} tasks, ${jsonStr.length} bytes`);
+    // Group tasks by list to eliminate repeated list field
+    const todayTasks = [];
+    const tomorrowTasks = [];
 
-    return jsonStr;
+    incompleteTasks.forEach((task, idx) => {
+      const compressed = {
+        i: idx,                    // index (instead of full ID)
+        x: task.text              // text
+      };
+
+      // Only include non-default values to save space
+      if (task.important) compressed.m = 1;                           // important (mark)
+      if (task.deadline) compressed.d = dateToDaysOffset(task.deadline);  // deadline as days offset
+      if (task.parentId) compressed.p = idMap.get(task.parentId);    // parent index (not full ID)
+
+      // Group by list
+      if (task.list === 'today') {
+        todayTasks.push(compressed);
+      } else {
+        tomorrowTasks.push(compressed);
+      }
+    });
+
+    const qrData = {
+      t: todayTasks,           // today tasks
+      l: tomorrowTasks,        // later/tomorrow tasks
+      c: data.totalCompleted || 0,  // totalCompleted
+      v: 4  // version 4 = hyper-compressed format
+    };
+
+    // Convert to JSON and base64 encode for additional compression
+    const jsonStr = Utils.safeJsonStringify(qrData);
+    const base64 = btoa(jsonStr);
+
+    console.log(`📊 QR Data: ${incompleteTasks.length} tasks, ${jsonStr.length}→${base64.length} bytes (${Math.round((1-base64.length/jsonStr.length)*100)}% reduction)`);
+
+    return base64;
   },
 
   /**
-   * Parse QR code data in compressed format (v3)
-   * @param {string} qrData - QR code data string
+   * Parse QR code data in hyper-compressed format (v4)
+   * @param {string} qrData - Base64-encoded QR code data string
    * @returns {Object} Parsed application data
    */
   parseQRData(qrData) {
     try {
-      const parsed = Utils.safeJsonParse(qrData);
+      // Decode base64
+      const jsonStr = atob(qrData);
+      const parsed = Utils.safeJsonParse(jsonStr);
 
-      // Compressed format (v3): {t: [{i,x,l,m?,d?,p?}], c, v}
-      if (parsed && parsed.t && Array.isArray(parsed.t) && parsed.v === 3) {
-        const tasks = parsed.t.map(task => ({
-          id: task.i,
-          text: task.x,
-          list: task.l === 0 ? 'today' : 'tomorrow',
-          completed: false,  // QR only contains incomplete tasks
-          important: task.m === 1,
-          deadline: task.d || null,
-          parentId: task.p || null,
-          isExpanded: task.e !== 0,  // default true unless explicitly set to 0
-          createdAt: Date.now()
-        }));
-
-        return {
-          tasks: tasks,
-          totalCompleted: parsed.c || 0,
-          version: 2,  // Convert to internal v2 format
-          currentDate: Utils.getTodayISO(),
-          lastUpdated: Date.now()
-        };
+      // Hyper-compressed format (v4): {t: [today], l: [tomorrow], c, v: 4}
+      if (!parsed || parsed.v !== 4) {
+        throw new Error('Invalid QR code format (expected v4 hyper-compressed format)');
       }
 
-      throw new Error('Invalid QR code format (expected v3 compressed format)');
+      // Helper: convert days-offset to ISO date
+      const daysOffsetToDate = (offset) => {
+        if (offset == null) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(today.getTime() + offset * 86400000);
+        return deadline.toISOString();
+      };
+
+      // Generate new IDs for all tasks
+      const idMap = new Map(); // index → new ID
+      const todayTasks = parsed.t || [];
+      const tomorrowTasks = parsed.l || [];
+      const allCompressed = [...todayTasks, ...tomorrowTasks];
+
+      // First pass: generate IDs
+      allCompressed.forEach((task) => {
+        idMap.set(task.i, Utils.generateId());
+      });
+
+      // Second pass: decompress tasks with proper IDs and parentIds
+      const tasks = [];
+
+      todayTasks.forEach(task => {
+        tasks.push({
+          id: idMap.get(task.i),
+          text: task.x,
+          list: 'today',
+          completed: false,  // QR only contains incomplete tasks
+          important: task.m === 1,
+          deadline: daysOffsetToDate(task.d),
+          parentId: task.p != null ? idMap.get(task.p) : null,
+          isExpanded: true,  // default true
+          createdAt: Date.now()
+        });
+      });
+
+      tomorrowTasks.forEach(task => {
+        tasks.push({
+          id: idMap.get(task.i),
+          text: task.x,
+          list: 'tomorrow',
+          completed: false,  // QR only contains incomplete tasks
+          important: task.m === 1,
+          deadline: daysOffsetToDate(task.d),
+          parentId: task.p != null ? idMap.get(task.p) : null,
+          isExpanded: true,  // default true
+          createdAt: Date.now()
+        });
+      });
+
+      return {
+        tasks: tasks,
+        totalCompleted: parsed.c || 0,
+        version: 2,  // Convert to internal v2 format
+        currentDate: Utils.getTodayISO(),
+        lastUpdated: Date.now()
+      };
 
     } catch (error) {
       throw new Error('Invalid QR code data: ' + error.message);
