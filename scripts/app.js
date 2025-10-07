@@ -13,6 +13,7 @@ class DoItTomorrowApp {
     this.isScrolling = false;
 
     // Initialize modules
+    this.taskManager = new TaskManager(this);
     this.pomodoro = new PomodoroTimer(this);
     this.deadlinePicker = new DeadlinePicker(this);
     this.devMode = new DevMode(this);
@@ -72,42 +73,6 @@ class DoItTomorrowApp {
     }
   }
 
-  // Generate unique ID for tasks
-  generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-  }
-
-  // Helper methods for new data structure
-  getTasksByList(listName) {
-    return this.data.tasks.filter(t => t.list === listName);
-  }
-
-  findTaskById(id) {
-    return this.data.tasks.find(t => t.id === id);
-  }
-
-  addTaskToList(task, listName) {
-    task.list = listName;
-    this.data.tasks.push(task);
-  }
-
-  removeTaskById(id) {
-    const index = this.data.tasks.findIndex(t => t.id === id);
-    if (index !== -1) {
-      this.data.tasks.splice(index, 1);
-      return true;
-    }
-    return false;
-  }
-
-  moveTaskToList(id, toList) {
-    const task = this.findTaskById(id);
-    if (task) {
-      task.list = toList;
-      return true;
-    }
-    return false;
-  }
 
   init() {
     this.initTheme();
@@ -135,7 +100,7 @@ class DoItTomorrowApp {
         const clickedOnTask = e.target.closest(`[data-task-id="${this.editingTask}"]`);
 
         if (!clickedOnInput && !clickedOnTask) {
-          this.cancelEdit();
+          this.taskManager.cancelEdit();
           this.render();
         }
       }
@@ -323,7 +288,7 @@ class DoItTomorrowApp {
     // Global escape key handler
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        this.cancelEdit();
+        this.taskManager.cancelEdit();
       }
     });
   }
@@ -339,14 +304,14 @@ class DoItTomorrowApp {
       }
 
       // Prevent duplicate tasks in the same list
-      const existingTasks = this.getTasksByList(list);
+      const existingTasks = this.taskManager.getTasksByList(list);
       if (existingTasks.some(task => task.text.toLowerCase() === text.toLowerCase())) {
         this.showNotification('This task already exists in this list!', 'warning');
         return;
       }
 
       try {
-        this.addTask(text, list);
+        this.taskManager.addTask(text, list);
         inputElement.value = '';
         inputElement.focus();
       } catch (error) {
@@ -443,40 +408,6 @@ class DoItTomorrowApp {
     }, 100);
   }
 
-  // Phase 4: Smart task sorting system
-  sortTasks(tasks) {
-    console.log('🐛 [SORT] sortTasks called with tasks:', {
-      total: tasks.length,
-      important: tasks.filter(t => t.important).length,
-      taskDetails: tasks.map(t => ({
-        id: t.id,
-        text: t.text.substring(0, 20),
-        important: t.important,
-        completed: t.completed,
-        createdAt: t.createdAt
-      }))
-    });
-
-    const sorted = tasks.sort((a, b) => {
-      // First level: Importance (important tasks first, regardless of completion)
-      if (a.important !== b.important) {
-        const result = b.important ? 1 : -1;
-        console.log(`🐛 [SORT] Comparing importance: ${a.text.substring(0, 15)} (${a.important}) vs ${b.text.substring(0, 15)} (${b.important}) = ${result}`);
-        return result;
-      }
-
-      // Second level: Creation time (newest first for better UX)
-      // Completed tasks stay in order with incomplete tasks
-      return (b.createdAt || 0) - (a.createdAt || 0);
-    });
-
-    console.log('🐛 [SORT] After sorting:', {
-      order: sorted.map((t, i) => `${i}: ${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
-    });
-
-    return sorted;
-  }
-
   // Debounced render for performance
   render() {
     if (this.renderTimeout) {
@@ -488,8 +419,8 @@ class DoItTomorrowApp {
       const todayTasks = this.data.tasks.filter(t => t.list === 'today');
       const tomorrowTasks = this.data.tasks.filter(t => t.list === 'tomorrow');
 
-      const sortedToday = this.sortTasks(todayTasks);
-      const sortedTomorrow = this.sortTasks(tomorrowTasks);
+      const sortedToday = this.taskManager.sortTasks(todayTasks);
+      const sortedTomorrow = this.taskManager.sortTasks(tomorrowTasks);
 
       this.renderer.renderList('today', sortedToday);
       this.renderer.renderList('tomorrow', sortedTomorrow);
@@ -595,96 +526,7 @@ class DoItTomorrowApp {
     });
   }
 
-  // Core Task Management Functions
 
-  // Add new task (always to Later list unless specified)
-  addTask(text, list = 'tomorrow', parentId = null) {
-    if (!text || !text.trim()) return false;
-
-    const task = {
-      id: this.generateId(),
-      text: text.trim(),
-      completed: false,
-      important: false,
-      createdAt: Date.now(),
-      parentId: parentId,
-      isExpanded: true
-    };
-
-    this.addTaskToList(task, list);
-    this.save();
-    this.render();
-    return task;
-  }
-
-  // Toggle task completion status
-  completeTask(id, event) {
-    // Add ripple effect if event is provided
-    if (event && event.target) {
-      this.addRippleEffect(event.target);
-    }
-
-    // Find the actual task object (not a copy) in the data arrays
-    const task = this.findTaskById(id);
-
-    if (task) {
-      const wasCompleted = task.completed;
-      task.completed = !task.completed;
-
-      // Increment lifetime counter when marking as complete
-      if (!wasCompleted && task.completed) {
-        this.data.totalCompleted = (this.data.totalCompleted || 0) + 1;
-        this.updateCompletedCounter();
-      }
-      // Decrement counter when unmarking (undo)
-      else if (wasCompleted && !task.completed) {
-        this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
-        this.updateCompletedCounter();
-      }
-
-      // If this is a parent task being marked incomplete, also mark all children incomplete
-      if (wasCompleted && !task.completed && !task.parentId) {
-        const children = this.getChildren(id, task.list);
-        if (children.length > 0) {
-          children.forEach(child => {
-            if (child.completed) {
-              child.completed = false;
-              // Decrement counter for each child
-              this.data.totalCompleted = Math.max(0, (this.data.totalCompleted || 0) - 1);
-            }
-          });
-          this.updateCompletedCounter();
-        }
-      }
-
-      // Check if parent should auto-complete
-      if (task.parentId) {
-        this.checkParentCompletion(task.parentId, task.list);
-      }
-
-      this.save();
-      this.render();
-      return true;
-    }
-    return false;
-  }
-
-  // Add ripple effect to clicked element
-  addRippleEffect(element) {
-    // Don't add multiple ripples
-    if (element.classList.contains('ripple')) return;
-
-    element.classList.add('ripple');
-
-    setTimeout(() => {
-      element.classList.add('ripple-fade');
-      element.classList.remove('ripple');
-
-      setTimeout(() => {
-        element.classList.remove('ripple-fade');
-      }, 200);
-    }, 300);
-  }
 
   // Handle task click (completion or edit)
   handleTaskClick(id, event) {
@@ -699,7 +541,7 @@ class DoItTomorrowApp {
 
     // If we're in edit mode for a DIFFERENT task, cancel edit and allow click
     if (this.editingTask && this.editingTask !== id) {
-      this.cancelEdit();
+      this.taskManager.cancelEdit();
       // Don't return - allow the click to proceed
     }
     // If we're in edit mode for THIS task, don't complete
@@ -714,20 +556,20 @@ class DoItTomorrowApp {
     }
 
     // Check if we're in delete mode for this list
-    const taskInfo = this.findTask(id);
+    const taskInfo = this.taskManager.findTask(id);
     if (!taskInfo) return;
 
     const listName = taskInfo.list;
     if (this.deleteMode[listName]) {
       // Delete mode - delete the task
-      this.deleteTask(id);
+      this.taskManager.deleteTask(id);
       this.showNotification('Task deleted', 'success');
       this.render();
       return;
     }
 
     // Normal click - complete task
-    this.completeTask(id, event);
+    this.taskManager.completeTask(id, event);
   }
 
   // Phase 2: Ultra-comprehensive Long Press & Context Menu System
@@ -759,13 +601,13 @@ class DoItTomorrowApp {
     const taskId = element.dataset.taskId;
     if (!taskId) return;
 
-    const task = this.findTask(taskId);
+    const task = this.taskManager.findTask(taskId);
     if (!task) return;
 
     // Check if we're in delete mode - just edit quickly
     const isDeleteMode = task.list === 'today' ? this.deleteModeToday : this.deleteModeTomorrow;
     if (isDeleteMode) {
-      setTimeout(() => this.enterEditMode(taskId), 10);
+      setTimeout(() => this.taskManager.enterEditMode(taskId), 10);
       return;
     }
 
@@ -792,7 +634,7 @@ class DoItTomorrowApp {
   // Handle menu edit action
   handleMenuEdit(taskId) {
     this.contextMenu.hide();
-    setTimeout(() => this.enterEditMode(taskId), 50);
+    setTimeout(() => this.taskManager.enterEditMode(taskId), 50);
   }
 
   // Handle menu toggle important action
@@ -800,7 +642,7 @@ class DoItTomorrowApp {
     console.log('🐛 [IMPORTANT] handleMenuToggleImportant called', { taskId });
 
     // Find the ACTUAL task in the data array (not a copy)
-    const actualTask = this.findTaskById(taskId);
+    const actualTask = this.taskManager.findTaskById(taskId);
     console.log('🐛 [IMPORTANT] findTaskById result:', actualTask);
 
     if (!actualTask) {
@@ -871,7 +713,7 @@ class DoItTomorrowApp {
   handleMenuDelete(taskId) {
     console.log('🐛 [DELETE] handleMenuDelete called', { taskId });
 
-    const task = this.findTask(taskId);
+    const task = this.taskManager.findTask(taskId);
     if (!task) {
       console.error('🐛 [DELETE] Task not found!');
       return;
@@ -881,7 +723,7 @@ class DoItTomorrowApp {
 
     // Delete directly - no confirmation needed (long press + menu selection is intentional enough)
     console.log('🐛 [DELETE] Deleting task and all subtasks...');
-    this.deleteTaskWithSubtasks(taskId);
+    this.taskManager.deleteTaskWithSubtasks(taskId);
     this.showNotification('Task deleted', 'success');
   }
 
@@ -894,7 +736,7 @@ class DoItTomorrowApp {
   // Handle menu add subtask action
   handleMenuAddSubtask(taskId) {
     this.contextMenu.hide();
-    setTimeout(() => this.showAddSubtaskDialog(taskId), 50);
+    setTimeout(() => this.taskManager.showAddSubtaskDialog(taskId), 50);
   }
 
   // Handle menu close
@@ -914,288 +756,6 @@ class DoItTomorrowApp {
     this.longPressManager.cancel('normal');
   }
 
-  // Enter edit mode for a task
-  enterEditMode(id) {
-    // Prevent race conditions by checking if we're already editing this task
-    if (this.editingTask === id) return;
-
-    // Cancel any existing edit mode first
-    if (this.editingTask) this.cancelEdit();
-
-    const taskInfo = this.findTask(id);
-    if (!taskInfo) return;
-
-    const taskElement = document.querySelector(`[data-task-id="${id}"] .task-text`);
-    if (!taskElement) return;
-
-    this.editingTask = id;
-    this.originalText = taskInfo.text;
-
-    // Create input element
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = taskInfo.text;
-    input.className = 'edit-input';
-    input.style.cssText = `
-      width: 100%;
-      background: transparent;
-      border: 1px solid var(--primary-color);
-      border-radius: 4px;
-      padding: 4px 8px;
-      color: var(--text);
-      font-family: inherit;
-      font-size: inherit;
-      overflow: hidden;
-      text-overflow: clip;
-      white-space: nowrap;
-      outline: none;
-    `;
-
-    // Replace task text with input
-    taskElement.style.display = 'none';
-    taskElement.parentNode.insertBefore(input, taskElement);
-
-    // Focus and select all text
-    input.focus();
-    input.select();
-
-    // Save on Enter or blur
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        this.saveEdit(input.value.trim());
-      }
-    });
-
-    input.addEventListener('blur', () => {
-      this.saveEdit(input.value.trim());
-    });
-  }
-
-  // Save edited task text
-  saveEdit(newText) {
-    if (!this.editingTask) return;
-
-    // Find the actual task object to update
-    const actualTask = this.findTaskById(this.editingTask);
-
-    if (!actualTask) return;
-
-    // Validate new text
-    if (newText && newText.length > 200) {
-      this.showNotification('Task too long! Please keep it under 200 characters.', 'error');
-      return;
-    }
-
-    // If text is empty, delete the task
-    if (!newText || newText.trim() === '') {
-      try {
-        this.deleteTask(this.editingTask);
-        this.showNotification('Task deleted', 'success');
-        this.cancelEdit();
-        this.render();
-        return;
-      } catch (error) {
-        console.error('Error deleting task:', error);
-        this.showNotification('Failed to delete task. Please try again.', 'error');
-      }
-    }
-
-    // Update task text if changed and not empty
-    if (newText && newText !== this.originalText) {
-      try {
-        actualTask.text = newText;
-        this.save();
-      } catch (error) {
-        console.error('Error updating task:', error);
-        this.showNotification('Failed to update task. Please try again.', 'error');
-        actualTask.text = this.originalText; // Revert on error
-      }
-    }
-
-    this.cancelEdit();
-    this.render();
-  }
-
-  // Cancel edit mode
-  cancelEdit() {
-    if (!this.editingTask) return;
-
-    // More robust edit input removal
-    const editInputs = document.querySelectorAll('.edit-input');
-    editInputs.forEach(input => {
-      try {
-        if (input && input.parentNode && input.isConnected) {
-          input.remove();
-        }
-      } catch (error) {
-        if (this.devMode.isActive()) {
-          console.log('⚠️ Edit input removal failed:', error.message);
-        }
-      }
-    });
-
-    // Restore task text display
-    const taskElement = document.querySelector(`[data-task-id="${this.editingTask}"] .task-text`);
-    if (taskElement) {
-      taskElement.style.display = '';
-    }
-
-    this.editingTask = null;
-    this.originalText = null;
-    this.wasLongPress = false; // Reset long press flag when canceling edit
-  }
-
-  // Move task from Today to Later
-  pushToTomorrow(id) {
-    // Animate the task item being pushed right
-    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (taskElement) {
-      taskElement.classList.add('pushing-right');
-      setTimeout(() => {
-        taskElement.classList.remove('pushing-right');
-        this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
-      }, 300);
-    }
-  }
-
-  // Move task from Later to Today (for productive days!)
-  pullToToday(id) {
-    // Animate the task item being pushed left
-    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (taskElement) {
-      taskElement.classList.add('pushing-left');
-      setTimeout(() => {
-        taskElement.classList.remove('pushing-left');
-        this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
-      }, 300);
-    }
-  }
-
-  // Animated task movement between lists
-  animateTaskMovement(id, fromList, toList, direction) {
-    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (!taskElement) return false;
-
-    // Add moving-out animation in correct direction
-    taskElement.classList.add(`moving-out-${direction}`);
-
-    // Wait for animation, then move the task
-    setTimeout(() => {
-      const task = this.findTaskById(id);
-      if (!task) return false;
-
-      console.log('🐛 [MOVE] Moving task:', {
-        id: task.id,
-        text: task.text.substring(0, 30),
-        hasParent: !!task.parentId,
-        fromList,
-        toList
-      });
-
-      // Handle subtask movement (task being moved IS a subtask)
-      if (task.parentId) {
-        console.log('🐛 [MOVE] This is a subtask, moving individually...');
-        const parent = this.findTaskById(task.parentId);
-
-        if (!parent) {
-          console.error('🐛 [MOVE] Parent not found!');
-          return false;
-        }
-
-        // Just change the subtask's list property
-        // Parent stays where it is, child can be in different list
-        task.list = toList;
-        console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent remains in ${parent.list}`);
-      } else {
-        // Handle parent task movement - move all children with it
-        const children = this.data.tasks.filter(t => t.parentId === task.id);
-        if (children.length > 0) {
-          console.log(`🐛 [MOVE] This is a parent task with ${children.length} children, moving them all`);
-
-          // Move all children to the target list
-          children.forEach(child => {
-            child.list = toList;
-            console.log(`🐛 [MOVE] Moved child: ${child.text.substring(0, 20)}`);
-          });
-        }
-
-        // Move the parent task
-        task.list = toList;
-      }
-
-      this.save();
-
-      // Mark task for moving-in animation from opposite direction
-      const inDirection = direction === 'right' ? 'left' : 'right';
-      task._justMoved = inDirection;
-      this.render();
-
-      return true;
-    }, 300);
-  }
-
-  // Helper function to find task by ID across both lists
-  findTask(id) {
-    const task = this.findTaskById(id);
-    return task ? { ...task } : null;
-  }
-
-  // Delete task with all its subtasks (recursively)
-  deleteTaskWithSubtasks(id) {
-    console.log('🐛 [DELETE] deleteTaskWithSubtasks called', { id });
-
-    let deletedCount = 0;
-    const task = this.findTaskById(id);
-
-    if (!task) {
-      console.error('🐛 [DELETE] Task not found');
-      return false;
-    }
-
-    console.log(`🐛 [DELETE] Found task:`, {
-      id: task.id,
-      text: task.text.substring(0, 30),
-      hasParent: !!task.parentId
-    });
-
-    // If this is a parent task, delete all its children first
-    if (!task.parentId) {
-      // Find all children (across all lists)
-      const children = this.data.tasks.filter(t => t.parentId === id);
-      console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
-
-      children.forEach(child => {
-        this.removeTaskById(child.id);
-        deletedCount++;
-        console.log(`🐛 [DELETE] Deleted child: ${child.text.substring(0, 20)}`);
-      });
-    }
-
-    // Delete the task itself
-    const removed = this.removeTaskById(id);
-    if (removed) {
-      deletedCount++;
-      console.log(`🐛 [DELETE] Deleted main task`);
-    }
-
-    console.log(`🐛 [DELETE] Total tasks deleted: ${deletedCount}`);
-    this.save();
-    this.render();
-
-    return true;
-  }
-
-  // Delete task (simple version without subtasks)
-  deleteTask(id) {
-    const found = this.removeTaskById(id);
-
-    if (found) {
-      this.save();
-      this.render();
-    }
-    return found;
-  }
-  
   registerServiceWorker() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -1469,144 +1029,6 @@ class DoItTomorrowApp {
     const notice = section.querySelector('.delete-mode-notice');
     if (notice) {
       notice.remove();
-    }
-  }
-
-  // Subtask Management Methods
-
-  // Show inline input to add subtask
-  showAddSubtaskDialog(taskId) {
-    console.log('🐛 [SUBTASK] showAddSubtaskDialog called', { taskId });
-
-    const taskInfo = this.findTask(taskId);
-    if (!taskInfo) {
-      console.error('🐛 [SUBTASK] Task not found!');
-      return;
-    }
-
-    // Find the actual task in the data array using helper method
-    const actualTask = this.findTaskById(taskId);
-    if (!actualTask) {
-      console.error('🐛 [SUBTASK] Actual task not found in data!');
-      return;
-    }
-
-    // Mark this task as having an active subtask input
-    actualTask._addingSubtask = true;
-
-    // Make sure the task is expanded so we can see the input
-    if (!actualTask.isExpanded) {
-      actualTask.isExpanded = true;
-    }
-
-    console.log('🐛 [SUBTASK] Marked task for subtask input, re-rendering...');
-    this.save();
-    this.render();
-
-    // Focus the input after render
-    setTimeout(() => {
-      const input = document.getElementById(`subtask-input-${taskId}`);
-      if (input) {
-        input.focus();
-        console.log('🐛 [SUBTASK] Focused subtask input');
-      } else {
-        console.error('🐛 [SUBTASK] Could not find subtask input after render');
-      }
-    }, 50);
-  }
-
-  // Add subtask to a task
-  addSubtask(parentTaskId, text) {
-    console.log('🐛 [SUBTASK] addSubtask called', { parentTaskId, text });
-
-    const taskInfo = this.findTask(parentTaskId);
-    if (!taskInfo) {
-      console.error('🐛 [SUBTASK] Parent task not found!');
-      return;
-    }
-
-    // Create a new task with parentId set
-    const newTask = {
-      id: this.generateId(),
-      text: text,
-      completed: false,
-      important: false,
-      parentId: parentTaskId,
-      createdAt: Date.now()
-    };
-
-    console.log('🐛 [SUBTASK] Created new subtask:', newTask);
-
-    // Add to the same list as the parent using helper method
-    this.addTaskToList(newTask, taskInfo.list);
-    this.save();
-
-    // Re-render to show the new subtask
-    this.render();
-
-    // Re-focus the input after render
-    setTimeout(() => {
-      const input = document.getElementById(`subtask-input-${parentTaskId}`);
-      if (input) {
-        input.focus();
-        console.log('🐛 [SUBTASK] Re-focused input after adding subtask');
-      }
-    }, 50);
-
-    this.showNotification('Subtask added', Config.NOTIFICATION_TYPES.SUCCESS);
-  }
-
-  // Toggle subtask expansion
-  toggleSubtaskExpansion(taskId) {
-    const taskInfo = this.findTask(taskId);
-    if (!taskInfo) return;
-
-    // Find the actual task in the data array (not the copy) using helper method
-    const actualTask = this.findTaskById(taskId);
-    if (actualTask) {
-      actualTask.isExpanded = !actualTask.isExpanded;
-      this.save();
-
-      // Instead of full render, just toggle the subtask list display and update icon
-      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-      if (taskElement) {
-        // Find the expand icon and update it
-        const expandIcon = taskElement.querySelector('.expand-icon');
-        if (expandIcon) {
-          expandIcon.textContent = actualTask.isExpanded ? '▼' : '▶';
-        }
-
-        // Find the subtask container (it's the next sibling after the task element)
-        const subtaskList = taskElement.nextElementSibling;
-        if (subtaskList && subtaskList.classList.contains('subtask-list')) {
-          subtaskList.style.display = actualTask.isExpanded ? 'block' : 'none';
-        }
-      }
-    }
-  }
-
-  // Get children of a task
-  getChildren(parentId, listName = null) {
-    // If listName is provided, filter by list (for backward compatibility)
-    // If not provided, get ALL children regardless of list
-    if (listName) {
-      return this.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
-    }
-    return this.data.tasks.filter(task => task.parentId === parentId);
-  }
-
-  // Check if parent should auto-complete
-  checkParentCompletion(parentId, listName) {
-    const children = this.getChildren(parentId, listName);
-    if (children.length === 0) return;
-
-    const allComplete = children.every(child => child.completed);
-    if (allComplete) {
-      const parent = this.data.tasks.find(t => t.id === parentId && t.list === listName);
-      if (parent && !parent.completed) {
-        parent.completed = true;
-        this.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
-      }
     }
   }
 
