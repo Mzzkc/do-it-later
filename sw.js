@@ -1,7 +1,7 @@
 // Do It (Later) - Service Worker
 // Phase 1: Basic offline functionality
 
-const CACHE_NAME = 'do-it-later-v1';
+const CACHE_NAME = 'do-it-later-v1.12.0';
 const urlsToCache = [
   '/',
   '/index.html',
