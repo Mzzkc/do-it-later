@@ -129,6 +129,7 @@ class DeadlinePicker {
       this.app.showNotification(`Deadline set for ${new Date(deadline).toLocaleDateString()}`, Config.NOTIFICATION_TYPES.SUCCESS);
     } else {
       delete actualTask.deadline;
+      // Don't auto-remove importance when removing deadline
       this.app.showNotification('Deadline removed', Config.NOTIFICATION_TYPES.SUCCESS);
     }
 

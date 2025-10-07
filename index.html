@@ -182,7 +182,13 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <!-- 5. QR Scanner (depends on Config, Utils) -->
     <script src="scripts/qr-scanner.js"></script>
-    <!-- 6. Main app (depends on everything) -->
+    <!-- 6. Feature modules (depend on Config, Utils, and provide functionality to app) -->
+    <script src="scripts/pomodoro.js"></script>
+    <script src="scripts/deadline-picker.js"></script>
+    <script src="scripts/dev-mode.js"></script>
+    <script src="scripts/qr-handler.js"></script>
+    <script src="scripts/renderer.js"></script>
+    <!-- 7. Main app (depends on everything) -->
     <script src="scripts/app.js"></script>
 
     <!-- Set version from Config after loading -->

@@ -91,7 +91,7 @@ class Renderer {
       let touchHandled = false;
 
       li.addEventListener('touchstart', (e) => {
-        if (this.app.devMode) {
+        if (this.app.devMode.isActive()) {
           console.log('👆 TASK TOUCHSTART:', {
             taskId: task.id,
             isScrolling: this.app.isScrolling
@@ -116,7 +116,7 @@ class Renderer {
 
           // If we detect scrolling movement, cancel long press
           if (deltaY > 15 || deltaX > 15) {
-            if (this.app.devMode) {
+            if (this.app.devMode.isActive()) {
               console.log('📱 CANCELLING LONG PRESS: Scroll detected', {
                 taskId: task.id,
                 deltaX,
@@ -144,7 +144,7 @@ class Renderer {
         // Only handle as tap if it's quick with minimal movement
         const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
 
-        if (this.app.devMode) {
+        if (this.app.devMode.isActive()) {
           console.log('📱 TASK TOUCHEND:', {
             taskId: task.id,
             deltaX,
@@ -187,7 +187,7 @@ class Renderer {
         this.app.endLongPress();
       });
       li.addEventListener('click', (e) => {
-        if (this.app.devMode) {
+        if (this.app.devMode.isActive()) {
           console.log('🖱️ TASK CLICK EVENT (MOUSE):', {
             taskId: task.id,
             target: e.target.tagName,
@@ -199,7 +199,7 @@ class Renderer {
 
         // Prevent click if touch was handled
         if (touchHandled) {
-          if (this.app.devMode) {
+          if (this.app.devMode.isActive()) {
             console.log('🚫 CLICK BLOCKED: Touch event already handled');
           }
           return;
@@ -420,7 +420,7 @@ class Renderer {
           // Add visual pressed state to arrow
           moveIcon.style.opacity = '0.6';
 
-          if (this.app.devMode) {
+          if (this.app.devMode.isActive()) {
             console.log('⬅️ ARROW TOUCHSTART:', {
               action: moveIcon.dataset.action
             });
@@ -442,7 +442,7 @@ class Renderer {
           // Only execute if it's a quick tap with minimal movement
           const isTap = deltaX < 10 && deltaY < 10 && deltaTime < 500;
 
-          if (this.app.devMode) {
+          if (this.app.devMode.isActive()) {
             console.log('⬅️ ARROW TOUCHEND:', {
               action: moveIcon.dataset.action,
               taskId: moveIcon.dataset.taskId,
@@ -454,7 +454,7 @@ class Renderer {
           }
 
           if (!isTap) {
-            if (this.app.devMode) {
+            if (this.app.devMode.isActive()) {
               console.log('🚫 ARROW BLOCKED: Movement detected');
             }
             return;
@@ -466,7 +466,7 @@ class Renderer {
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
 
-          if (this.app.devMode) {
+          if (this.app.devMode.isActive()) {
             console.log('✅ ARROW EXECUTED:', { action, taskId });
           }
 
