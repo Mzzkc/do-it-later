@@ -1,7 +1,7 @@
 {
-  "total_modules": 14,
-  "total_classes": 11,
-  "total_functions": 153,
+  "total_modules": 15,
+  "total_classes": 12,
+  "total_functions": 166,
   "modules": {
     "qr-handler": {
       "classes": [
@@ -860,15 +860,35 @@
           "name": "TaskManager.checkParentCompletion",
           "type": "class_method",
           "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.hasChildren",
+          "type": "class_method",
+          "class": "TaskManager",
+          "section": "ViewModel"
+        },
+        {
+          "name": "TaskManager.getChildrenSorted",
+          "type": "class_method",
+          "class": "TaskManager",
+          "section": "ViewModel"
+        },
+        {
+          "name": "TaskManager.getRenderData",
+          "type": "class_method",
+          "class": "TaskManager",
+          "section": "ViewModel"
         }
       ],
       "exports": [],
       "dependencies": [
-        "TaskManager",
+        "Utils",
         "Config"
       ],
       "file": "task-manager.js",
-      "path": "/home/emzi/Projects/do-it-later/scripts/task-manager.js"
+      "path": "/home/emzi/Projects/do-it-later/scripts/task-manager.js",
+      "line_count": 763,
+      "description": "Task CRUD operations, movement, editing, subtasks, and ViewModel for render-ready data"
     },
     "renderer": {
       "classes": [
@@ -886,7 +906,42 @@
           "class": "Renderer"
         },
         {
+          "name": "Renderer.createEmptyMessage",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.createTaskElement",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.getTaskClasses",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.createSubtaskContainer",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.createSubtaskElement",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.createSubtaskInput",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
           "name": "Renderer.getTaskHTML",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.getDeadlineHTML",
           "type": "class_method",
           "class": "Renderer"
         }
@@ -894,10 +949,58 @@
       "exports": [],
       "dependencies": [
         "Utils",
-        "Renderer"
+        "Config"
       ],
       "file": "renderer.js",
-      "path": "/home/emzi/Projects/do-it-later/scripts/renderer.js"
+      "path": "/home/emzi/Projects/do-it-later/scripts/renderer.js",
+      "line_count": 264,
+      "description": "Pure presentation layer - NO event handlers, NO business logic"
+    },
+    "task-controller": {
+      "classes": [
+        "TaskController"
+      ],
+      "functions": [
+        {
+          "name": "TaskController.constructor",
+          "type": "class_method",
+          "class": "TaskController"
+        },
+        {
+          "name": "TaskController.bindTaskListEvents",
+          "type": "class_method",
+          "class": "TaskController"
+        },
+        {
+          "name": "TaskController.setupClickHandlers",
+          "type": "class_method",
+          "class": "TaskController"
+        },
+        {
+          "name": "TaskController.setupTouchHandlers",
+          "type": "class_method",
+          "class": "TaskController"
+        },
+        {
+          "name": "TaskController.handleTaskClick",
+          "type": "class_method",
+          "class": "TaskController"
+        },
+        {
+          "name": "TaskController.handleMoveAction",
+          "type": "class_method",
+          "class": "TaskController"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "LongPressManager",
+        "TaskManager"
+      ],
+      "file": "task-controller.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/task-controller.js",
+      "line_count": 278,
+      "description": "Event delegation controller - handles ALL task interactions with 6-8 delegated listeners"
     },
     "deadline-picker": {
       "classes": [

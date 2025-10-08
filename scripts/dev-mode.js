@@ -105,42 +105,42 @@ class DevMode {
     // Add test tasks with visual gradient effects and sorting demonstration
     const testTasks = [
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '📅 Normal task added first',
         completed: false,
         important: false,
         createdAt: Date.now() - 300000 // 5 minutes ago
       },
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '⭐ Important: High priority task',
         completed: false,
         important: true,
         createdAt: Date.now() - 200000 // 3+ minutes ago
       },
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '🔥 Important: Most recent urgent task',
         completed: false,
         important: true,
         createdAt: Date.now() - 100000 // 1+ minutes ago
       },
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '📅 Another normal task',
         completed: false,
         important: false,
         createdAt: Date.now() - 50000 // 50 seconds ago
       },
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '✅ Completed important task',
         completed: true,
         important: true,
         createdAt: Date.now() - 400000 // 6+ minutes ago
       },
       {
-        id: this.app.generateId(),
+        id: this.app.taskManager.generateId(),
         text: '✅ Completed normal task',
         completed: true,
         important: false,

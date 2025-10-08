@@ -22,7 +22,7 @@ class PomodoroTimer {
   start(taskId) {
     console.log('🐛 [POMODORO] startPomodoro called', { taskId });
 
-    const taskInfo = this.app.findTask(taskId);
+    const taskInfo = this.app.taskManager.findTask(taskId);
     console.log('🐛 [POMODORO] Task info:', taskInfo);
 
     if (!taskInfo) {
@@ -116,7 +116,7 @@ class PomodoroTimer {
    * Show completion prompt modal
    */
   showCompletionPrompt() {
-    const taskInfo = this.app.findTask(this.state.taskId);
+    const taskInfo = this.app.taskManager.findTask(this.state.taskId);
     if (!taskInfo) {
       this.stop();
       return;
@@ -163,7 +163,7 @@ class PomodoroTimer {
   completeTask() {
     const taskId = this.state.taskId;
     this.stop();
-    this.app.toggleTask(taskId);
+    this.app.taskManager.completeTask(taskId);
   }
 
   /**
@@ -260,7 +260,7 @@ class PomodoroTimer {
       timeStr
     });
 
-    const taskInfo = this.app.findTask(this.state.taskId);
+    const taskInfo = this.app.taskManager.findTask(this.state.taskId);
     const taskText = taskInfo ? taskInfo.text : 'Unknown task';
 
     console.log('🐛 [POMODORO] Task:', { taskId: this.state.taskId, taskText });

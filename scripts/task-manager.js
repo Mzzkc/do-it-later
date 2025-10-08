@@ -320,7 +320,7 @@ class TaskManager {
       setTimeout(() => {
         taskElement.classList.remove('pushing-right');
         this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
-      }, 300);
+      }, 150);
     }
   }
 
@@ -336,7 +336,7 @@ class TaskManager {
       setTimeout(() => {
         taskElement.classList.remove('pushing-left');
         this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
-      }, 300);
+      }, 150);
     }
   }
 
@@ -407,7 +407,7 @@ class TaskManager {
       this.app.render();
 
       return true;
-    }, 300);
+    }, 150);
   }
 
   // ==================== TASK EDITING ====================
@@ -706,6 +706,55 @@ class TaskManager {
         this.app.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
       }
     }
+  }
+
+  // ==================== VIEWMODEL METHODS ====================
+
+  /**
+   * Check if a task has children
+   * @param {string} taskId - Task ID to check
+   * @returns {boolean} True if task has children, false otherwise
+   */
+  hasChildren(taskId) {
+    return this.app.data.tasks.some(task => task.parentId === taskId);
+  }
+
+  /**
+   * Get sorted children of a task recursively
+   * @param {string} parentId - Parent task ID
+   * @returns {Array<Object>} Array of sorted child tasks with their children
+   */
+  getChildrenSorted(parentId) {
+    const children = this.getChildren(parentId);
+    if (children.length === 0) return [];
+
+    const sorted = this.sortTasks(children);
+
+    return sorted.map(child => ({
+      ...child,
+      children: this.getChildrenSorted(child.id),
+      hasChildren: this.hasChildren(child.id)
+    }));
+  }
+
+  /**
+   * Get complete render-ready data for a list
+   * Returns fully prepared, sorted, hierarchical task data ready for rendering
+   * @param {string} listName - Name of the list ('today' or 'tomorrow')
+   * @returns {Array<Object>} Array of render-ready task objects
+   */
+  getRenderData(listName) {
+    const tasks = this.getTasksByList(listName);
+    const sorted = this.sortTasks(tasks);
+    const topLevel = sorted.filter(task => !task.parentId);
+
+    return topLevel.map(task => ({
+      ...task,
+      children: this.getChildrenSorted(task.id),
+      hasChildren: this.hasChildren(task.id),
+      moveAction: task.list === 'today' ? 'push' : 'pull',
+      moveIcon: task.list === 'today' ? '→' : '←'
+    }));
   }
 }
 

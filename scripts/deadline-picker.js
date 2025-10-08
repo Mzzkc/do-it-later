@@ -11,7 +11,7 @@ class DeadlinePicker {
    * @param {string} taskId - Task ID to set deadline for
    */
   show(taskId) {
-    const taskInfo = this.app.findTask(taskId);
+    const taskInfo = this.app.taskManager.findTask(taskId);
     if (!taskInfo) return;
 
     // Create modal backdrop
@@ -120,7 +120,7 @@ class DeadlinePicker {
    */
   setDeadline(taskId, deadline) {
     // Find the actual task object to update
-    const actualTask = this.app.findTaskById(taskId);
+    const actualTask = this.app.taskManager.findTaskById(taskId);
 
     if (!actualTask) return;
 

@@ -2,7 +2,7 @@
   "name": "Do It (Later)",
   "short_name": "DoIt(Later)",
   "description": "Simple two-list todo app - Today and Later",
-  "version": "1.18.2",
+  "version": "1.19.0",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,6 @@
 {
   "description": "Module dependency graph for Do It (Later) application",
-  "version": "1.17.0",
+  "version": "1.19.0",
   "layers": [
     {
       "layer": 0,
@@ -31,6 +31,12 @@
       "name": "UI Components",
       "modules": ["renderer", "interaction-manager", "deadline-picker", "pomodoro"],
       "dependencies": ["config", "utils", "task-manager"]
+    },
+    {
+      "layer": 4.5,
+      "name": "Event Controllers",
+      "modules": ["task-controller"],
+      "dependencies": ["renderer", "interaction-manager", "task-manager"]
     },
     {
       "layer": 5,
@@ -80,7 +86,13 @@
       "exports": ["Renderer"],
       "imports": ["Config", "Utils"],
       "type": "class",
-      "description": "DOM rendering and UI updates"
+      "description": "Pure presentation layer - DOM rendering with NO event handlers or business logic"
+    },
+    "task-controller": {
+      "exports": ["TaskController"],
+      "imports": ["LongPressManager", "TaskManager"],
+      "type": "class",
+      "description": "Event delegation controller for task interactions"
     },
     "interaction-manager": {
       "exports": ["LongPressManager"],
@@ -160,6 +172,7 @@
     "qr-handler.js",
     "renderer.js",
     "task-manager.js",
+    "task-controller.js",
     "interaction-manager.js",
     "import-export-manager.js",
     "app.js"
@@ -167,8 +180,8 @@
   "circular_dependencies": [],
   "unused_modules": [],
   "statistics": {
-    "total_modules": 14,
-    "total_dependencies": 42,
+    "total_modules": 15,
+    "total_dependencies": 44,
     "max_depth": 6,
     "average_dependencies_per_module": 3
   }

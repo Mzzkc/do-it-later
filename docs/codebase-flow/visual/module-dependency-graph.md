@@ -22,10 +22,14 @@ graph TD
     end
 
     subgraph "Layer 4: UI Components"
-        Renderer[renderer.js<br/>DOM Rendering]
+        Renderer[renderer.js<br/>Pure View Layer]
         InteractionManager[interaction-manager.js<br/>Touch/Mouse Events]
         DeadlinePicker[deadline-picker.js<br/>Date Selection]
         Pomodoro[pomodoro.js<br/>Timer Feature]
+    end
+
+    subgraph "Layer 4.5: Event Controllers"
+        TaskController[task-controller.js<br/>Event Delegation]
     end
 
     subgraph "Layer 5: Features"
@@ -58,6 +62,10 @@ graph TD
     Utils --> Renderer
     Config --> Renderer
 
+    Renderer --> TaskController
+    InteractionManager --> TaskController
+    TaskManager --> TaskController
+
     Config --> InteractionManager
     Config --> DeadlinePicker
     Config --> Pomodoro
@@ -81,6 +89,7 @@ graph TD
     Storage --> App
     TaskManager --> App
     Renderer --> App
+    TaskController --> App
     InteractionManager --> App
     DeadlinePicker --> App
     Pomodoro --> App
@@ -105,6 +114,7 @@ graph TD
     HTML --> QRHandler
     HTML --> Renderer
     HTML --> TaskManager
+    HTML --> TaskController
     HTML --> InteractionManager
     HTML --> ImportExport
     HTML --> App
@@ -121,11 +131,14 @@ graph TD
     classDef app fill:#fbb,stroke:#333,stroke-width:2px
     classDef external fill:#ddd,stroke:#333,stroke-width:2px
 
+    classDef controller fill:#ffa,stroke:#333,stroke-width:2px
+
     class Config config
     class Utils util
     class Storage,Sync core
     class TaskManager data
     class Renderer,InteractionManager,DeadlinePicker,Pomodoro ui
+    class TaskController controller
     class ImportExport,QRHandler,QRScanner,DevMode feature
     class App app
     class HTML,SW,QRLib,JSQRLib external
@@ -165,10 +178,11 @@ graph TD
     L10 --> L11[11. qr-handler.js]
     L11 --> L12[12. renderer.js]
     L12 --> L13[13. task-manager.js]
-    L13 --> L14[14. interaction-manager.js]
-    L14 --> L15[15. import-export-manager.js]
-    L15 --> L16[16. app.js]
-    L16 --> Init[App Initialization]
+    L13 --> L14[14. task-controller.js]
+    L14 --> L15[15. interaction-manager.js]
+    L15 --> L16[16. import-export-manager.js]
+    L16 --> L17[17. app.js]
+    L17 --> Init[App Initialization]
 ```
 
 ## Circular Dependencies

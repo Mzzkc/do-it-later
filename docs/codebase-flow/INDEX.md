@@ -2,7 +2,7 @@
 
 **Total Documentation:** 8,931 lines across 18 files
 **Generated:** 2025-10-08
-**Codebase Version:** 1.17.0
+**Codebase Version:** 1.19.0
 
 ## Start Here
 
@@ -43,10 +43,10 @@ Interactive diagrams showing architecture and flow:
 
 Machine-readable data for programmatic access:
 
-1. **[modules.json](technical/modules.json)** (974 lines)
-   - 14 modules cataloged
-   - 11 classes identified
-   - 153 functions extracted
+1. **[modules.json](technical/modules.json)** (1,020 lines)
+   - 15 modules cataloged
+   - 12 classes identified
+   - 166 functions extracted
 
 2. **[dependencies.json](technical/dependencies.json)** (174 lines)
    - 6 architectural layers
@@ -177,12 +177,12 @@ docs/codebase-flow/
 
 ## Key Statistics
 
-- **Modules Analyzed:** 14
-- **Classes Found:** 11
-- **Functions Mapped:** 153
-- **Dependencies:** 42 relationships
-- **Architectural Layers:** 6
-- **Design Patterns:** 15
+- **Modules Analyzed:** 15
+- **Classes Found:** 12
+- **Functions Mapped:** 166
+- **Dependencies:** 44 relationships
+- **Architectural Layers:** 7 (includes new Event Controllers layer)
+- **Design Patterns:** 17 (added Event Delegation and ViewModel)
 - **Lines of Code:** ~4,500
 - **Circular Dependencies:** 0
 - **External Libraries:** 2

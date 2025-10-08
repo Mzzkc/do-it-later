@@ -20,6 +20,10 @@ class DoItTomorrowApp {
     this.devMode = new DevMode(this);
     this.qrHandler = new QRHandler(this);
     this.renderer = new Renderer(this);
+    this.taskController = new TaskController(this);
+
+    // Track whether events are bound (for render optimization)
+    this.eventsBound = false;
 
     this.setupLogging();
     this.initializeLongPressSystem();
@@ -416,31 +420,36 @@ class DoItTomorrowApp {
     }
 
     this.renderTimeout = setTimeout(() => {
-      // Phase 4: Filter and sort tasks by list property
-      const todayTasks = this.data.tasks.filter(t => t.list === 'today');
-      const tomorrowTasks = this.data.tasks.filter(t => t.list === 'tomorrow');
+      // Get render-ready data from TaskManager (already sorted and hierarchical)
+      const todayData = this.taskManager.getRenderData('today');
+      const tomorrowData = this.taskManager.getRenderData('tomorrow');
 
-      const sortedToday = this.taskManager.sortTasks(todayTasks);
-      const sortedTomorrow = this.taskManager.sortTasks(tomorrowTasks);
+      // Renderer purely renders the data
+      this.renderer.renderList('today', todayData);
+      this.renderer.renderList('tomorrow', tomorrowData);
 
-      this.renderer.renderList('today', sortedToday);
-      this.renderer.renderList('tomorrow', sortedTomorrow);
+      // Bind event handlers once after initial render
+      if (!this.eventsBound) {
+        this.taskController.bindTaskListEvents('today');
+        this.taskController.bindTaskListEvents('tomorrow');
+        this.eventsBound = true;
+      }
 
       if (this.devMode.isActive()) {
-        const importantToday = sortedToday.filter(t => t.important && !t.completed).length;
-        const importantTomorrow = sortedTomorrow.filter(t => t.important && !t.completed).length;
+        const importantToday = todayData.filter(t => t.important && !t.completed).length;
+        const importantTomorrow = tomorrowData.filter(t => t.important && !t.completed).length;
 
         if (importantToday > 0 || importantTomorrow > 0) {
           console.log('📋 SORTED LISTS:', {
             today: {
-              total: sortedToday.length,
+              total: todayData.length,
               important: importantToday,
-              order: sortedToday.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
+              order: todayData.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
             },
             tomorrow: {
-              total: sortedTomorrow.length,
+              total: tomorrowData.length,
               important: importantTomorrow,
-              order: sortedTomorrow.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
+              order: tomorrowData.map(t => `${t.important ? '⭐' : '📅'} ${t.text.substring(0, 20)}`)
             }
           });
         }
