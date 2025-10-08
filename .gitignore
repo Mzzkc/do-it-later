@@ -23,10 +23,15 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Claude Code specific files
-.claude/
-CLAUDE.md
+# Claude Code specific files (local state only)
+.claude/settings.local.json
+
+# Test files (local only)
+tests/*.html
+
+# Backup files
+*.backup
+
+# Legacy files (being cleaned up)
 coordination-scratchpad.md
 validate-*.md
-docs/
-*.backup
