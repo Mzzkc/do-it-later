@@ -665,9 +665,9 @@ class TaskManager {
           expandIcon.textContent = actualTask.isExpanded ? '▼' : '▶';
         }
 
-        // Find the subtask container (it's the next sibling after the task element)
-        const subtaskList = taskElement.nextElementSibling;
-        if (subtaskList && subtaskList.classList.contains('subtask-list')) {
+        // Find the subtask container (it's a child of the task element)
+        const subtaskList = taskElement.querySelector('.subtask-list');
+        if (subtaskList) {
           subtaskList.style.display = actualTask.isExpanded ? 'block' : 'none';
         }
       }

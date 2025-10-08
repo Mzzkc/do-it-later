@@ -358,6 +358,8 @@ ul {
 .task-content {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 /* Phase 3: Important Task Visual Gradient Effects */
@@ -771,7 +773,6 @@ ul {
   white-space: nowrap !important;
   line-height: 1.2;
   position: relative;
-  margin-right: 0.5rem;
   min-width: 0 !important; /* Critical for flex item width constraint */
   pointer-events: none; /* Text is not interactive */
   transform: none !important; /* Text should never have its own transforms */
@@ -839,10 +840,10 @@ ul {
 .expand-icon {
   display: inline-block;
   width: 20px;
+  flex-shrink: 0;
   text-align: center;
   cursor: pointer;
   user-select: none;
-  margin-right: 0.5rem;
   color: var(--text-muted);
   font-size: 0.75rem;
 }
@@ -903,6 +904,7 @@ ul {
 .task-actions {
   display: flex;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .move-icon {
