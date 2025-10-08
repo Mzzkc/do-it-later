@@ -22,7 +22,7 @@ This documentation provides a complete analysis of the Do It (Later) codebase, m
   - `dependencies.json` - Module dependencies graph
   - `call-graph.json` - Complete function call graph
 
-- **[human-readable/](human-readable/)** - Narrative documentation
+- **[reference/](reference/)** - Reference documentation
   - `architecture-overview.md` - High-level architecture explanation
   - `module-breakdown.md` - Detailed module descriptions
   - `data-lifecycle.md` - How data flows from input to storage
@@ -133,6 +133,6 @@ Config → Utils → Storage → TaskManager → Renderer → App
 For specific use cases:
 
 - **Understanding data flow**: Start with [visual/data-flow-diagram.md](visual/data-flow-diagram.md)
-- **Finding where to make changes**: See [human-readable/module-breakdown.md](human-readable/module-breakdown.md)
+- **Finding where to make changes**: See [reference/module-breakdown.md](reference/module-breakdown.md)
 - **Performance optimization**: Check [analysis/bottlenecks.md](analysis/bottlenecks.md)
-- **Adding new features**: Review [human-readable/architecture-overview.md](human-readable/architecture-overview.md)
+- **Adding new features**: Review [reference/architecture-overview.md](reference/architecture-overview.md)

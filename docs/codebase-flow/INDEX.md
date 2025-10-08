@@ -68,18 +68,18 @@ Machine-readable data for programmatic access:
    - Line numbers and types
    - Module breakdown
 
-## Human-Readable Documentation (2 files, 1,010 lines)
+## Reference Documentation (2 files, 1,010 lines)
 
 Narrative explanations for understanding:
 
-1. **[architecture-overview.md](human-readable/architecture-overview.md)** (354 lines)
+1. **[architecture-overview.md](reference/architecture-overview.md)** (354 lines)
    - Design philosophy and principles
    - 6-layer architecture explained
    - Data flow and event patterns
    - Performance and security
    - Extensibility guidelines
 
-2. **[module-breakdown.md](human-readable/module-breakdown.md)** (656 lines)
+2. **[module-breakdown.md](reference/module-breakdown.md)** (656 lines)
    - Detailed module reference
    - Key methods with examples
    - "When to Modify" guidance
@@ -122,20 +122,20 @@ Insights and recommendations:
 
 ### "I'm new to the codebase"
 1. Start: [README.md](README.md)
-2. Read: [architecture-overview.md](human-readable/architecture-overview.md)
-3. Browse: [module-breakdown.md](human-readable/module-breakdown.md)
+2. Read: [architecture-overview.md](reference/architecture-overview.md)
+3. Browse: [module-breakdown.md](reference/module-breakdown.md)
 4. Reference: [QUICK-REFERENCE.md](QUICK-REFERENCE.md)
 
 ### "I need to make a change"
 1. Check: [module-dependency-graph.md](visual/module-dependency-graph.md)
 2. Review: [function-call-graph.md](visual/function-call-graph.md)
-3. Read: [module-breakdown.md](human-readable/module-breakdown.md) "When to Modify"
+3. Read: [module-breakdown.md](reference/module-breakdown.md) "When to Modify"
 4. Implement: Following patterns in [patterns.md](analysis/patterns.md)
 
 ### "I need to understand data flow"
 1. Visual: [data-flow-diagram.md](visual/data-flow-diagram.md)
 2. Technical: [data-flow.json](technical/data-flow.json)
-3. Context: [architecture-overview.md](human-readable/architecture-overview.md)
+3. Context: [architecture-overview.md](reference/architecture-overview.md)
 
 ### "I need to optimize performance"
 1. Metrics: [complexity-metrics.md](analysis/complexity-metrics.md)
@@ -166,7 +166,7 @@ docs/codebase-flow/
 │   ├── data-flow.json
 │   ├── call-graph.json
 │   └── functions.json
-├── human-readable/           # Narrative documentation
+├── reference/                # Reference documentation
 │   ├── architecture-overview.md
 │   └── module-breakdown.md
 └── analysis/                 # Metrics and insights

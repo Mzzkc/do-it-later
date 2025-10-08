@@ -42,7 +42,7 @@ Follow this systematic approach:
    - `README.md` - Overview and navigation guide
    - `visual/` - Visual diagrams (Mermaid, DOT, or similar)
    - `technical/` - Machine-readable data (JSON, YAML)
-   - `human-readable/` - Markdown documentation organized by component
+   - `reference/` - Markdown documentation organized by component
    - `analysis/` - Insights, patterns, and potential issues
 
 ## Output Structure Requirements
@@ -95,7 +95,7 @@ Follow this systematic approach:
 2. Confirm bidirectional relationships are consistent
 3. Check that all files in the codebase are accounted for
 4. Validate that visual diagrams match technical data
-5. Ensure human-readable docs cover all major components
+5. Ensure reference docs cover all major components
 
 ## Communication Protocol
 
