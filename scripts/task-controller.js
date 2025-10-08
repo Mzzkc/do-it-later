@@ -69,7 +69,7 @@ class TaskController {
 
       // Handle task item clicks (completion/deletion)
       const taskItem = e.target.closest('.task-item');
-      if (taskItem && !e.target.closest('.move-icon')) {
+      if (taskItem && !e.target.closest('.move-icon') && !e.target.closest('.subtask-input')) {
         const taskId = taskItem.dataset.taskId;
         this.handleTaskClick(taskId, e, listName);
         return;
@@ -126,7 +126,7 @@ class TaskController {
       });
 
       // Integrate with LongPressManager
-      if (!e.target.closest('.move-icon') && !e.target.closest('.expand-icon')) {
+      if (!e.target.closest('.move-icon') && !e.target.closest('.expand-icon') && !e.target.closest('.subtask-input')) {
         this.app.longPressManager.start(taskItem, e);
       }
     });
@@ -186,7 +186,7 @@ class TaskController {
 
       // Handle task item tap
       const taskItem = e.target.closest('.task-item');
-      if (taskItem && !e.target.closest('.move-icon')) {
+      if (taskItem && !e.target.closest('.move-icon') && !e.target.closest('.subtask-input')) {
         const taskId = taskItem.dataset.taskId;
         const state = this.touchState.get(taskId);
 
@@ -215,8 +215,8 @@ class TaskController {
       const taskItem = e.target.closest('.task-item');
       if (!taskItem) return;
 
-      // Don't trigger on icons
-      if (e.target.closest('.move-icon') || e.target.closest('.expand-icon')) return;
+      // Don't trigger on icons or inputs
+      if (e.target.closest('.move-icon') || e.target.closest('.expand-icon') || e.target.closest('.subtask-input')) return;
 
       this.app.longPressManager.start(taskItem, e);
     });
