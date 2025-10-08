@@ -44,6 +44,36 @@ scripts/
 
 **Dependency rule**: Modules higher in hierarchy don't depend on lower ones.
 
+## Codebase Flow Documentation
+
+**IMPORTANT**: Before making any code changes, consult the comprehensive flow documentation:
+
+📍 **Start here**: `docs/codebase-flow/INDEX.md` or `docs/codebase-flow/QUICK-REFERENCE.md`
+
+The flow documentation maps:
+- All 153 functions and their call chains
+- Complete data flow (user input → storage → rendering)
+- Event flow and user interactions
+- Module dependencies and relationships
+- Design patterns and architecture decisions
+
+**When you modify code**:
+1. **Before**: Check `docs/codebase-flow/` to understand impact
+   - Which modules are affected?
+   - What functions call this function?
+   - How does data flow through this area?
+2. **After**: Update the flow documentation to reflect your changes
+   - Update relevant JSON files in `technical/`
+   - Update Mermaid diagrams in `visual/` if architecture changed
+   - Update module descriptions in `human-readable/`
+   - Document new patterns in `analysis/patterns.md`
+
+**Key files**:
+- `visual/module-dependency-graph.md` - Module relationships
+- `visual/data-flow-diagram.md` - Data transformations
+- `technical/functions.json` - Function catalog
+- `human-readable/module-breakdown.md` - What each module does
+
 ## Data Structure
 
 Tasks are stored as single flat array (since v1.9.0):
@@ -96,26 +126,32 @@ Tasks are stored as single flat array (since v1.9.0):
 
 **Add new feature**:
 1. Read project-brief.md and status.md for context
-2. Plan the change (which modules affected?)
-3. Update code
-4. Bump version in config.js and manifest.json
-5. Test manually
-6. Commit with descriptive message
-7. Push to main
+2. Consult `docs/codebase-flow/` to understand affected modules and data flow
+3. Plan the change (which modules affected?)
+4. Update code
+5. Update flow documentation (JSON files, diagrams as needed)
+6. Bump version in config.js and manifest.json
+7. Test manually
+8. Commit with descriptive message
+9. Push to main
 
 **Fix bug**:
 1. Reproduce and identify affected module
-2. Fix in appropriate module
-3. Bump patch version
-4. Test fix
-5. Commit and push
+2. Check flow documentation to understand function calls and data flow
+3. Fix in appropriate module
+4. Update flow docs if architecture changed
+5. Bump patch version
+6. Test fix
+7. Commit and push
 
 **Refactor**:
-1. Ensure changes are isolated to specific modules
-2. Maintain dependency hierarchy
-3. Bump minor version
-4. Test thoroughly
-5. Commit and push
+1. Review flow documentation to understand full impact
+2. Ensure changes are isolated to specific modules
+3. Maintain dependency hierarchy
+4. Update ALL affected flow documentation (critical for refactors!)
+5. Bump minor version
+6. Test thoroughly
+7. Commit and push
 
 ## Resources
 

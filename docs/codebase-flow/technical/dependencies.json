@@ -1,0 +1,175 @@
+{
+  "description": "Module dependency graph for Do It (Later) application",
+  "version": "1.17.0",
+  "layers": [
+    {
+      "layer": 0,
+      "name": "Configuration",
+      "modules": ["config"],
+      "dependencies": []
+    },
+    {
+      "layer": 1,
+      "name": "Utilities",
+      "modules": ["utils"],
+      "dependencies": ["config"]
+    },
+    {
+      "layer": 2,
+      "name": "Core Services",
+      "modules": ["storage", "sync"],
+      "dependencies": ["config", "utils"]
+    },
+    {
+      "layer": 3,
+      "name": "Data Management",
+      "modules": ["task-manager"],
+      "dependencies": ["config", "utils", "storage"]
+    },
+    {
+      "layer": 4,
+      "name": "UI Components",
+      "modules": ["renderer", "interaction-manager", "deadline-picker", "pomodoro"],
+      "dependencies": ["config", "utils", "task-manager"]
+    },
+    {
+      "layer": 5,
+      "name": "Features",
+      "modules": ["import-export-manager", "qr-handler", "qr-scanner", "dev-mode"],
+      "dependencies": ["config", "utils", "sync", "storage"]
+    },
+    {
+      "layer": 6,
+      "name": "Application",
+      "modules": ["app"],
+      "dependencies": ["all"]
+    }
+  ],
+  "modules": {
+    "config": {
+      "exports": ["Config"],
+      "imports": [],
+      "type": "singleton",
+      "description": "Application constants and configuration"
+    },
+    "utils": {
+      "exports": ["Utils"],
+      "imports": ["Config"],
+      "type": "singleton",
+      "description": "Shared utility functions"
+    },
+    "storage": {
+      "exports": ["Storage"],
+      "imports": ["Config", "Utils"],
+      "type": "singleton",
+      "description": "LocalStorage operations with migration support"
+    },
+    "sync": {
+      "exports": ["Sync"],
+      "imports": ["Utils"],
+      "type": "singleton",
+      "description": "Data compression for import/export"
+    },
+    "task-manager": {
+      "exports": ["TaskManager"],
+      "imports": ["Utils"],
+      "type": "class",
+      "description": "Task CRUD operations and management"
+    },
+    "renderer": {
+      "exports": ["Renderer"],
+      "imports": ["Config", "Utils"],
+      "type": "class",
+      "description": "DOM rendering and UI updates"
+    },
+    "interaction-manager": {
+      "exports": ["LongPressManager"],
+      "imports": ["Config"],
+      "type": "class",
+      "description": "Touch and mouse interaction handling"
+    },
+    "deadline-picker": {
+      "exports": ["DeadlinePicker"],
+      "imports": ["Config"],
+      "type": "class",
+      "description": "Deadline date picker component"
+    },
+    "pomodoro": {
+      "exports": ["PomodoroTimer"],
+      "imports": ["Config", "Utils"],
+      "type": "class",
+      "description": "Pomodoro timer feature"
+    },
+    "import-export-manager": {
+      "exports": ["ImportExportManager"],
+      "imports": ["Config", "Utils", "Sync"],
+      "type": "class",
+      "description": "Import/export orchestration"
+    },
+    "qr-handler": {
+      "exports": ["QRHandler"],
+      "imports": ["Config", "Utils", "QRCode"],
+      "type": "class",
+      "description": "QR code generation and display"
+    },
+    "qr-scanner": {
+      "exports": ["QRScanner"],
+      "imports": ["Config", "jsQR"],
+      "type": "class",
+      "description": "QR code scanning functionality"
+    },
+    "dev-mode": {
+      "exports": ["DevMode"],
+      "imports": ["Config", "Utils"],
+      "type": "class",
+      "description": "Developer tools and logging"
+    },
+    "app": {
+      "exports": ["DoItTomorrowApp"],
+      "imports": ["Config", "Utils", "Storage", "TaskManager", "Renderer", "ImportExportManager", "PomodoroTimer", "DeadlinePicker", "DevMode", "QRHandler", "LongPressManager"],
+      "type": "class",
+      "description": "Main application controller"
+    }
+  },
+  "external_dependencies": {
+    "qrcode.min.js": {
+      "source": "local",
+      "provides": ["QRCode"],
+      "version": "unknown",
+      "description": "QR code generation library"
+    },
+    "jsQR": {
+      "source": "CDN",
+      "url": "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+      "provides": ["jsQR"],
+      "version": "1.4.0",
+      "description": "QR code scanning library"
+    }
+  },
+  "load_order": [
+    "config.js",
+    "utils.js",
+    "storage.js",
+    "sync.js",
+    "qrcode.min.js",
+    "jsQR (CDN)",
+    "qr-scanner.js",
+    "pomodoro.js",
+    "deadline-picker.js",
+    "dev-mode.js",
+    "qr-handler.js",
+    "renderer.js",
+    "task-manager.js",
+    "interaction-manager.js",
+    "import-export-manager.js",
+    "app.js"
+  ],
+  "circular_dependencies": [],
+  "unused_modules": [],
+  "statistics": {
+    "total_modules": 14,
+    "total_dependencies": 42,
+    "max_depth": 6,
+    "average_dependencies_per_module": 3
+  }
+}

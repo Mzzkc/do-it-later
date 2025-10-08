@@ -61,8 +61,26 @@ Single `tasks` array with `list` property (replaced old separate arrays):
 - **No build step**: Direct file serving, works with `python3 -m http.server`
 - **Version in config.js**: Single source, bumped after every change
 
+## Comprehensive Flow Documentation
+
+**Location**: `docs/codebase-flow/`
+
+Complete information flow and data accounting documentation includes:
+- **153 functions** mapped with call chains and dependencies
+- **6 major data flows** from user input to rendering
+- **Module dependency graph** with 6-layer hierarchy
+- **Event flow** for all user interactions
+- **Design patterns** (15 identified and documented)
+- **Visual diagrams** (Mermaid flowcharts, sequence diagrams, class diagrams)
+- **Technical specs** (JSON files for programmatic access)
+- **Human-readable** guides for understanding and modifying code
+
+**Key principle**: Consult flow docs before making changes, update them after.
+
+Start at: `docs/codebase-flow/INDEX.md` or `docs/codebase-flow/QUICK-REFERENCE.md`
+
 ## Current Version
-v1.16.0 (see config.js for authoritative version)
+v1.17.1 (see config.js for authoritative version)
 
 ## Deployment
 - **Repo**: https://github.com/Mzzkc/do-it-later

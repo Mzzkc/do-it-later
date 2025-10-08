@@ -1,0 +1,280 @@
+{
+  "description": "Complete function call graph for Do It (Later)",
+  "version": "1.17.0",
+  "graph_format": "adjacency list",
+  "nodes": {
+    "app.constructor": {
+      "calls": ["Storage.load", "TaskManager.constructor", "ImportExportManager.constructor", "PomodoroTimer.constructor", "DeadlinePicker.constructor", "DevMode.constructor", "QRHandler.constructor", "Renderer.constructor", "app.setupLogging", "app.initializeLongPressSystem", "app.init"]
+    },
+    "app.init": {
+      "calls": ["app.initTheme", "app.updateCurrentDate", "app.checkDateRollover", "app.bindEvents", "app.setupMobileNavigation", "app.setupSwipeGestures", "importExportManager.setup", "app.setupThemeToggle", "app.setupDeleteMode", "app.setupGlobalHandlers", "app.render", "app.updateCompletedCounter", "app.registerServiceWorker"]
+    },
+    "app.addTask": {
+      "calls": ["taskManager.addTask", "app.saveData", "app.render"]
+    },
+    "app.toggleTask": {
+      "calls": ["taskManager.toggleTask", "app.saveData", "app.render", "app.updateCompletedCounter"]
+    },
+    "app.moveTask": {
+      "calls": ["taskManager.moveTaskToList", "app.saveData", "app.render"]
+    },
+    "app.deleteTask": {
+      "calls": ["taskManager.deleteTask", "app.saveData", "app.render"]
+    },
+    "app.editTask": {
+      "calls": ["taskManager.editTask", "app.saveData", "app.render"]
+    },
+    "app.saveData": {
+      "calls": ["Storage.save"],
+      "debounced": true,
+      "delay_ms": 100
+    },
+    "app.render": {
+      "calls": ["renderer.render"],
+      "debounced": true,
+      "delay_ms": 16
+    },
+    "app.checkDateRollover": {
+      "calls": ["Utils.getTodayISO", "taskManager.moveTaskToList", "taskManager.toggleImportance", "app.saveData", "app.render", "app.showNotification"]
+    },
+    "taskManager.addTask": {
+      "calls": ["Utils.generateId", "Utils.escapeHtml", "taskManager.addTaskToList"]
+    },
+    "taskManager.toggleTask": {
+      "calls": ["taskManager.findTaskById"]
+    },
+    "taskManager.moveTaskToList": {
+      "calls": ["taskManager.findTaskById"]
+    },
+    "taskManager.deleteTask": {
+      "calls": ["taskManager.removeTaskById"]
+    },
+    "taskManager.editTask": {
+      "calls": ["taskManager.findTaskById", "Utils.escapeHtml"]
+    },
+    "taskManager.addSubtask": {
+      "calls": ["Utils.generateId", "Utils.escapeHtml", "taskManager.findTaskById"]
+    },
+    "taskManager.sortTasks": {
+      "calls": [],
+      "note": "Pure function, no external calls"
+    },
+    "renderer.render": {
+      "calls": ["taskManager.getTasksByList", "renderer.createTaskElement", "renderer.handleImportanceGradient", "renderer.updateMobileView"]
+    },
+    "renderer.createTaskElement": {
+      "calls": ["Utils.escapeHtml", "renderer.createCheckbox", "renderer.createTaskText", "renderer.createMoveButton", "renderer.createDeleteButton", "renderer.createTaskElement"],
+      "note": "Recursive for subtasks"
+    },
+    "Storage.load": {
+      "calls": ["Utils.safeJsonParse", "Storage.getDefaultData", "Storage.migrateData"]
+    },
+    "Storage.save": {
+      "calls": ["Utils.safeJsonStringify"]
+    },
+    "Storage.migrateData": {
+      "calls": ["Utils.getTodayISO"]
+    },
+    "importExportManager.exportToFile": {
+      "calls": ["Sync.compress"]
+    },
+    "importExportManager.exportToClipboard": {
+      "calls": ["Sync.compress"]
+    },
+    "importExportManager.importFromFile": {
+      "calls": ["Sync.decompress", "importExportManager.mergeTasks", "app.saveData", "app.render"]
+    },
+    "importExportManager.importFromClipboard": {
+      "calls": ["Sync.decompress", "importExportManager.mergeTasks", "app.saveData", "app.render"]
+    },
+    "Sync.compress": {
+      "calls": [],
+      "note": "Pure data transformation"
+    },
+    "Sync.decompress": {
+      "calls": ["Utils.generateId"],
+      "note": "Generates IDs for imported tasks"
+    },
+    "qrHandler.generateQRCode": {
+      "calls": ["Sync.compress", "QRCode.constructor"]
+    },
+    "qrScanner.decode": {
+      "calls": ["jsQR"],
+      "note": "External library call"
+    },
+    "pomodoro.start": {
+      "calls": ["pomodoro.tick"]
+    },
+    "pomodoro.tick": {
+      "calls": ["pomodoro.complete"],
+      "note": "Recursive via setInterval"
+    },
+    "Utils.debounce": {
+      "calls": [],
+      "note": "Higher-order function, wraps other functions"
+    },
+    "Utils.escapeHtml": {
+      "calls": [],
+      "note": "DOM-based HTML escaping"
+    },
+    "Utils.generateId": {
+      "calls": ["Date.now", "Math.random"]
+    },
+    "longPressManager.start": {
+      "calls": ["longPressManager.getEventPosition", "longPressManager.setupMovementDetection", "longPressManager.triggerLongPress"]
+    },
+    "longPressManager.triggerLongPress": {
+      "calls": ["app.showContextMenu"]
+    },
+    "deadlinePicker.show": {
+      "calls": ["Utils.formatDate"]
+    },
+    "deadlinePicker.setDeadline": {
+      "calls": ["taskManager.setDeadline", "app.saveData", "app.render"]
+    }
+  },
+  "call_chains": {
+    "add_task_chain": [
+      "DOM.keydown",
+      "app.addTask",
+      "taskManager.addTask",
+      "Utils.generateId",
+      "Utils.escapeHtml",
+      "taskManager.addTaskToList",
+      "app.saveData",
+      "Storage.save",
+      "Utils.safeJsonStringify",
+      "app.render",
+      "renderer.render",
+      "renderer.createTaskElement"
+    ],
+    "toggle_task_chain": [
+      "DOM.click",
+      "app.toggleTask",
+      "taskManager.toggleTask",
+      "taskManager.findTaskById",
+      "app.saveData",
+      "app.render",
+      "app.updateCompletedCounter"
+    ],
+    "import_chain": [
+      "DOM.input.change",
+      "importExportManager.importFromFile",
+      "FileReader.readAsText",
+      "Sync.decompress",
+      "Utils.generateId",
+      "importExportManager.mergeTasks",
+      "app.saveData",
+      "Storage.save",
+      "app.render"
+    ],
+    "initialization_chain": [
+      "window.onload",
+      "new DoItTomorrowApp",
+      "Storage.load",
+      "Storage.migrateData",
+      "app.init",
+      "app.checkDateRollover",
+      "app.render",
+      "renderer.render"
+    ]
+  },
+  "frequently_called_functions": [
+    {
+      "function": "app.saveData",
+      "called_by": ["addTask", "toggleTask", "moveTask", "deleteTask", "editTask", "setDeadline", "toggleImportance", "addSubtask", "checkDateRollover", "importFromFile", "importFromClipboard"],
+      "call_count": "~100s per session",
+      "debounced": true
+    },
+    {
+      "function": "app.render",
+      "called_by": ["addTask", "toggleTask", "moveTask", "deleteTask", "editTask", "checkDateRollover", "importFromFile", "importFromClipboard", "init"],
+      "call_count": "~100s per session",
+      "debounced": true
+    },
+    {
+      "function": "taskManager.findTaskById",
+      "called_by": ["toggleTask", "moveTaskToList", "editTask", "deleteTask", "addSubtask", "setDeadline", "toggleImportance"],
+      "call_count": "~50s per session",
+      "debounced": false
+    },
+    {
+      "function": "Utils.escapeHtml",
+      "called_by": ["taskManager.addTask", "taskManager.editTask", "taskManager.addSubtask", "renderer.createTaskElement"],
+      "call_count": "~100s per session",
+      "debounced": false
+    },
+    {
+      "function": "Utils.generateId",
+      "called_by": ["taskManager.addTask", "taskManager.addSubtask", "Sync.decompress"],
+      "call_count": "~20s per session",
+      "debounced": false
+    }
+  ],
+  "recursive_functions": [
+    {
+      "function": "renderer.createTaskElement",
+      "reason": "Creates subtask elements recursively",
+      "max_depth": "Unlimited (limited by data structure)"
+    },
+    {
+      "function": "pomodoro.tick",
+      "reason": "Called via setInterval for countdown",
+      "max_depth": "Until timer completes or is canceled"
+    }
+  ],
+  "external_api_calls": [
+    {
+      "function": "localStorage.getItem",
+      "called_from": "Storage.load",
+      "frequency": "Once per page load"
+    },
+    {
+      "function": "localStorage.setItem",
+      "called_from": "Storage.save",
+      "frequency": "After every data change (debounced)"
+    },
+    {
+      "function": "navigator.clipboard.writeText",
+      "called_from": "importExportManager.exportToClipboard",
+      "frequency": "On user action"
+    },
+    {
+      "function": "navigator.clipboard.readText",
+      "called_from": "importExportManager.importFromClipboard",
+      "frequency": "On user action"
+    },
+    {
+      "function": "FileReader.readAsText",
+      "called_from": "importExportManager.importFromFile",
+      "frequency": "On file upload"
+    },
+    {
+      "function": "navigator.mediaDevices.getUserMedia",
+      "called_from": "qrScanner.start",
+      "frequency": "When QR scanning initiated"
+    },
+    {
+      "function": "navigator.serviceWorker.register",
+      "called_from": "app.registerServiceWorker",
+      "frequency": "Once per page load"
+    }
+  ],
+  "hot_paths": [
+    {
+      "path": "User types → addTask → saveData → render",
+      "frequency": "Very high",
+      "optimizations": ["Debounced save", "Debounced render"]
+    },
+    {
+      "path": "User checks task → toggleTask → saveData → render",
+      "frequency": "High",
+      "optimizations": ["Debounced operations", "Minimal DOM updates"]
+    },
+    {
+      "path": "Page load → constructor → load → render",
+      "frequency": "Once per session",
+      "optimizations": ["Migration only when needed", "Single render"]
+    }
+  ]
+}

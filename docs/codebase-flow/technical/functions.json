@@ -1,0 +1,1888 @@
+{
+  "total_modules": 14,
+  "total_functions": 357,
+  "modules": {
+    "qr-handler": {
+      "file": "qr-handler.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/qr-handler.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "showModal",
+          "line": 13,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 138,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 211,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 225,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 240,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 248,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 254,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 260,
+          "type": "class_method"
+        },
+        {
+          "name": "generateQRCode",
+          "line": 272,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 274,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 286,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 304,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 314,
+          "type": "class_method"
+        },
+        {
+          "name": "generateQRCodeFallback",
+          "line": 350,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 359,
+          "type": "class_method"
+        },
+        {
+          "name": "getManualQRFallback",
+          "line": 384,
+          "type": "class_method"
+        },
+        {
+          "name": "handleScanSuccess",
+          "line": 420,
+          "type": "class_method"
+        },
+        {
+          "name": "importQRData",
+          "line": 447,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 459,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 468,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 483,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 22
+    },
+    "sync": {
+      "file": "sync.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/sync.js",
+      "functions": [
+        {
+          "name": "exportToText",
+          "line": 10,
+          "type": "class_method"
+        },
+        {
+          "name": "parseFromText",
+          "line": 34,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 39,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 70,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 76,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 80,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 90,
+          "type": "class_method"
+        },
+        {
+          "name": "exportToFile",
+          "line": 110,
+          "type": "class_method"
+        },
+        {
+          "name": "importFromFile",
+          "line": 139,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 141,
+          "type": "class_method"
+        },
+        {
+          "name": "generateQRData",
+          "line": 165,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 202,
+          "type": "class_method"
+        },
+        {
+          "name": "parseQRData",
+          "line": 230,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 237,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 14
+    },
+    "dev-mode": {
+      "file": "dev-mode.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/dev-mode.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "handleActivationTap",
+          "line": 15,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 19,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 28,
+          "type": "class_method"
+        },
+        {
+          "name": "activate",
+          "line": 36,
+          "type": "class_method"
+        },
+        {
+          "name": "deactivate",
+          "line": 53,
+          "type": "class_method"
+        },
+        {
+          "name": "exportLogs",
+          "line": 62,
+          "type": "class_method"
+        },
+        {
+          "name": "resetCompletedCount",
+          "line": 83,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 92,
+          "type": "class_method"
+        },
+        {
+          "name": "testImportantTasks",
+          "line": 100,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 189,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 191,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 198,
+          "type": "class_method"
+        },
+        {
+          "name": "updateUI",
+          "line": 220,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 231,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 233,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 292,
+          "type": "class_method"
+        },
+        {
+          "name": "isActive",
+          "line": 323,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 18
+    },
+    "interaction-manager": {
+      "file": "interaction-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/interaction-manager.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 19,
+          "type": "class_method"
+        },
+        {
+          "name": "start",
+          "line": 52,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 71,
+          "type": "class_method"
+        },
+        {
+          "name": "cancel",
+          "line": 90,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 96,
+          "type": "class_method"
+        },
+        {
+          "name": "triggerLongPress",
+          "line": 105,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 116,
+          "type": "class_method"
+        },
+        {
+          "name": "setupMovementDetection",
+          "line": 126,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 127,
+          "type": "class_method"
+        },
+        {
+          "name": "setupTouchMovement",
+          "line": 138,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 151,
+          "type": "class_method"
+        },
+        {
+          "name": "setupMouseMovement",
+          "line": 165,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 178,
+          "type": "class_method"
+        },
+        {
+          "name": "isMovementExceeded",
+          "line": 194,
+          "type": "class_method"
+        },
+        {
+          "name": "getEventPosition",
+          "line": 209,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 210,
+          "type": "class_method"
+        },
+        {
+          "name": "cleanup",
+          "line": 226,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 229,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 234,
+          "type": "class_method"
+        },
+        {
+          "name": "constructor",
+          "line": 262,
+          "type": "class_method"
+        },
+        {
+          "name": "show",
+          "line": 288,
+          "type": "class_method"
+        },
+        {
+          "name": "hide",
+          "line": 309,
+          "type": "class_method"
+        },
+        {
+          "name": "createMenuElement",
+          "line": 328,
+          "type": "class_method"
+        },
+        {
+          "name": "positionMenu",
+          "line": 403,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 408,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 425,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 428,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 433,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 436,
+          "type": "class_method"
+        },
+        {
+          "name": "setupMenuInteractions",
+          "line": 451,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 464,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 468,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 483,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuAction",
+          "line": 494,
+          "type": "class_method"
+        },
+        {
+          "name": "switch",
+          "line": 497,
+          "type": "class_method"
+        },
+        {
+          "name": "removeMenuElement",
+          "line": 523,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 524,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 528,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 38
+    },
+    "pomodoro": {
+      "file": "pomodoro.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/pomodoro.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "start",
+          "line": 22,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 28,
+          "type": "class_method"
+        },
+        {
+          "name": "tick",
+          "line": 70,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 77,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 85,
+          "type": "class_method"
+        },
+        {
+          "name": "handleComplete",
+          "line": 99,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 101,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 107,
+          "type": "class_method"
+        },
+        {
+          "name": "showCompletionPrompt",
+          "line": 118,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 120,
+          "type": "class_method"
+        },
+        {
+          "name": "completeTask",
+          "line": 163,
+          "type": "class_method"
+        },
+        {
+          "name": "stop",
+          "line": 172,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 173,
+          "type": "class_method"
+        },
+        {
+          "name": "continue",
+          "line": 191,
+          "type": "class_method"
+        },
+        {
+          "name": "showTimer",
+          "line": 201,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 207,
+          "type": "class_method"
+        },
+        {
+          "name": "hideTimer",
+          "line": 233,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 235,
+          "type": "class_method"
+        },
+        {
+          "name": "updateDisplay",
+          "line": 243,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 247,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 21
+    },
+    "utils": {
+      "file": "utils.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/utils.js",
+      "functions": [
+        {
+          "name": "generateId",
+          "line": 10,
+          "type": "class_method"
+        },
+        {
+          "name": "escapeHtml",
+          "line": 19,
+          "type": "class_method"
+        },
+        {
+          "name": "formatDate",
+          "line": 31,
+          "type": "class_method"
+        },
+        {
+          "name": "getTodayISO",
+          "line": 39,
+          "type": "class_method"
+        },
+        {
+          "name": "isMobile",
+          "line": 47,
+          "type": "class_method"
+        },
+        {
+          "name": "debounce",
+          "line": 57,
+          "type": "class_method"
+        },
+        {
+          "name": "deepClone",
+          "line": 75,
+          "type": "class_method"
+        },
+        {
+          "name": "isEmpty",
+          "line": 89,
+          "type": "class_method"
+        },
+        {
+          "name": "clamp",
+          "line": 104,
+          "type": "class_method"
+        },
+        {
+          "name": "distance",
+          "line": 116,
+          "type": "class_method"
+        },
+        {
+          "name": "getQueryParam",
+          "line": 127,
+          "type": "class_method"
+        },
+        {
+          "name": "cleanText",
+          "line": 138,
+          "type": "class_method"
+        },
+        {
+          "name": "truncate",
+          "line": 149,
+          "type": "class_method"
+        },
+        {
+          "name": "wait",
+          "line": 159,
+          "type": "class_method"
+        },
+        {
+          "name": "safeJsonParse",
+          "line": 169,
+          "type": "class_method"
+        },
+        {
+          "name": "safeJsonStringify",
+          "line": 184,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 16
+    },
+    "qr-scanner": {
+      "file": "qr-scanner.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/qr-scanner.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "startScanning",
+          "line": 62,
+          "type": "class_method"
+        },
+        {
+          "name": "stopScanning",
+          "line": 72,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 74,
+          "type": "class_method"
+        },
+        {
+          "name": "scan",
+          "line": 79,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 80,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 81,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 83,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 99,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 106,
+          "type": "class_method"
+        },
+        {
+          "name": "detectQRCode",
+          "line": 122,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 125,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 127,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 139,
+          "type": "class_method"
+        },
+        {
+          "name": "isValidTaskData",
+          "line": 162,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 173,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 191,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 17
+    },
+    "app": {
+      "file": "app.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/app.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "setupLogging",
+          "line": 30,
+          "type": "class_method"
+        },
+        {
+          "name": "addLog",
+          "line": 56,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 59,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 72,
+          "type": "class_method"
+        },
+        {
+          "name": "init",
+          "line": 78,
+          "type": "class_method"
+        },
+        {
+          "name": "setupGlobalHandlers",
+          "line": 95,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 98,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 103,
+          "type": "class_method"
+        },
+        {
+          "name": "setupScrollDetection",
+          "line": 116,
+          "type": "class_method"
+        },
+        {
+          "name": "updateCurrentDate",
+          "line": 137,
+          "type": "class_method"
+        },
+        {
+          "name": "updateCompletedCounter",
+          "line": 149,
+          "type": "class_method"
+        },
+        {
+          "name": "checkDateRollover",
+          "line": 161,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 163,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 182,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 200,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 204,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 206,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 213,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 225,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 228,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 231,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 234,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 246,
+          "type": "class_method"
+        },
+        {
+          "name": "bindEvents",
+          "line": 252,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 258,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 265,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 291,
+          "type": "class_method"
+        },
+        {
+          "name": "handleAddTask",
+          "line": 297,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 300,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 302,
+          "type": "class_method"
+        },
+        {
+          "name": "showNotification",
+          "line": 326,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 377,
+          "type": "class_method"
+        },
+        {
+          "name": "escapeHtml",
+          "line": 386,
+          "type": "class_method"
+        },
+        {
+          "name": "save",
+          "line": 392,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 394,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 402,
+          "type": "class_method"
+        },
+        {
+          "name": "render",
+          "line": 413,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 414,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 433,
+          "type": "class_method"
+        },
+        {
+          "name": "setupMobileNavigation",
+          "line": 452,
+          "type": "class_method"
+        },
+        {
+          "name": "switchMobileView",
+          "line": 466,
+          "type": "class_method"
+        },
+        {
+          "name": "updateMobileView",
+          "line": 472,
+          "type": "class_method"
+        },
+        {
+          "name": "setupSwipeGestures",
+          "line": 486,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 504,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 517,
+          "type": "class_method"
+        },
+        {
+          "name": "handleTaskClick",
+          "line": 533,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 544,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 554,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 564,
+          "type": "class_method"
+        },
+        {
+          "name": "initializeLongPressSystem",
+          "line": 579,
+          "type": "class_method"
+        },
+        {
+          "name": "onLongPress",
+          "line": 583,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onCancel",
+          "line": 584,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onEdit",
+          "line": 589,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onToggleImportant",
+          "line": 590,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onSetDeadline",
+          "line": 591,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onStartPomodoro",
+          "line": 592,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onAddSubtask",
+          "line": 593,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onDelete",
+          "line": 594,
+          "type": "arrow_function"
+        },
+        {
+          "name": "onClose",
+          "line": 595,
+          "type": "arrow_function"
+        },
+        {
+          "name": "handleLongPress",
+          "line": 601,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 610,
+          "type": "class_method"
+        },
+        {
+          "name": "handleLongPressCancel",
+          "line": 629,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 630,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuEdit",
+          "line": 636,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuToggleImportant",
+          "line": 642,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 649,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 671,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 679,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuSetDeadline",
+          "line": 708,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuDelete",
+          "line": 714,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 718,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuStartPomodoro",
+          "line": 732,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuAddSubtask",
+          "line": 738,
+          "type": "class_method"
+        },
+        {
+          "name": "handleMenuClose",
+          "line": 744,
+          "type": "class_method"
+        },
+        {
+          "name": "startLongPress",
+          "line": 749,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 751,
+          "type": "class_method"
+        },
+        {
+          "name": "endLongPress",
+          "line": 756,
+          "type": "class_method"
+        },
+        {
+          "name": "registerServiceWorker",
+          "line": 760,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 761,
+          "type": "class_method"
+        },
+        {
+          "name": "initTheme",
+          "line": 773,
+          "type": "class_method"
+        },
+        {
+          "name": "setupThemeToggle",
+          "line": 778,
+          "type": "class_method"
+        },
+        {
+          "name": "applyTheme",
+          "line": 786,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 790,
+          "type": "class_method"
+        },
+        {
+          "name": "toggleTheme",
+          "line": 800,
+          "type": "class_method"
+        },
+        {
+          "name": "setupDeleteMode",
+          "line": 807,
+          "type": "class_method"
+        },
+        {
+          "name": "toggleDeleteMode",
+          "line": 822,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 828,
+          "type": "class_method"
+        },
+        {
+          "name": "showDeleteModeNotice",
+          "line": 839,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 841,
+          "type": "class_method"
+        },
+        {
+          "name": "hideDeleteModeNotice",
+          "line": 854,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 856,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 92
+    },
+    "storage": {
+      "file": "storage.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/storage.js",
+      "functions": [
+        {
+          "name": "load",
+          "line": 9,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 12,
+          "type": "class_method"
+        },
+        {
+          "name": "save",
+          "line": 31,
+          "type": "class_method"
+        },
+        {
+          "name": "getDefaultData",
+          "line": 46,
+          "type": "class_method"
+        },
+        {
+          "name": "migrateData",
+          "line": 61,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 63,
+          "type": "class_method"
+        },
+        {
+          "name": "clear",
+          "line": 105,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 7
+    },
+    "task-manager": {
+      "file": "task-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/task-manager.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 18,
+          "type": "class_method"
+        },
+        {
+          "name": "generateId",
+          "line": 28,
+          "type": "class_method"
+        },
+        {
+          "name": "getTasksByList",
+          "line": 37,
+          "type": "class_method"
+        },
+        {
+          "name": "findTaskById",
+          "line": 46,
+          "type": "class_method"
+        },
+        {
+          "name": "addTaskToList",
+          "line": 55,
+          "type": "class_method"
+        },
+        {
+          "name": "removeTaskById",
+          "line": 65,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 67,
+          "type": "class_method"
+        },
+        {
+          "name": "moveTaskToList",
+          "line": 80,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 82,
+          "type": "class_method"
+        },
+        {
+          "name": "findTask",
+          "line": 94,
+          "type": "class_method"
+        },
+        {
+          "name": "addTask",
+          "line": 108,
+          "type": "class_method"
+        },
+        {
+          "name": "deleteTaskWithSubtasks",
+          "line": 132,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 138,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 150,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 164,
+          "type": "class_method"
+        },
+        {
+          "name": "deleteTask",
+          "line": 181,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 184,
+          "type": "class_method"
+        },
+        {
+          "name": "sortTasks",
+          "line": 197,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 212,
+          "type": "class_method"
+        },
+        {
+          "name": "completeTask",
+          "line": 238,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 240,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 247,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 252,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 263,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 265,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 267,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 278,
+          "type": "class_method"
+        },
+        {
+          "name": "addRippleEffect",
+          "line": 293,
+          "type": "class_method"
+        },
+        {
+          "name": "pushToTomorrow",
+          "line": 315,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 318,
+          "type": "class_method"
+        },
+        {
+          "name": "pullToToday",
+          "line": 331,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 334,
+          "type": "class_method"
+        },
+        {
+          "name": "animateTaskMovement",
+          "line": 351,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 372,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 376,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 388,
+          "type": "class_method"
+        },
+        {
+          "name": "enterEditMode",
+          "line": 419,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 465,
+          "type": "class_method"
+        },
+        {
+          "name": "saveEdit",
+          "line": 479,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 488,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 508,
+          "type": "class_method"
+        },
+        {
+          "name": "cancelEdit",
+          "line": 526,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 533,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 545,
+          "type": "class_method"
+        },
+        {
+          "name": "showAddSubtaskDialog",
+          "line": 560,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 564,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 571,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 580,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 591,
+          "type": "class_method"
+        },
+        {
+          "name": "addSubtask",
+          "line": 605,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 609,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 636,
+          "type": "class_method"
+        },
+        {
+          "name": "toggleSubtaskExpansion",
+          "line": 649,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 655,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 661,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 664,
+          "type": "class_method"
+        },
+        {
+          "name": "getChildren",
+          "line": 683,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 686,
+          "type": "class_method"
+        },
+        {
+          "name": "checkParentCompletion",
+          "line": 697,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 702,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 704,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 61
+    },
+    "renderer": {
+      "file": "renderer.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/renderer.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 20,
+          "type": "class_method"
+        },
+        {
+          "name": "renderList",
+          "line": 31,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 43,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 47,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 49,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 71,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 111,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 118,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 159,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 201,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 212,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 235,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 237,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 246,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 274,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 280,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 303,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 317,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 330,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 336,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 348,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 366,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 368,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 380,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 396,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 402,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 456,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 473,
+          "type": "class_method"
+        },
+        {
+          "name": "getTaskHTML",
+          "line": 502,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 511,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 523,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 31
+    },
+    "deadline-picker": {
+      "file": "deadline-picker.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/deadline-picker.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 5,
+          "type": "class_method"
+        },
+        {
+          "name": "show",
+          "line": 13,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 80,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 92,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 101,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 108,
+          "type": "class_method"
+        },
+        {
+          "name": "setDeadline",
+          "line": 121,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 127,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 8
+    },
+    "config": {
+      "file": "config.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/config.js",
+      "functions": [],
+      "function_count": 0
+    },
+    "import-export-manager": {
+      "file": "import-export-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/import-export-manager.js",
+      "functions": [
+        {
+          "name": "constructor",
+          "line": 18,
+          "type": "class_method"
+        },
+        {
+          "name": "setup",
+          "line": 26,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 71,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 80,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 110,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 118,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 125,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 157,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 166,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 183,
+          "type": "class_method"
+        },
+        {
+          "name": "showPasteDialog",
+          "line": 206,
+          "type": "class_method"
+        },
+        {
+          "name": "if",
+          "line": 283,
+          "type": "class_method"
+        }
+      ],
+      "function_count": 12
+    }
+  }
+}

@@ -1,0 +1,975 @@
+{
+  "total_modules": 14,
+  "total_classes": 11,
+  "total_functions": 153,
+  "modules": {
+    "qr-handler": {
+      "classes": [
+        "QRHandler"
+      ],
+      "functions": [
+        {
+          "name": "QRHandler.constructor",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.showModal",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.generateQRCode",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.generateQRCodeFallback",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.getManualQRFallback",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.handleScanSuccess",
+          "type": "class_method",
+          "class": "QRHandler"
+        },
+        {
+          "name": "QRHandler.importQRData",
+          "type": "class_method",
+          "class": "QRHandler"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "QRCode",
+        "Sync",
+        "Storage"
+      ],
+      "file": "qr-handler.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/qr-handler.js"
+    },
+    "sync": {
+      "classes": [],
+      "functions": [
+        {
+          "name": "Sync.generateQRData",
+          "type": "object_method",
+          "object": "Sync"
+        },
+        {
+          "name": "Sync.importFromFile",
+          "type": "object_method",
+          "object": "Sync"
+        },
+        {
+          "name": "Sync.exportToText",
+          "type": "object_method",
+          "object": "Sync"
+        },
+        {
+          "name": "Sync.parseQRData",
+          "type": "object_method",
+          "object": "Sync"
+        },
+        {
+          "name": "Sync.parseFromText",
+          "type": "object_method",
+          "object": "Sync"
+        },
+        {
+          "name": "Sync.exportToFile",
+          "type": "object_method",
+          "object": "Sync"
+        }
+      ],
+      "exports": [
+        {
+          "name": "Sync",
+          "type": "object"
+        }
+      ],
+      "dependencies": [
+        "Storage",
+        "Utils",
+        "Config"
+      ],
+      "file": "sync.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/sync.js"
+    },
+    "dev-mode": {
+      "classes": [
+        "DevMode"
+      ],
+      "functions": [
+        {
+          "name": "DevMode.constructor",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.handleActivationTap",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.activate",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.deactivate",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.exportLogs",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.resetCompletedCount",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.testImportantTasks",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.updateUI",
+          "type": "class_method",
+          "class": "DevMode"
+        },
+        {
+          "name": "DevMode.isActive",
+          "type": "class_method",
+          "class": "DevMode"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Sync",
+        "Config"
+      ],
+      "file": "dev-mode.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/dev-mode.js"
+    },
+    "interaction-manager": {
+      "classes": [
+        "LongPressManager",
+        "ContextMenu"
+      ],
+      "functions": [
+        {
+          "name": "LongPressManager.constructor",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.start",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.cancel",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.triggerLongPress",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.setupMovementDetection",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.setupTouchMovement",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.setupMouseMovement",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.isMovementExceeded",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.getEventPosition",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "LongPressManager.cleanup",
+          "type": "class_method",
+          "class": "LongPressManager"
+        },
+        {
+          "name": "ContextMenu.constructor",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.show",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.hide",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.createMenuElement",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.positionMenu",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.setupMenuInteractions",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.handleMenuAction",
+          "type": "class_method",
+          "class": "ContextMenu"
+        },
+        {
+          "name": "ContextMenu.removeMenuElement",
+          "type": "class_method",
+          "class": "ContextMenu"
+        }
+      ],
+      "exports": [],
+      "dependencies": [],
+      "file": "interaction-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/interaction-manager.js"
+    },
+    "pomodoro": {
+      "classes": [
+        "PomodoroTimer"
+      ],
+      "functions": [
+        {
+          "name": "PomodoroTimer.constructor",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.start",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.tick",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.handleComplete",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.showCompletionPrompt",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.completeTask",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.stop",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.continue",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.showTimer",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.hideTimer",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        },
+        {
+          "name": "PomodoroTimer.updateDisplay",
+          "type": "class_method",
+          "class": "PomodoroTimer"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Utils",
+        "Config"
+      ],
+      "file": "pomodoro.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/pomodoro.js"
+    },
+    "utils": {
+      "classes": [],
+      "functions": [
+        {
+          "name": "Utils.safeJsonParse",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.isMobile",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.generateId",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.wait",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.escapeHtml",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.formatDate",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.getQueryParam",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.cleanText",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.truncate",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.isEmpty",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.safeJsonStringify",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.distance",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.clamp",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.debounce",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.deepClone",
+          "type": "object_method",
+          "object": "Utils"
+        },
+        {
+          "name": "Utils.getTodayISO",
+          "type": "object_method",
+          "object": "Utils"
+        }
+      ],
+      "exports": [
+        {
+          "name": "Utils",
+          "type": "object"
+        }
+      ],
+      "dependencies": [
+        "Config"
+      ],
+      "file": "utils.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/utils.js"
+    },
+    "qr-scanner": {
+      "classes": [
+        "QRScanner"
+      ],
+      "functions": [
+        {
+          "name": "QRScanner.constructor",
+          "type": "class_method",
+          "class": "QRScanner"
+        },
+        {
+          "name": "QRScanner.startScanning",
+          "type": "class_method",
+          "class": "QRScanner"
+        },
+        {
+          "name": "QRScanner.stopScanning",
+          "type": "class_method",
+          "class": "QRScanner"
+        },
+        {
+          "name": "QRScanner.scan",
+          "type": "class_method",
+          "class": "QRScanner"
+        },
+        {
+          "name": "QRScanner.detectQRCode",
+          "type": "class_method",
+          "class": "QRScanner"
+        },
+        {
+          "name": "QRScanner.isValidTaskData",
+          "type": "class_method",
+          "class": "QRScanner"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Utils",
+        "Config"
+      ],
+      "file": "qr-scanner.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/qr-scanner.js"
+    },
+    "app": {
+      "classes": [
+        "DoItTomorrowApp"
+      ],
+      "functions": [
+        {
+          "name": "DoItTomorrowApp.constructor",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupLogging",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.addLog",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.init",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupGlobalHandlers",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupScrollDetection",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.updateCurrentDate",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.updateCompletedCounter",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.checkDateRollover",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.bindEvents",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleAddTask",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.showNotification",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.escapeHtml",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.save",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.render",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupMobileNavigation",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.switchMobileView",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.updateMobileView",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupSwipeGestures",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleTaskClick",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.initializeLongPressSystem",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleLongPress",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleLongPressCancel",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuEdit",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuToggleImportant",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuSetDeadline",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuDelete",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuStartPomodoro",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuAddSubtask",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.handleMenuClose",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.startLongPress",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.endLongPress",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.registerServiceWorker",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.initTheme",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupThemeToggle",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.applyTheme",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.toggleTheme",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.setupDeleteMode",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.toggleDeleteMode",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.showDeleteModeNotice",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        },
+        {
+          "name": "DoItTomorrowApp.hideDeleteModeNotice",
+          "type": "class_method",
+          "class": "DoItTomorrowApp"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Storage"
+      ],
+      "file": "app.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/app.js"
+    },
+    "storage": {
+      "classes": [],
+      "functions": [
+        {
+          "name": "Storage.clear",
+          "type": "object_method",
+          "object": "Storage"
+        },
+        {
+          "name": "Storage.load",
+          "type": "object_method",
+          "object": "Storage"
+        },
+        {
+          "name": "Storage.migrateData",
+          "type": "object_method",
+          "object": "Storage"
+        },
+        {
+          "name": "Storage.getDefaultData",
+          "type": "object_method",
+          "object": "Storage"
+        },
+        {
+          "name": "Storage.save",
+          "type": "object_method",
+          "object": "Storage"
+        }
+      ],
+      "exports": [
+        {
+          "name": "Storage",
+          "type": "object"
+        }
+      ],
+      "dependencies": [
+        "Utils",
+        "Config"
+      ],
+      "file": "storage.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/storage.js"
+    },
+    "task-manager": {
+      "classes": [
+        "TaskManager"
+      ],
+      "functions": [
+        {
+          "name": "TaskManager.constructor",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.generateId",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.getTasksByList",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.findTaskById",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.addTaskToList",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.removeTaskById",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.moveTaskToList",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.findTask",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.addTask",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.deleteTaskWithSubtasks",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.deleteTask",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.sortTasks",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.completeTask",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.addRippleEffect",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.pushToTomorrow",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.pullToToday",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.animateTaskMovement",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.enterEditMode",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.saveEdit",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.cancelEdit",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.showAddSubtaskDialog",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.addSubtask",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.toggleSubtaskExpansion",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.getChildren",
+          "type": "class_method",
+          "class": "TaskManager"
+        },
+        {
+          "name": "TaskManager.checkParentCompletion",
+          "type": "class_method",
+          "class": "TaskManager"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "TaskManager",
+        "Config"
+      ],
+      "file": "task-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/task-manager.js"
+    },
+    "renderer": {
+      "classes": [
+        "Renderer"
+      ],
+      "functions": [
+        {
+          "name": "Renderer.constructor",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.renderList",
+          "type": "class_method",
+          "class": "Renderer"
+        },
+        {
+          "name": "Renderer.getTaskHTML",
+          "type": "class_method",
+          "class": "Renderer"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Utils",
+        "Renderer"
+      ],
+      "file": "renderer.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/renderer.js"
+    },
+    "deadline-picker": {
+      "classes": [
+        "DeadlinePicker"
+      ],
+      "functions": [
+        {
+          "name": "DeadlinePicker.constructor",
+          "type": "class_method",
+          "class": "DeadlinePicker"
+        },
+        {
+          "name": "DeadlinePicker.show",
+          "type": "class_method",
+          "class": "DeadlinePicker"
+        },
+        {
+          "name": "DeadlinePicker.setDeadline",
+          "type": "class_method",
+          "class": "DeadlinePicker"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Config"
+      ],
+      "file": "deadline-picker.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/deadline-picker.js"
+    },
+    "config": {
+      "classes": [],
+      "functions": [],
+      "exports": [
+        {
+          "name": "Config",
+          "type": "object"
+        }
+      ],
+      "dependencies": [
+        "Config"
+      ],
+      "file": "config.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/config.js"
+    },
+    "import-export-manager": {
+      "classes": [
+        "ImportExportManager"
+      ],
+      "functions": [
+        {
+          "name": "ImportExportManager.constructor",
+          "type": "class_method",
+          "class": "ImportExportManager"
+        },
+        {
+          "name": "ImportExportManager.setup",
+          "type": "class_method",
+          "class": "ImportExportManager"
+        },
+        {
+          "name": "ImportExportManager.showPasteDialog",
+          "type": "class_method",
+          "class": "ImportExportManager"
+        }
+      ],
+      "exports": [],
+      "dependencies": [
+        "Sync",
+        "Storage"
+      ],
+      "file": "import-export-manager.js",
+      "path": "/home/emzi/Projects/do-it-later/scripts/import-export-manager.js"
+    }
+  }
+}
