@@ -221,7 +221,7 @@ class Renderer {
       }
 
       // Check if task has children (get ALL children, regardless of list)
-      const children = this.app.getChildren(task.id);
+      const children = this.app.taskManager.getChildren(task.id);
       const hasChildren = children.length > 0;
 
       // Add expand/collapse icon if has children
@@ -237,7 +237,7 @@ class Renderer {
         if (expandBtn) {
           expandBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.app.toggleSubtaskExpansion(task.id);
+            this.app.taskManager.toggleSubtaskExpansion(task.id);
           });
         }
       }
@@ -249,7 +249,7 @@ class Renderer {
         subtaskContainer.style.display = task.isExpanded ? 'block' : 'none';
 
         // Sort and render children
-        const sortedChildren = this.app.sortTasks(children);
+        const sortedChildren = this.app.taskManager.sortTasks(children);
         sortedChildren.forEach(childTask => {
           const childLi = document.createElement('li');
           childLi.className = 'subtask-item task-item';
@@ -302,10 +302,10 @@ class Renderer {
               // Check delete mode for the child's actual list (not parent's list)
               if (this.app.deleteMode[childTask.list]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
-                this.app.deleteTaskWithSubtasks(childTask.id);
+                this.app.taskManager.deleteTaskWithSubtasks(childTask.id);
                 this.app.showNotification('Subtask deleted', 'success');
               } else {
-                this.app.completeTask(childTask.id, e);
+                this.app.taskManager.completeTask(childTask.id, e);
               }
             }
           });
@@ -316,11 +316,11 @@ class Renderer {
               // Check delete mode for the child's actual list (not parent's list)
               if (this.app.deleteMode[childTask.list]) {
                 console.log('🐛 [DELETE] Delete mode active, deleting subtask:', childTask.id);
-                this.app.deleteTaskWithSubtasks(childTask.id);
+                this.app.taskManager.deleteTaskWithSubtasks(childTask.id);
                 this.app.showNotification('Subtask deleted', 'success');
               } else {
                 // Normal mode - complete the subtask
-                this.app.completeTask(childTask.id, e);
+                this.app.taskManager.completeTask(childTask.id, e);
               }
             }
           });
@@ -334,9 +334,9 @@ class Renderer {
               const action = childMoveIcon.dataset.action;
               const taskId = childMoveIcon.dataset.taskId;
               if (action === 'push') {
-                this.app.pushToTomorrow(taskId);
+                this.app.taskManager.pushToTomorrow(taskId);
               } else if (action === 'pull') {
-                this.app.pullToToday(taskId);
+                this.app.taskManager.pullToToday(taskId);
               }
             });
           }
@@ -367,7 +367,7 @@ class Renderer {
               const text = input.value.trim();
               if (text) {
                 console.log('🐛 [SUBTASK] Adding subtask:', text);
-                this.app.addSubtask(task.id, text);
+                this.app.taskManager.addSubtask(task.id, text);
                 // Clear input but keep it visible
                 input.value = '';
                 input.focus();
@@ -400,9 +400,9 @@ class Renderer {
           const action = moveIcon.dataset.action;
           const taskId = moveIcon.dataset.taskId;
           if (action === 'push') {
-            this.app.pushToTomorrow(taskId);
+            this.app.taskManager.pushToTomorrow(taskId);
           } else if (action === 'pull') {
-            this.app.pullToToday(taskId);
+            this.app.taskManager.pullToToday(taskId);
           }
         });
         // Touch events with simple tap detection
@@ -471,9 +471,9 @@ class Renderer {
           }
 
           if (action === 'push') {
-            this.app.pushToTomorrow(taskId);
+            this.app.taskManager.pushToTomorrow(taskId);
           } else if (action === 'pull') {
-            this.app.pullToToday(taskId);
+            this.app.taskManager.pullToToday(taskId);
           }
         });
 
