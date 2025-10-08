@@ -733,7 +733,9 @@ class TaskManager {
     return sorted.map(child => ({
       ...child,
       children: this.getChildrenSorted(child.id),
-      hasChildren: this.hasChildren(child.id)
+      hasChildren: this.hasChildren(child.id),
+      moveAction: child.list === 'today' ? 'push' : 'pull',
+      moveIcon: child.list === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
     }));
   }
 
@@ -753,7 +755,7 @@ class TaskManager {
       children: this.getChildrenSorted(task.id),
       hasChildren: this.hasChildren(task.id),
       moveAction: task.list === 'today' ? 'push' : 'pull',
-      moveIcon: task.list === 'today' ? '→' : '←'
+      moveIcon: task.list === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
     }));
   }
 }

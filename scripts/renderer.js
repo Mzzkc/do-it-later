@@ -105,8 +105,11 @@ class Renderer {
       }, 300);
     }
 
-    // Generate task HTML
-    li.innerHTML = this.getTaskHTML(task, listName);
+    // Wrap task content in a container to fix flexbox layout issue
+    const taskContent = document.createElement('div');
+    taskContent.className = 'task-content';
+    taskContent.innerHTML = this.getTaskHTML(task, listName);
+    li.appendChild(taskContent);
 
     // Render children if present OR if adding a subtask
     if (task.hasChildren || task._addingSubtask) {
@@ -168,8 +171,11 @@ class Renderer {
     if (child.important) childLi.classList.add('important');
     childLi.setAttribute('data-task-id', child.id);
 
-    // Generate subtask HTML
-    childLi.innerHTML = this.getTaskHTML(child, listName);
+    // Wrap subtask content in a container to fix flexbox layout issue
+    const taskContent = document.createElement('div');
+    taskContent.className = 'task-content';
+    taskContent.innerHTML = this.getTaskHTML(child, listName);
+    childLi.appendChild(taskContent);
 
     return childLi;
   }
