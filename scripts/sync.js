@@ -158,16 +158,16 @@ const Sync = {
   },
 
   /**
-   * Generate QR code data in hyper-compressed format (v4)
+   * Generate QR code data in ultra-compressed delimiter format (v5)
    * @param {Object} data - Application data to compress
    * @returns {string} Compressed QR data string
    */
   generateQRData(data) {
-    // Hyper-compressed format v4 - aggressive optimization
+    // Ultra-compressed format v5 - delimiter-based, no JSON/base64
     // Only include incomplete tasks to reduce size
     const incompleteTasks = data.tasks ? data.tasks.filter(task => !task.completed) : [];
 
-    // Create ID→index mapping (reduces ID size from ~18 chars to 1-2 chars)
+    // Create ID→index mapping
     const idMap = new Map();
     incompleteTasks.forEach((task, idx) => {
       idMap.set(task.id, idx);
@@ -180,63 +180,80 @@ const Sync = {
       today.setHours(0, 0, 0, 0);
       const deadline = new Date(isoDate);
       deadline.setHours(0, 0, 0, 0);
-      return Math.round((deadline - today) / 86400000); // milliseconds per day
+      return Math.round((deadline - today) / 86400000);
     };
 
-    // Group tasks by list to eliminate repeated list field
+    // Helper: convert index to base36 (0-9, then A-Z for 10-35, etc.)
+    const toBase36 = (num) => num.toString(36).toUpperCase();
+
+    // Group tasks by list
     const todayTasks = [];
     const tomorrowTasks = [];
 
     incompleteTasks.forEach((task, idx) => {
-      const compressed = {
-        i: idx,                    // index (instead of full ID)
-        x: task.text              // text
-      };
+      // Build task string: text[*][.parent][+days]
+      let taskStr = task.text;
 
-      // Only include non-default values to save space
-      if (task.important) compressed.m = 1;                           // important (mark)
-      if (task.deadline) compressed.d = dateToDaysOffset(task.deadline);  // deadline as days offset
-      if (task.parentId) compressed.p = idMap.get(task.parentId);    // parent index (not full ID)
+      // Append important flag
+      if (task.important) taskStr += '*';
+
+      // Append parent reference
+      if (task.parentId) {
+        const parentIdx = idMap.get(task.parentId);
+        if (parentIdx !== undefined) {
+          taskStr += '.' + toBase36(parentIdx);
+        }
+      }
+
+      // Append deadline offset
+      if (task.deadline) {
+        const offset = dateToDaysOffset(task.deadline);
+        if (offset !== null) {
+          taskStr += (offset >= 0 ? '+' : '') + offset;
+        }
+      }
 
       // Group by list
       if (task.list === 'today') {
-        todayTasks.push(compressed);
+        todayTasks.push(taskStr);
       } else {
-        tomorrowTasks.push(compressed);
+        tomorrowTasks.push(taskStr);
       }
     });
 
-    const qrData = {
-      t: todayTasks,           // today tasks
-      l: tomorrowTasks,        // later/tomorrow tasks
-      c: data.totalCompleted || 0,  // totalCompleted
-      v: 4  // version 4 = hyper-compressed format
-    };
+    // Build final format: 5:C§TODAY§LATER
+    const parts = [
+      '5',                                    // version
+      data.totalCompleted || 0,               // completed count
+      todayTasks.join('|'),                   // today tasks
+      tomorrowTasks.join('|')                 // later tasks
+    ];
 
-    // Convert to JSON and base64 encode for additional compression
-    const jsonStr = Utils.safeJsonStringify(qrData);
-    const base64 = btoa(jsonStr);
+    const qrData = parts.join('§');
 
-    console.log(`📊 QR Data: ${incompleteTasks.length} tasks, ${jsonStr.length}→${base64.length} bytes (${Math.round((1-base64.length/jsonStr.length)*100)}% reduction)`);
+    console.log(`📊 QR Data v5: ${incompleteTasks.length} tasks, ${qrData.length} bytes (delimiter format)`);
 
-    return base64;
+    return qrData;
   },
 
   /**
-   * Parse QR code data in hyper-compressed format (v4)
-   * @param {string} qrData - Base64-encoded QR code data string
+   * Parse QR code data in ultra-compressed delimiter format (v5)
+   * @param {string} qrData - Delimiter-based QR code data string
    * @returns {Object} Parsed application data
    */
   parseQRData(qrData) {
     try {
-      // Decode base64
-      const jsonStr = atob(qrData);
-      const parsed = Utils.safeJsonParse(jsonStr);
+      // Parse v5 format: 5§C§TODAY§LATER
+      const parts = qrData.split('§');
 
-      // Hyper-compressed format (v4): {t: [today], l: [tomorrow], c, v: 4}
-      if (!parsed || parsed.v !== 4) {
-        throw new Error('Invalid QR code format (expected v4 hyper-compressed format)');
+      if (parts.length !== 4 || parts[0] !== '5') {
+        throw new Error('Invalid QR code format (expected v5 delimiter format)');
       }
+
+      const version = parts[0];
+      const totalCompleted = parseInt(parts[1]) || 0;
+      const todaySection = parts[2];
+      const laterSection = parts[3];
 
       // Helper: convert days-offset to ISO date
       const daysOffsetToDate = (offset) => {
@@ -247,51 +264,88 @@ const Sync = {
         return deadline.toISOString();
       };
 
-      // Generate new IDs for all tasks
+      // Helper: parse base36 to number
+      const fromBase36 = (str) => parseInt(str, 36);
+
+      // Helper: parse task string: text[*][.parent][+days]
+      const parseTask = (taskStr, listName, taskIndex) => {
+        if (!taskStr) return null;
+
+        let text = taskStr;
+        let important = false;
+        let parentIdx = null;
+        let deadline = null;
+
+        // Extract deadline offset (+ or - followed by digits at end)
+        const deadlineMatch = text.match(/([+-]\d+)$/);
+        if (deadlineMatch) {
+          deadline = daysOffsetToDate(parseInt(deadlineMatch[1]));
+          text = text.substring(0, deadlineMatch.index);
+        }
+
+        // Extract parent reference (.N at end, where N is base36)
+        const parentMatch = text.match(/\.([0-9A-Z]+)$/);
+        if (parentMatch) {
+          parentIdx = fromBase36(parentMatch[1]);
+          text = text.substring(0, parentMatch.index);
+        }
+
+        // Extract important flag (* at end)
+        if (text.endsWith('*')) {
+          important = true;
+          text = text.substring(0, text.length - 1);
+        }
+
+        return {
+          text,
+          important,
+          parentIdx,
+          deadline,
+          list: listName,
+          index: taskIndex
+        };
+      };
+
+      // Parse today and later tasks
+      const todayTaskStrs = todaySection ? todaySection.split('|').filter(s => s) : [];
+      const laterTaskStrs = laterSection ? laterSection.split('|').filter(s => s) : [];
+
+      // Parse all tasks
+      const parsedTasks = [];
+      let globalIndex = 0;
+
+      todayTaskStrs.forEach(taskStr => {
+        const parsed = parseTask(taskStr, 'today', globalIndex++);
+        if (parsed) parsedTasks.push(parsed);
+      });
+
+      laterTaskStrs.forEach(taskStr => {
+        const parsed = parseTask(taskStr, 'tomorrow', globalIndex++);
+        if (parsed) parsedTasks.push(parsed);
+      });
+
+      // Generate IDs and build ID map
       const idMap = new Map(); // index → new ID
-      const todayTasks = parsed.t || [];
-      const tomorrowTasks = parsed.l || [];
-      const allCompressed = [...todayTasks, ...tomorrowTasks];
-
-      // First pass: generate IDs
-      allCompressed.forEach((task) => {
-        idMap.set(task.i, Utils.generateId());
+      parsedTasks.forEach((task) => {
+        idMap.set(task.index, Utils.generateId());
       });
 
-      // Second pass: decompress tasks with proper IDs and parentIds
-      const tasks = [];
-
-      todayTasks.forEach(task => {
-        tasks.push({
-          id: idMap.get(task.i),
-          text: task.x,
-          list: 'today',
-          completed: false,  // QR only contains incomplete tasks
-          important: task.m === 1,
-          deadline: daysOffsetToDate(task.d),
-          parentId: task.p != null ? idMap.get(task.p) : null,
-          isExpanded: true,  // default true
-          createdAt: Date.now()
-        });
-      });
-
-      tomorrowTasks.forEach(task => {
-        tasks.push({
-          id: idMap.get(task.i),
-          text: task.x,
-          list: 'tomorrow',
-          completed: false,  // QR only contains incomplete tasks
-          important: task.m === 1,
-          deadline: daysOffsetToDate(task.d),
-          parentId: task.p != null ? idMap.get(task.p) : null,
-          isExpanded: true,  // default true
-          createdAt: Date.now()
-        });
-      });
+      // Build final task objects
+      const tasks = parsedTasks.map(task => ({
+        id: idMap.get(task.index),
+        text: task.text,
+        list: task.list,
+        completed: false,  // QR only contains incomplete tasks
+        important: task.important,
+        deadline: task.deadline,
+        parentId: task.parentIdx !== null ? idMap.get(task.parentIdx) : null,
+        isExpanded: true,  // default true
+        createdAt: Date.now()
+      }));
 
       return {
         tasks: tasks,
-        totalCompleted: parsed.c || 0,
+        totalCompleted: totalCompleted,
         version: 2,  // Convert to internal v2 format
         currentDate: Utils.getTodayISO(),
         lastUpdated: Date.now()

@@ -13,7 +13,7 @@ class QRHandler {
   showModal() {
     const qrData = Sync.generateQRData(this.app.data);
     const dataSize = qrData.length;
-    const maxSize = 2300; // QR code practical limit with Medium error correction
+    const maxSize = 2950; // QR code practical limit with Low error correction (v5 delimiter format)
     const isTooBig = dataSize > maxSize;
 
     // Create modal
@@ -292,7 +292,7 @@ class QRHandler {
             height: 200,
             colorDark: '#000000',
             colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
+            correctLevel: QRCode.CorrectLevel.L  // Low error correction for maximum capacity
           });
 
           // Clean up the QR code display - remove any extra elements and padding
