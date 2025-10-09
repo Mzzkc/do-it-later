@@ -1,0 +1,144 @@
+#!/bin/sh
+#
+# Pre-commit hook for Do It Later
+# Ensures all E2E tests pass AND prevents test cheating
+#
+# This hook is MANDATORY and enforces the Testing Policy.
+# Do NOT bypass with --no-verify unless you have explicit approval.
+#
+# Installation:
+#   cp hooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+
+echo "🧪 Running comprehensive test validation before commit..."
+echo ""
+
+# Color codes for output
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
+# Track violations
+VIOLATIONS=0
+
+# 1. Check for test.skip() - developers trying to skip failing tests
+echo "🔍 Checking for skipped tests..."
+SKIPPED_TESTS=$(grep -r "test\.skip\|describe\.skip" tests/e2e/*.spec.js 2>/dev/null | wc -l)
+if [ "$SKIPPED_TESTS" -gt 0 ]; then
+  echo "${YELLOW}⚠️  WARNING: Found $SKIPPED_TESTS skipped test(s)${NC}"
+  echo "   Skipped tests detected. This may indicate incomplete work."
+  grep -n "test\.skip\|describe\.skip" tests/e2e/*.spec.js
+  echo ""
+  VIOLATIONS=$((VIOLATIONS + 1))
+fi
+
+# 2. Check for test.only() - prevents running full test suite
+echo "🔍 Checking for test.only() (blocks commit)..."
+ONLY_TESTS=$(grep -r "test\.only\|describe\.only" tests/e2e/*.spec.js 2>/dev/null | wc -l)
+if [ "$ONLY_TESTS" -gt 0 ]; then
+  echo "${RED}❌ COMMIT BLOCKED: test.only() or describe.only() found!${NC}"
+  echo ""
+  echo "These markers prevent the full test suite from running."
+  grep -n "test\.only\|describe\.only" tests/e2e/*.spec.js
+  echo ""
+  echo "Remove .only() before committing."
+  exit 1
+fi
+
+# 3. Check minimum test count (prevents deleting tests to "fix" failures)
+echo "🔍 Verifying test count hasn't decreased..."
+EXPECTED_MIN_TESTS=69  # Current count: 69+ tests
+CURRENT_TEST_COUNT=$(grep -r "^[[:space:]]*test(" tests/e2e/*.spec.js 2>/dev/null | wc -l)
+
+if [ "$CURRENT_TEST_COUNT" -lt "$EXPECTED_MIN_TESTS" ]; then
+  echo "${RED}❌ COMMIT BLOCKED: Test count decreased!${NC}"
+  echo ""
+  echo "Expected: ≥${EXPECTED_MIN_TESTS} tests"
+  echo "Found: ${CURRENT_TEST_COUNT} tests"
+  echo ""
+  echo "Deleting tests to fix failures is not allowed."
+  echo "Fix the failing tests or the code instead."
+  exit 1
+fi
+echo "   ✓ Test count: ${CURRENT_TEST_COUNT} tests (expected ≥${EXPECTED_MIN_TESTS})"
+
+# 4. Check for commented-out test blocks (another cheating method)
+echo "🔍 Checking for commented-out tests..."
+COMMENTED_TESTS=$(grep -r "^[[:space:]]*//.*test\(" tests/e2e/*.spec.js 2>/dev/null | wc -l)
+if [ "$COMMENTED_TESTS" -gt 5 ]; then  # Some tolerance for examples in comments
+  echo "${YELLOW}⚠️  WARNING: Found $COMMENTED_TESTS commented test line(s)${NC}"
+  echo "   This may indicate tests being disabled to avoid failures."
+  echo ""
+  VIOLATIONS=$((VIOLATIONS + 1))
+fi
+
+# 5. Check for suspicious test modifications (empty test bodies)
+echo "🔍 Checking for empty test bodies..."
+EMPTY_TESTS=$(grep -r "test(.*=>.*{[[:space:]]*});" tests/e2e/*.spec.js 2>/dev/null | wc -l)
+if [ "$EMPTY_TESTS" -gt 0 ]; then
+  echo "${RED}❌ COMMIT BLOCKED: Empty test(s) found!${NC}"
+  echo ""
+  echo "Tests with no assertions detected."
+  grep -n "test(.*=>.*{[[:space:]]*});" tests/e2e/*.spec.js
+  echo ""
+  echo "Empty tests provide no value. Remove or implement them."
+  exit 1
+fi
+
+# 6. Run the actual E2E tests
+echo ""
+echo "🧪 Running E2E test suite..."
+echo "⏳ This ensures all features still work..."
+echo ""
+
+# Run with list reporter only (HTML reporter blocks with interactive server)
+npx playwright test --reporter=list
+
+# Capture exit code
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "${RED}❌ COMMIT BLOCKED: E2E tests failed!${NC}"
+  echo ""
+  echo "📋 What to do:"
+  echo "  1. Review test failures above"
+  echo "  2. Run 'npm run test:e2e:ui' for interactive debugging"
+  echo "  3. Fix the failing tests OR fix the code"
+  echo "  4. DO NOT:"
+  echo "     - Skip tests with test.skip()"
+  echo "     - Delete failing tests"
+  echo "     - Comment out tests"
+  echo "     - Modify tests to pass without fixing bugs"
+  echo ""
+  echo "📖 See TESTING_POLICY.md for guidelines."
+  echo ""
+  exit 1
+fi
+
+# 7. Verify test results look legitimate (no zero-test runs)
+echo ""
+echo "🔍 Verifying test execution..."
+if [ "$CURRENT_TEST_COUNT" -lt 10 ]; then
+  echo "${RED}❌ COMMIT BLOCKED: Suspiciously low test execution!${NC}"
+  echo ""
+  echo "Expected ~${EXPECTED_MIN_TESTS} tests to run."
+  echo "This may indicate test suite was sabotaged."
+  exit 1
+fi
+
+# Summary
+echo ""
+if [ "$VIOLATIONS" -gt 0 ]; then
+  echo "${YELLOW}⚠️  ${VIOLATIONS} warning(s) detected${NC}"
+  echo "   Please review the warnings above."
+  echo "   Commit is allowed but consider addressing warnings."
+  echo ""
+fi
+
+echo "${GREEN}✅ All validation checks passed!${NC}"
+echo "${GREEN}✅ All ${CURRENT_TEST_COUNT} tests passed!${NC}"
+echo "${GREEN}🎉 Proceeding with commit...${NC}"
+echo ""
+exit 0

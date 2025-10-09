@@ -4,6 +4,14 @@
 
 This document describes the testing infrastructure for the Do It Later application. The project uses **Playwright for E2E browser automation** to ensure comprehensive test coverage without modifying the vanilla JavaScript codebase.
 
+### Current Status
+
+**Total**: 75 tests across 11 test suites
+**Passing**: 71/75 (94.7%)
+**Coverage**: 100% of user-facing features
+
+**Known Issues**: 4 failing tests in subtasks.spec.js represent real application bugs (documented in `BUGS_FOUND.md`). These tests correctly fail until the underlying bugs are fixed.
+
 ## Test Architecture
 
 ### Strategy
@@ -60,6 +68,25 @@ npm run test:e2e:debug
 npx playwright test tests/e2e/basic-tasks.spec.js
 ```
 
+### Pre-commit Hook (Automated Testing)
+
+The pre-commit hook automatically runs all tests before every commit:
+
+```bash
+# Install the pre-commit hook (one-time setup)
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
+# After installation, tests run automatically on every commit
+git commit -m "your message"
+# → 🧪 Running comprehensive test validation...
+# → Tests must pass before commit is allowed
+```
+
+**Key Fix (2025-10-09)**: The pre-commit hook now uses `--reporter=list` instead of the default HTML reporter, preventing the hook from hanging on the interactive HTML report server.
+
+See `TESTING_POLICY.md` for full details on the testing policy and enforcement mechanisms.
+
 ### Manual Testing
 
 ```bash
@@ -92,7 +119,8 @@ E2E tests provide coverage for:
 
 ### E2E Tests
 
-**Total Test Count**: 69+ tests across 11 test suites
+**Total Test Count**: 75 tests across 11 test suites
+**Pass Rate**: 71/75 passing (94.7%)
 **Coverage**: 100% of user-facing features
 
 #### `basic-tasks.spec.js` (11 tests)

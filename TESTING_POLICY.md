@@ -6,6 +6,30 @@
 
 This project maintains 100% feature coverage through automated E2E tests. This policy ensures code quality, prevents regressions, and maintains user trust.
 
+## Installation
+
+### Pre-commit Hook Setup
+The pre-commit hook automatically runs tests before every commit. **Install it once:**
+
+```bash
+# Copy the hook to your local .git/hooks directory
+cp hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+**Verification:**
+```bash
+# Make a test commit - hook should run automatically
+git commit -m "test" --allow-empty
+```
+
+You should see:
+```
+🧪 Running comprehensive test validation before commit...
+🔍 Checking for skipped tests...
+...
+```
+
 ## The Testing Commandments
 
 ### 1. Test Before Commit
@@ -14,7 +38,7 @@ This project maintains 100% feature coverage through automated E2E tests. This p
 npm run test:e2e
 ```
 
-**Pre-commit hook enforces this automatically.**
+**Pre-commit hook enforces this automatically** (after installation).
 If tests fail, the commit is blocked.
 
 ### 2. Write Tests First (TDD)
@@ -234,7 +258,8 @@ git commit --no-verify
 ## Enforcement Mechanisms
 
 ### Pre-Commit Hook (Advanced Validation)
-Location: `.git/hooks/pre-commit`
+Source: `hooks/pre-commit` (tracked in repo)
+Installed location: `.git/hooks/pre-commit` (local, must be copied)
 
 This hook is intelligent and checks for cheating:
 
