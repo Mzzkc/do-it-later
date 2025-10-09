@@ -143,11 +143,13 @@ class Renderer {
     container.className = 'subtask-list';
     container.style.display = task.isExpanded ? 'block' : 'none';
 
-    // Render each child
-    task.children.forEach(child => {
-      const childLi = this.createSubtaskElement(child, listName);
-      container.appendChild(childLi);
-    });
+    // Render each child (defensive check for undefined)
+    if (task.children && Array.isArray(task.children)) {
+      task.children.forEach(child => {
+        const childLi = this.createSubtaskElement(child, listName);
+        container.appendChild(childLi);
+      });
+    }
 
     // Add subtask input if needed
     if (task._addingSubtask) {
