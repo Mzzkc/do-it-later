@@ -1,8 +1,8 @@
 # Documentation Index
 
 **Total Documentation:** 8,931 lines across 18 files
-**Generated:** 2025-10-08
-**Codebase Version:** 1.19.0
+**Generated:** 2025-10-09
+**Codebase Version:** 1.20.4
 
 ## Start Here
 
@@ -216,8 +216,46 @@ docs/codebase-flow/
 - Major refactoring occurs
 - Patterns introduced/changed
 
-**Last Updated:** 2025-10-08
+**Last Updated:** 2025-10-09
 **Next Review:** When codebase reaches v2.0.0
+
+## Recent Changes (v1.19.0 → v1.20.4)
+
+**v1.20.4** - Current version
+- Fixed deadline indicator visibility (text overflow fix)
+
+**v1.20.3** - Service worker improvements
+- Network-first strategy for JS/CSS files to prevent stale code
+
+**v1.20.2** - Bug fixes
+- Fixed task.children undefined error on page refresh
+
+**v1.20.1** - QR format improvement
+- Replaced § delimiter with ASCII ~ for better compatibility
+
+**v1.20.0** - QR v5 format (major)
+- Ultra-compressed delimiter-based format (79% size reduction)
+- Improved QR code generation and parsing
+
+**v1.19.x** - Architecture refactoring
+- MVC+ViewModel pattern with event delegation
+- TaskController module for centralized event handling
+- Renderer refactored to pure view layer (52% size reduction)
+- Animation performance improvements (600ms → 300ms)
+
+## Testing Infrastructure
+
+**E2E Testing (Playwright)** - Added comprehensive browser automation
+- Tests: `tests/e2e/basic-tasks.spec.js`, `subtasks.spec.js`, `sync-qr.spec.js`
+- Page Object Model: `tests/e2e/fixtures/app-page.js`
+- Configuration: `playwright.config.js`
+- Coverage: Task CRUD, subtasks, QR sync, persistence
+
+**Unit Testing (Vitest)** - Infrastructure ready for future use
+- Configuration: `vitest.config.js`
+- Target: ES6 module refactoring phase
+
+**Documentation**: `tests/README.md` - Complete testing guide
 
 ---
 

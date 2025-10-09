@@ -29,6 +29,13 @@ Thumbs.db
 # Test files (local only)
 tests/*.html
 
+# Test artifacts
+test-results/
+playwright-report/
+coverage/
+.vitest/
+playwright/.cache/
+
 # Backup files
 *.backup
 

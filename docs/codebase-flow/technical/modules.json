@@ -2,6 +2,26 @@
   "total_modules": 15,
   "total_classes": 12,
   "total_functions": 166,
+  "testing": {
+    "e2e": {
+      "framework": "Playwright",
+      "config": "playwright.config.js",
+      "test_files": [
+        "tests/e2e/basic-tasks.spec.js",
+        "tests/e2e/subtasks.spec.js",
+        "tests/e2e/sync-qr.spec.js"
+      ],
+      "page_object": "tests/e2e/fixtures/app-page.js",
+      "coverage": ["task CRUD", "subtasks", "QR sync", "persistence", "important sorting"],
+      "status": "implemented"
+    },
+    "unit": {
+      "framework": "Vitest",
+      "config": "vitest.config.js",
+      "status": "configured, awaiting ES6 module refactor"
+    },
+    "documentation": "tests/README.md"
+  },
   "modules": {
     "qr-handler": {
       "classes": [

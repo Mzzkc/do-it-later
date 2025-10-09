@@ -1,0 +1,32 @@
+{
+  "name": "do-it-later",
+  "version": "1.20.4",
+  "description": "Simple two-list todo app (Today and Later) with subtasks, deadlines, and device sync",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "playwright:install": "playwright install --with-deps chromium"
+  },
+  "keywords": [
+    "todo",
+    "task-manager",
+    "pwa",
+    "vanilla-js",
+    "offline-first"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/ui": "^2.1.8",
+    "happy-dom": "^15.11.7",
+    "vitest": "^2.1.8"
+  }
+}
