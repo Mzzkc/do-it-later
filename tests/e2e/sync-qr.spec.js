@@ -26,12 +26,12 @@ test.describe('QR Code Sync (v5 Format)', () => {
     await app.longPressTask('Important Task');
     await app.selectContextMenuItem('Toggle Important');
 
-    // Open QR modal (via import/export menu)
-    await page.click('[data-action="open-menu"]');
-    await page.click('[data-action="show-qr"]');
+    // Open QR modal
+    await page.click('#qr-btn');
 
     // Verify QR code is displayed
-    const qrImage = await page.locator('#qr-code-image').count();
+    await page.waitForSelector('#qr-code img', { timeout: 5000 });
+    const qrImage = await page.locator('#qr-code img').count();
     expect(qrImage).toBeGreaterThan(0);
 
     // Verify QR data is in v5 format (starts with "5~")
@@ -46,11 +46,11 @@ test.describe('QR Code Sync (v5 Format)', () => {
 
   test('should export empty state correctly', async ({ page }) => {
     // Open QR modal with no tasks
-    await page.click('[data-action="open-menu"]');
-    await page.click('[data-action="show-qr"]');
+    await page.click('#qr-btn');
 
     // Should still generate QR code for empty state
-    const qrImage = await page.locator('#qr-code-image').count();
+    await page.waitForSelector('#qr-code img', { timeout: 5000 });
+    const qrImage = await page.locator('#qr-code img').count();
     expect(qrImage).toBeGreaterThan(0);
   });
 
@@ -65,30 +65,26 @@ test.describe('QR Code Sync (v5 Format)', () => {
     }
 
     // Generate QR
-    await page.click('[data-action="open-menu"]');
-    await page.click('[data-action="show-qr"]');
+    await page.click('#qr-btn');
 
     // Should succeed without "Too long" error
     const errorMessage = await page.locator('.error-message').count();
     expect(errorMessage).toBe(0);
 
-    const qrImage = await page.locator('#qr-code-image').count();
+    await page.waitForSelector('#qr-code img', { timeout: 5000 });
+    const qrImage = await page.locator('#qr-code img').count();
     expect(qrImage).toBeGreaterThan(0);
   });
 
-  test('should import tasks from QR data', async ({ page }) => {
+  test('should import tasks from QR data', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
     // Manually inject QR data to simulate scanning
     // v5 format: "5~0~Task1|Task2*~LaterTask"
     const qrData = '5~0~Task1|Task2*~LaterTask';
 
-    await page.evaluate((data) => {
-      // Simulate QR scan by calling import function
-      if (window.app && window.app.importExportManager) {
-        window.app.importExportManager.importFromQRData(data);
-      }
-    }, qrData);
-
-    await page.waitForTimeout(500);
+    // Use the importFromClipboard method which handles QR data format
+    await app.importFromClipboard(qrData);
 
     // Verify tasks were imported
     const todayTasks = await app.getTodayTasks();
@@ -113,8 +109,7 @@ test.describe('QR Code Sync (v5 Format)', () => {
     expect(completedCount).toBe(2);
 
     // Export and re-import
-    await page.click('[data-action="open-menu"]');
-    await page.click('[data-action="show-qr"]');
+    await page.click('#qr-btn');
 
     const qrData = await page.evaluate(() => window.lastQRData);
 

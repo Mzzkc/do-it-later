@@ -57,9 +57,12 @@ test.describe('Basic Task Operations', () => {
     expect(count).toBe(0);
   });
 
-  test('should move task from Today to Later', async () => {
+  test('should move task from Today to Later', async ({ page }) => {
     await app.addTodayTask('Moving task');
     await app.clickMoveButton('Moving task');
+
+    // Wait for task to appear in Later list
+    await page.locator('#tomorrow-list > .task-item:has-text("Moving task")').waitFor({ timeout: 2000 });
 
     const todayTasks = await app.getTodayTasks();
     const laterTasks = await app.getLaterTasks();
@@ -71,9 +74,12 @@ test.describe('Basic Task Operations', () => {
     expect(taskText).toContain('Moving task');
   });
 
-  test('should move task from Later to Today', async () => {
+  test('should move task from Later to Today', async ({ page }) => {
     await app.addLaterTask('Moving back');
     await app.clickMoveButton('Moving back');
+
+    // Wait for task to appear in Today list
+    await page.locator('#today-list > .task-item:has-text("Moving back")').waitFor({ timeout: 2000 });
 
     const todayTasks = await app.getTodayTasks();
     const laterTasks = await app.getLaterTasks();
@@ -87,10 +93,14 @@ test.describe('Basic Task Operations', () => {
 
   test('should edit task text', async ({ page }) => {
     await app.addTodayTask('Original text');
-    await app.clickTaskText('Original text');
+    await app.longPressTask('Original text');
+    await app.selectContextMenuItem('Edit Task');
 
-    await page.fill('.modal input', 'Edited text');
-    await app.clickModalSave();
+    // Wait for inline edit textbox to appear
+    const editInput = page.locator('#today-list input[type="text"]');
+    await editInput.fill('Edited text');
+    await editInput.press('Enter');
+    await page.waitForTimeout(100);
 
     const task = await app.getTaskByText('Edited text');
     expect(task).toBeTruthy();

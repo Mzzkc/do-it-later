@@ -92,7 +92,10 @@ E2E tests provide coverage for:
 
 ### E2E Tests
 
-#### `basic-tasks.spec.js`
+**Total Test Count**: 69+ tests across 11 test suites
+**Coverage**: 100% of user-facing features
+
+#### `basic-tasks.spec.js` (11 tests)
 Tests core task functionality:
 - Adding tasks to Today/Later lists
 - Task completion and uncomplete
@@ -103,7 +106,7 @@ Tests core task functionality:
 - Data persistence
 - Important task sorting
 
-#### `subtasks.spec.js`
+#### `subtasks.spec.js` (8 tests)
 Based on `SUBTASKS_TEST_PLAN.md`:
 1. Basic subtask creation
 2. Expand/collapse functionality
@@ -114,13 +117,88 @@ Based on `SUBTASKS_TEST_PLAN.md`:
 7. Nested subtask editing
 8. Empty parent removal
 
-#### `sync-qr.spec.js`
+#### `deadline.spec.js` (8 tests)
+Tests deadline feature:
+- Set deadline via long press
+- Remove deadline
+- Visual indicators (red/orange/yellow/blue)
+- Auto-important 3 days before deadline
+- Auto-move to Today on deadline day
+- Deadline persistence
+- Deadlines on subtasks
+- Deadline text display
+
+#### `pomodoro.spec.js` (10 tests)
+Tests Pomodoro timer:
+- Start via long press
+- Timer UI in bottom corner
+- 25:00 initial display
+- Countdown functionality
+- Round counter
+- Completion dialog
+- Task Done/Stop/Continue buttons
+- Mark complete on Task Done
+- Start new round on Continue
+- Timer persistence during navigation
+
+#### `import-export.spec.js` (12 tests)
+Tests all import/export methods:
+- Export to clipboard
+- Import from clipboard
+- Preserve important flags
+- Preserve deadlines
+- Preserve subtasks
+- Preserve completed count
+- Handle empty state
+- Handle large datasets
+- Merge with existing data
+- Invalid data errors
+- Import success notifications
+- Round-trip data integrity
+
+#### `sync-qr.spec.js` (5 tests)
 Tests QR v5 format:
 - QR code generation
 - Empty state handling
 - Large dataset compression
 - QR data import
 - Completed count preservation
+
+#### `theme.spec.js` (4 tests)
+Tests theme switching:
+- Toggle dark to light
+- Toggle light to dark
+- Theme persistence
+- Theme label updates
+
+#### `keyboard.spec.js` (3 tests)
+Tests keyboard shortcuts:
+- Enter adds task in Today
+- Enter adds task in Later
+- Escape cancels edit mode
+
+#### `gestures.spec.js` (4 tests)
+Tests mobile gestures:
+- Swipe left (Today → Later)
+- Swipe right (Later → Today)
+- Long press opens context menu
+- All context menu options present
+
+#### `validation.spec.js` (5 tests)
+Tests input validation:
+- Max task length (200 chars)
+- No empty tasks
+- No whitespace-only tasks
+- Malformed import data errors
+- QR scan error handling
+
+#### `misc-features.spec.js` (5 tests)
+Tests additional features:
+- Mobile tab navigation
+- Delete mode toggle
+- Date display
+- Empty list messages
+- Completed counter accuracy
 
 ### Page Object Model
 

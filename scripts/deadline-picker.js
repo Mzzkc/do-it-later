@@ -126,6 +126,18 @@ class DeadlinePicker {
 
     if (deadline) {
       actualTask.deadline = deadline;
+
+      // If deadline is within 3 days, mark as important
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const threeDaysFromNow = new Date(today);
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const deadlineDate = new Date(deadline);
+
+      if (deadlineDate <= threeDaysFromNow && !actualTask.important) {
+        actualTask.important = true;
+      }
+
       this.app.showNotification(`Deadline set for ${new Date(deadline).toLocaleDateString()}`, Config.NOTIFICATION_TYPES.SUCCESS);
     } else {
       delete actualTask.deadline;

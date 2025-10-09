@@ -70,6 +70,9 @@ test.describe('Subtask Feature', () => {
     await app.toggleTaskCompletion('Subtask 2');
     await app.toggleTaskCompletion('Subtask 3');
 
+    // Wait for auto-completion logic to run
+    await app.page.waitForTimeout(200);
+
     // Parent should auto-complete
     const parentCompleted = await app.isTaskCompleted('Parent Task');
     expect(parentCompleted).toBe(true);
@@ -147,13 +150,18 @@ test.describe('Subtask Feature', () => {
     await app.addTodayTask('Parent Task');
     await app.addSubtask('Parent Task', 'Original Text');
 
-    // Edit subtask
-    await app.clickTaskText('Original Text');
-    await page.fill('.modal input', 'Edited Text');
-    await app.clickModalSave();
+    // Edit subtask via context menu (uses inline editing)
+    await app.longPressTask('Original Text');
+    await app.selectContextMenuItem('Edit Task');
+
+    // Wait for inline edit input
+    const editInput = page.locator('#today-list input[type="text"]').last();
+    await editInput.fill('Edited Text');
+    await editInput.press('Enter');
+    await page.waitForTimeout(100);
 
     // Verify text updated
-    const task = await app.getTaskByText('Edited Text');
+    const task = await app.getSubtaskByText('Edited Text');
     expect(task).toBeTruthy();
 
     // Verify still nested under parent
