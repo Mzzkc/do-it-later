@@ -149,8 +149,8 @@ class DevMode {
     ];
 
     // Add to both lists for comprehensive sorting testing
-    testTasks.slice(0, 3).forEach(task => { task.list = "today"; this.app.data.tasks.push(task); });
-    testTasks.slice(3).forEach(task => { task.list = "tomorrow"; this.app.data.tasks.push(task); });
+    testTasks.slice(0, 3).forEach(task => this.app.data.today.push(task));
+    testTasks.slice(3).forEach(task => this.app.data.tomorrow.push(task));
     this.app.save();
     this.app.render();
 

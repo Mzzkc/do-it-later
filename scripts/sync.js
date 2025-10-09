@@ -165,7 +165,18 @@ const Sync = {
   generateQRData(data) {
     // Ultra-compressed format v5 - delimiter-based, no JSON/base64
     // Only include incomplete tasks to reduce size
-    const incompleteTasks = data.tasks ? data.tasks.filter(task => !task.completed) : [];
+    // V3 format: get tasks from today/tomorrow arrays
+    const todayIncompleteTasks = (data.today || []).filter(task => !task.completed && !task.parentId);
+    const tomorrowIncompleteTasks = (data.tomorrow || []).filter(task => !task.completed && !task.parentId);
+    const allIncompleteTasks = [...todayIncompleteTasks, ...tomorrowIncompleteTasks];
+
+    // Get all subtasks (incomplete only)
+    const todaySubtasks = (data.today || []).filter(task => !task.completed && task.parentId);
+    const tomorrowSubtasks = (data.tomorrow || []).filter(task => !task.completed && task.parentId);
+    const allSubtasks = [...todaySubtasks, ...tomorrowSubtasks];
+
+    // Combine all incomplete tasks
+    const incompleteTasks = [...allIncompleteTasks, ...allSubtasks];
 
     // Create ID→index mapping
     const idMap = new Map();
@@ -185,6 +196,13 @@ const Sync = {
 
     // Helper: convert index to base36 (0-9, then A-Z for 10-35, etc.)
     const toBase36 = (num) => num.toString(36).toUpperCase();
+
+    // Helper: determine which list a task is in (for v3 format)
+    const getTaskList = (task) => {
+      if (data.today && data.today.some(t => t.id === task.id)) return 'today';
+      if (data.tomorrow && data.tomorrow.some(t => t.id === task.id)) return 'tomorrow';
+      return 'tomorrow'; // default
+    };
 
     // Group tasks by list
     const todayTasks = [];
@@ -213,8 +231,8 @@ const Sync = {
         }
       }
 
-      // Group by list
-      if (task.list === 'today') {
+      // Group by list (v3 format)
+      if (getTaskList(task) === 'today') {
         todayTasks.push(taskStr);
       } else {
         tomorrowTasks.push(taskStr);

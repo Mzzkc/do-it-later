@@ -72,22 +72,35 @@ class ImportExportManager {
           this.app.data = importedData;
         } else {
           // Merge: add imported tasks to existing ones (avoid duplicates)
-          const importedTasks = importedData.tasks || [];
-          importedTasks.forEach(task => {
-            const isDuplicate = this.app.data.tasks.some(existing =>
-              existing.text === task.text && existing.list === task.list
+          // V3 format uses today/tomorrow arrays
+          const importedToday = importedData.today || [];
+          const importedTomorrow = importedData.tomorrow || [];
+
+          importedToday.forEach(task => {
+            const isDuplicate = this.app.data.today.some(existing =>
+              existing.id === task.id || existing.text === task.text
             );
             if (!isDuplicate) {
-              this.app.data.tasks.push(task);
+              this.app.data.today.push(task);
             }
           });
+
+          importedTomorrow.forEach(task => {
+            const isDuplicate = this.app.data.tomorrow.some(existing =>
+              existing.id === task.id || existing.text === task.text
+            );
+            if (!isDuplicate) {
+              this.app.data.tomorrow.push(task);
+            }
+          });
+
           this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
         }
 
         this.app.save();
         this.app.render();
 
-        const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+        const taskCount = (importedData.today || []).length + (importedData.tomorrow || []).length;
         this.app.showNotification(`Imported ${taskCount} tasks`, 'success');
 
         // Clear file input
@@ -158,15 +171,28 @@ class ImportExportManager {
           this.app.data = importedData;
         } else {
           // Merge: add imported tasks to existing ones (avoid duplicates)
-          const importedTasks = importedData.tasks || [];
-          importedTasks.forEach(task => {
-            const isDuplicate = this.app.data.tasks.some(existing =>
-              existing.text === task.text && existing.list === task.list
+          // V3 format uses today/tomorrow arrays
+          const importedToday = importedData.today || [];
+          const importedTomorrow = importedData.tomorrow || [];
+
+          importedToday.forEach(task => {
+            const isDuplicate = this.app.data.today.some(existing =>
+              existing.id === task.id || existing.text === task.text
             );
             if (!isDuplicate) {
-              this.app.data.tasks.push(task);
+              this.app.data.today.push(task);
             }
           });
+
+          importedTomorrow.forEach(task => {
+            const isDuplicate = this.app.data.tomorrow.some(existing =>
+              existing.id === task.id || existing.text === task.text
+            );
+            if (!isDuplicate) {
+              this.app.data.tomorrow.push(task);
+            }
+          });
+
           this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
         }
 

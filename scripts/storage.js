@@ -45,57 +45,97 @@ const Storage = {
    */
   getDefaultData() {
     return {
-      tasks: [], // Single array of all tasks
+      today: [],     // Array of tasks in Today list
+      tomorrow: [],  // Array of tasks in Tomorrow list
       lastUpdated: Date.now(),
       currentDate: Utils.getTodayISO(),
       totalCompleted: 0,
-      version: 2 // Data structure version for migrations
+      version: 3 // v3: List arrays (no task.list property)
     };
   },
 
   /**
-   * Migrate old data format (today/tomorrow arrays) to new format (tasks array with list property)
-   * @param {Object} oldData - Old format data
-   * @returns {Object} New format data
+   * Migrate data to v3 format (list arrays, no task.list property)
+   * Handles v1→v3 and v2→v3 migrations
+   * @param {Object} oldData - Data in any version format
+   * @returns {Object} Data in v3 format
    */
   migrateData(oldData) {
-    // If already in new format, return as-is
-    if (oldData.tasks && oldData.version === 2) {
+    // If already in v3 format, return as-is
+    if (oldData.version === 3 && oldData.today && oldData.tomorrow) {
       return oldData;
     }
 
-    console.log('🔄 Migrating data from old format to new format...');
+    console.log(`🔄 Migrating data from v${oldData.version || 1} to v3...`);
 
-    const tasks = [];
+    const today = [];
+    const tomorrow = [];
 
-    // Migrate today tasks
-    if (oldData.today && Array.isArray(oldData.today)) {
-      oldData.today.forEach(task => {
-        tasks.push({
-          ...task,
-          list: 'today'
-        });
+    // Handle v2 format (tasks[] array with list property)
+    if (oldData.tasks && Array.isArray(oldData.tasks)) {
+      oldData.tasks.forEach(task => {
+        // Remove list property and add to appropriate array
+        const { list, ...taskWithoutList } = task;
+        const targetList = list === 'today' ? today : tomorrow;
+        targetList.push(taskWithoutList);
       });
     }
-
-    // Migrate tomorrow tasks
-    if (oldData.tomorrow && Array.isArray(oldData.tomorrow)) {
-      oldData.tomorrow.forEach(task => {
-        tasks.push({
-          ...task,
-          list: 'tomorrow'
-        });
-      });
+    // Handle v1 format (separate today/tomorrow arrays)
+    else {
+      if (oldData.today && Array.isArray(oldData.today)) {
+        today.push(...oldData.today);
+      }
+      if (oldData.tomorrow && Array.isArray(oldData.tomorrow)) {
+        tomorrow.push(...oldData.tomorrow);
+      }
     }
 
-    console.log(`✅ Migrated ${tasks.length} tasks to new format`);
+    // Add parents to lists where their children are
+    // This ensures parents appear in both lists if they have children in both
+    const allTasks = [...today, ...tomorrow];
+    const taskMap = new Map(allTasks.map(t => [t.id, t]));
+
+    // Find all parent IDs with children in today
+    const parentsNeededInToday = new Set();
+    today.forEach(task => {
+      if (task.parentId && !parentsNeededInToday.has(task.parentId)) {
+        parentsNeededInToday.add(task.parentId);
+      }
+    });
+
+    // Find all parent IDs with children in tomorrow
+    const parentsNeededInTomorrow = new Set();
+    tomorrow.forEach(task => {
+      if (task.parentId && !parentsNeededInTomorrow.has(task.parentId)) {
+        parentsNeededInTomorrow.add(task.parentId);
+      }
+    });
+
+    // Add parents to today if they have children there and aren't already there
+    parentsNeededInToday.forEach(parentId => {
+      const parent = taskMap.get(parentId);
+      if (parent && !today.find(t => t.id === parentId)) {
+        today.push(parent);
+      }
+    });
+
+    // Add parents to tomorrow if they have children there and aren't already there
+    parentsNeededInTomorrow.forEach(parentId => {
+      const parent = taskMap.get(parentId);
+      if (parent && !tomorrow.find(t => t.id === parentId)) {
+        tomorrow.push(parent);
+      }
+    });
+
+    console.log(`✅ Migrated to v3: ${today.length} tasks in today, ${tomorrow.length} tasks in tomorrow`);
 
     return {
-      tasks,
+      today,
+      tomorrow,
       lastUpdated: oldData.lastUpdated || Date.now(),
       currentDate: oldData.currentDate || Utils.getTodayISO(),
       totalCompleted: oldData.totalCompleted || 0,
-      version: 2
+      version: 3
     };
   },
 

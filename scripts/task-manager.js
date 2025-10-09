@@ -30,12 +30,23 @@ class TaskManager {
   }
 
   /**
+   * Determine which list a task is in
+   * @param {string} id - Task ID
+   * @returns {string|null} 'today', 'tomorrow', or null if not found
+   */
+  getTaskList(id) {
+    if (this.app.data.today.find(t => t.id === id)) return 'today';
+    if (this.app.data.tomorrow.find(t => t.id === id)) return 'tomorrow';
+    return null;
+  }
+
+  /**
    * Get all tasks from a specific list
    * @param {string} listName - Name of the list ('today' or 'tomorrow')
    * @returns {Array<Object>} Array of tasks in the list
    */
   getTasksByList(listName) {
-    return this.app.data.tasks.filter(t => t.list === listName);
+    return this.app.data[listName] || [];
   }
 
   /**
@@ -44,7 +55,11 @@ class TaskManager {
    * @returns {Object|undefined} Task object or undefined if not found
    */
   findTaskById(id) {
-    return this.app.data.tasks.find(t => t.id === id);
+    // Search in today list first
+    let task = this.app.data.today.find(t => t.id === id);
+    if (task) return task;
+    // Then search in tomorrow list
+    return this.app.data.tomorrow.find(t => t.id === id);
   }
 
   /**
@@ -53,21 +68,34 @@ class TaskManager {
    * @param {string} listName - Name of the list to add to
    */
   addTaskToList(task, listName) {
-    task.list = listName;
-    this.app.data.tasks.push(task);
+    this.app.data[listName].push(task);
   }
 
   /**
-   * Remove a task by ID
+   * Remove a task by ID from both lists
    * @param {string} id - Task ID
    * @returns {boolean} True if task was removed, false otherwise
    */
   removeTaskById(id) {
-    const index = this.app.data.tasks.findIndex(t => t.id === id);
+    // Try to remove from today list
+    let index = this.app.data.today.findIndex(t => t.id === id);
     if (index !== -1) {
-      this.app.data.tasks.splice(index, 1);
+      this.app.data.today.splice(index, 1);
+      // Task might also be in tomorrow list (if it's a parent with children in both)
+      index = this.app.data.tomorrow.findIndex(t => t.id === id);
+      if (index !== -1) {
+        this.app.data.tomorrow.splice(index, 1);
+      }
       return true;
     }
+
+    // Try to remove from tomorrow list
+    index = this.app.data.tomorrow.findIndex(t => t.id === id);
+    if (index !== -1) {
+      this.app.data.tomorrow.splice(index, 1);
+      return true;
+    }
+
     return false;
   }
 
@@ -79,21 +107,35 @@ class TaskManager {
    */
   moveTaskToList(id, toList) {
     const task = this.findTaskById(id);
-    if (task) {
-      task.list = toList;
-      return true;
+    if (!task) return false;
+
+    const fromList = toList === 'today' ? 'tomorrow' : 'today';
+
+    // Remove from source list
+    const fromIndex = this.app.data[fromList].findIndex(t => t.id === id);
+    if (fromIndex !== -1) {
+      this.app.data[fromList].splice(fromIndex, 1);
     }
-    return false;
+
+    // Add to target list if not already there
+    if (!this.app.data[toList].find(t => t.id === id)) {
+      this.app.data[toList].push(task);
+    }
+
+    return true;
   }
 
   /**
-   * Helper function to find task by ID across both lists (returns a copy)
+   * Helper function to find task by ID with list info
    * @param {string} id - Task ID
-   * @returns {Object|null} Copy of task object or null if not found
+   * @returns {Object|null} Object with {task, list} or null if not found
    */
   findTask(id) {
     const task = this.findTaskById(id);
-    return task ? { ...task } : null;
+    if (!task) return null;
+
+    const list = this.getTaskList(id);
+    return { ...task, list };
   }
 
   // ==================== CRUD OPERATIONS ====================
@@ -149,7 +191,7 @@ class TaskManager {
     // If this is a parent task, delete all its children first
     if (!task.parentId) {
       // Find all children (across all lists)
-      const children = this.app.data.tasks.filter(t => t.parentId === id);
+      const children = this.getChildren(id);
       console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
 
       children.forEach(child => {
@@ -261,7 +303,8 @@ class TaskManager {
 
       // If this is a parent task being marked incomplete, also mark all children incomplete
       if (wasCompleted && !task.completed && !task.parentId) {
-        const children = this.getChildren(id, task.list);
+        // Get ALL children regardless of which list they're in
+        const children = this.getChildren(id);
         if (children.length > 0) {
           children.forEach(child => {
             if (child.completed) {
@@ -276,7 +319,7 @@ class TaskManager {
 
       // Check if parent should auto-complete
       if (task.parentId) {
-        this.checkParentCompletion(task.parentId, task.list);
+        this.checkParentCompletion(task.parentId);
       }
 
       this.app.save();
@@ -378,25 +421,62 @@ class TaskManager {
           return false;
         }
 
-        // Just change the subtask's list property
-        // Parent stays where it is, child can be in different list
-        task.list = toList;
-        console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent remains in ${parent.list}`);
+        // Move subtask from source to target list
+        const fromIndex = this.app.data[fromList].findIndex(t => t.id === task.id);
+        if (fromIndex !== -1) {
+          this.app.data[fromList].splice(fromIndex, 1);
+        }
+        if (!this.app.data[toList].find(t => t.id === task.id)) {
+          this.app.data[toList].push(task);
+        }
+
+        const parentList = this.getTaskList(parent.id);
+        console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent is in ${parentList}`);
+
+        // Ensure parent appears in target list if not already there
+        if (!this.app.data[toList].find(t => t.id === parent.id)) {
+          this.app.data[toList].push(parent);
+          console.log(`🐛 [MOVE] Added parent to ${toList} since it has children there`);
+        }
+
+        // BUG FIX #4: Clean up parent from source list if it has no children there anymore
+        const childrenInSourceList = this.getChildren(parent.id, fromList);
+        if (childrenInSourceList.length === 0 && this.app.data[fromList].find(t => t.id === parent.id)) {
+          const parentIndex = this.app.data[fromList].findIndex(t => t.id === parent.id);
+          if (parentIndex !== -1) {
+            this.app.data[fromList].splice(parentIndex, 1);
+            console.log(`🐛 [MOVE] Removed parent from ${fromList} since it has no children there`);
+          }
+        }
       } else {
         // Handle parent task movement - move all children with it
-        const children = this.app.data.tasks.filter(t => t.parentId === task.id);
+        const children = this.getChildren(task.id);
         if (children.length > 0) {
           console.log(`🐛 [MOVE] This is a parent task with ${children.length} children, moving them all`);
 
           // Move all children to the target list
           children.forEach(child => {
-            child.list = toList;
+            // Remove from source list
+            const fromIndex = this.app.data[fromList].findIndex(t => t.id === child.id);
+            if (fromIndex !== -1) {
+              this.app.data[fromList].splice(fromIndex, 1);
+            }
+            // Add to target list if not already there
+            if (!this.app.data[toList].find(t => t.id === child.id)) {
+              this.app.data[toList].push(child);
+            }
             console.log(`🐛 [MOVE] Moved child: ${child.text.substring(0, 20)}`);
           });
         }
 
         // Move the parent task
-        task.list = toList;
+        const parentIndex = this.app.data[fromList].findIndex(t => t.id === task.id);
+        if (parentIndex !== -1) {
+          this.app.data[fromList].splice(parentIndex, 1);
+        }
+        if (!this.app.data[toList].find(t => t.id === task.id)) {
+          this.app.data[toList].push(task);
+        }
       }
 
       this.app.save();
@@ -681,29 +761,43 @@ class TaskManager {
    * @returns {Array<Object>} Array of child tasks
    */
   getChildren(parentId, listName = null) {
-    // If listName is provided, filter by list (for backward compatibility)
-    // If not provided, get ALL children regardless of list
+    // Get all tasks from both lists
+    const allTasks = [...this.app.data.today, ...this.app.data.tomorrow];
+
+    // Filter children
+    const children = allTasks.filter(task => task.parentId === parentId);
+
+    // If listName is provided, further filter by which list the child is in
     if (listName) {
-      return this.app.data.tasks.filter(task => task.parentId === parentId && task.list === listName);
+      return children.filter(child => this.app.data[listName].find(t => t.id === child.id));
     }
-    return this.app.data.tasks.filter(task => task.parentId === parentId);
+
+    return children;
   }
 
   /**
    * Check if parent should auto-complete
+   * Note: Does NOT call save() or render() - caller is responsible for that
    * @param {string} parentId - Parent task ID
-   * @param {string} listName - List name
+   * @param {string} listName - List name (optional, kept for backward compatibility)
    */
   checkParentCompletion(parentId, listName) {
-    const children = this.getChildren(parentId, listName);
+    // Check ALL children regardless of which list they're in
+    // (subtasks can be in different lists than parent after recent refactor)
+    const children = this.getChildren(parentId);
     if (children.length === 0) return;
 
     const allComplete = children.every(child => child.completed);
     if (allComplete) {
-      const parent = this.app.data.tasks.find(t => t.id === parentId && t.list === listName);
+      // Find the parent task
+      const parent = this.findTaskById(parentId);
       if (parent && !parent.completed) {
         parent.completed = true;
+        // Increment the completed counter for the parent too
+        this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
+        this.app.updateCompletedCounter();
         this.app.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
+        // Note: Caller (completeTask) will handle save() and render()
       }
     }
   }
@@ -716,46 +810,73 @@ class TaskManager {
    * @returns {boolean} True if task has children, false otherwise
    */
   hasChildren(taskId) {
-    return this.app.data.tasks.some(task => task.parentId === taskId);
+    return this.app.data.today.some(task => task.parentId === taskId) ||
+           this.app.data.tomorrow.some(task => task.parentId === taskId);
   }
 
   /**
-   * Get sorted children of a task recursively
+   * Get sorted children of a task recursively, optionally filtered by list
    * @param {string} parentId - Parent task ID
+   * @param {string|null} listName - Optional list name to filter children
    * @returns {Array<Object>} Array of sorted child tasks with their children
    */
-  getChildrenSorted(parentId) {
-    const children = this.getChildren(parentId);
+  getChildrenSorted(parentId, listName = null) {
+    const children = this.getChildren(parentId, listName);
     if (children.length === 0) return [];
 
     const sorted = this.sortTasks(children);
 
     return sorted.map(child => ({
       ...child,
-      children: this.getChildrenSorted(child.id),
+      children: this.getChildrenSorted(child.id, listName),
       hasChildren: this.hasChildren(child.id),
-      moveAction: child.list === 'today' ? 'push' : 'pull',
-      moveIcon: child.list === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
+      moveAction: this.getTaskList(child.id) === 'today' ? 'push' : 'pull',
+      moveIcon: this.getTaskList(child.id) === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
     }));
   }
 
   /**
    * Get complete render-ready data for a list
    * Returns fully prepared, sorted, hierarchical task data ready for rendering
+   * BUG FIX #2, #3, #4: Parents appear ONLY in lists that contain their children
    * @param {string} listName - Name of the list ('today' or 'tomorrow')
    * @returns {Array<Object>} Array of render-ready task objects
    */
   getRenderData(listName) {
-    const tasks = this.getTasksByList(listName);
-    const sorted = this.sortTasks(tasks);
-    const topLevel = sorted.filter(task => !task.parentId);
+    // Get all tasks in this list
+    const tasksInList = this.getTasksByList(listName);
 
-    return topLevel.map(task => ({
+    // Get subtasks in this list
+    const childrenInList = tasksInList.filter(task => task.parentId);
+
+    // Get parent IDs that have children in this list
+    const parentIdsWithChildrenHere = new Set(childrenInList.map(task => task.parentId));
+
+    // Get top-level tasks to show:
+    // 1. Regular tasks (not parents) in this list
+    // 2. Parent tasks that have at least one child in this list
+    const topLevelTasks = [];
+
+    // Add non-parent tasks from this list
+    topLevelTasks.push(...tasksInList.filter(task => !task.parentId && !this.hasChildren(task.id)));
+
+    // Add parent tasks that have children in this list
+    parentIdsWithChildrenHere.forEach(parentId => {
+      const parent = this.findTaskById(parentId);
+      if (parent) {
+        topLevelTasks.push(parent);
+      }
+    });
+
+    // Sort and return with children filtered to this list only
+    const sorted = this.sortTasks(topLevelTasks);
+
+    return sorted.map(task => ({
       ...task,
-      children: this.getChildrenSorted(task.id),
+      children: this.getChildrenSorted(task.id, listName),
       hasChildren: this.hasChildren(task.id),
-      moveAction: task.list === 'today' ? 'push' : 'pull',
-      moveIcon: task.list === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
+      moveAction: listName === 'today' ? 'push' : 'pull',
+      moveIcon: listName === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
     }));
   }
 }
