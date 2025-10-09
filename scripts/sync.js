@@ -221,7 +221,7 @@ const Sync = {
       }
     });
 
-    // Build final format: 5:C§TODAY§LATER
+    // Build final format: 5~C~TODAY~LATER (using ASCII delimiter ~)
     const parts = [
       '5',                                    // version
       data.totalCompleted || 0,               // completed count
@@ -229,7 +229,7 @@ const Sync = {
       tomorrowTasks.join('|')                 // later tasks
     ];
 
-    const qrData = parts.join('§');
+    const qrData = parts.join('~');
 
     console.log(`📊 QR Data v5: ${incompleteTasks.length} tasks, ${qrData.length} bytes (delimiter format)`);
 
@@ -243,8 +243,8 @@ const Sync = {
    */
   parseQRData(qrData) {
     try {
-      // Parse v5 format: 5§C§TODAY§LATER
-      const parts = qrData.split('§');
+      // Parse v5 format: 5~C~TODAY~LATER (ASCII delimiter ~)
+      const parts = qrData.split('~');
 
       if (parts.length !== 4 || parts[0] !== '5') {
         throw new Error('Invalid QR code format (expected v5 delimiter format)');
