@@ -1,7 +1,7 @@
 // Do It (Later) - Service Worker
 // Network-first for code, cache-first for assets
 
-const CACHE_NAME = 'do-it-later-v1.20.3';
+const CACHE_NAME = 'do-it-later-v1.20.4';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -32,7 +32,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache v1.20.3');
+        console.log('Opened cache v1.20.4');
         return cache.addAll(urlsToCache);
       })
   );

@@ -217,12 +217,13 @@ class Renderer {
     const moveBtnHTML = task.completed ? '' :
       `<span class="move-icon" data-action="${task.moveAction}" data-task-id="${task.id}" title="${task.moveAction === 'push' ? 'Push to Later' : 'Pull to Today'}">${task.moveIcon}</span>`;
 
-    // Deadline indicator
+    // Deadline indicator (separate from text to prevent overflow hiding)
     const deadlineHTML = this.getDeadlineHTML(task.deadline);
 
     return `
       ${expandIcon}
-      <span class="task-text">${Utils.escapeHtml(task.text)}${deadlineHTML}</span>
+      <span class="task-text">${Utils.escapeHtml(task.text)}</span>
+      ${deadlineHTML}
       <div class="task-actions">
         ${moveBtnHTML}
       </div>
