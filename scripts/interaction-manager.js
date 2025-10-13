@@ -336,8 +336,11 @@ class ContextMenu {
     this.menuElement.setAttribute('role', 'menu');
     this.menuElement.setAttribute('aria-label', `Task options for "${task.text}"`);
 
-    // Menu content
-    this.menuElement.innerHTML = `
+    // Build menu items conditionally
+    const menuItems = [];
+
+    // Edit Task
+    menuItems.push(`
       <div class="context-menu-item" role="menuitem" data-action="edit" tabindex="0">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
@@ -345,12 +348,20 @@ class ContextMenu {
         </svg>
         <span>Edit Task</span>
       </div>
+    `);
+
+    // Mark as Important
+    menuItems.push(`
       <div class="context-menu-item" role="menuitem" data-action="important" tabindex="0">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
         </svg>
         <span>${task.important ? 'Remove Importance' : 'Mark as Important'}</span>
       </div>
+    `);
+
+    // Set Deadline
+    menuItems.push(`
       <div class="context-menu-item" role="menuitem" data-action="deadline" tabindex="0">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
@@ -358,6 +369,10 @@ class ContextMenu {
         </svg>
         <span>${task.deadline ? 'Change Deadline' : 'Set Deadline'}</span>
       </div>
+    `);
+
+    // Start Pomodoro
+    menuItems.push(`
       <div class="context-menu-item" role="menuitem" data-action="pomodoro" tabindex="0">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
@@ -365,12 +380,22 @@ class ContextMenu {
         </svg>
         <span>Start Pomodoro</span>
       </div>
-      <div class="context-menu-item" role="menuitem" data-action="add-subtask" tabindex="0">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
-        </svg>
-        <span>Add Subtask</span>
-      </div>
+    `);
+
+    // Add Subtask (only if task doesn't have a parent)
+    if (!task.parentId) {
+      menuItems.push(`
+        <div class="context-menu-item" role="menuitem" data-action="add-subtask" tabindex="0">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+          </svg>
+          <span>Add Subtask</span>
+        </div>
+      `);
+    }
+
+    // Delete Task
+    menuItems.push(`
       <div class="context-menu-item" role="menuitem" data-action="delete" tabindex="0">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
           <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
@@ -378,7 +403,10 @@ class ContextMenu {
         </svg>
         <span>Delete Task</span>
       </div>
-    `;
+    `);
+
+    // Set menu content
+    this.menuElement.innerHTML = menuItems.join('');
 
     // Position menu
     this.positionMenu(position);

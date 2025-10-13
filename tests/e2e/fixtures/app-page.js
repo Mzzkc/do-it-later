@@ -65,7 +65,8 @@ export class AppPage {
   }
 
   async getTaskByText(text) {
-    return await this.page.locator(`.task-item:has-text("${text}")`).first();
+    // Match parent tasks only (not subtasks) by looking for top-level task items with exact text match
+    return await this.page.locator(`.task-item:not(.subtask-item):has(.task-text:text-is("${text}"))`).first();
   }
 
   // Get a subtask specifically (not the parent task)
@@ -153,7 +154,9 @@ export class AppPage {
 
   async longPressTask(text) {
     const task = await this.getTaskOrSubtaskByText(text);
-    await task.hover();
+    // Hover over the main task-content div (where event handlers are attached)
+    const taskContent = await task.locator('.task-content').first();
+    await taskContent.hover();
     await this.page.mouse.down();
     await this.page.waitForTimeout(700); // Long press duration (600ms + buffer)
     await this.page.mouse.up();
@@ -201,11 +204,20 @@ export class AppPage {
 
   // Subtask methods
   async addSubtask(parentText, subtaskText) {
-    await this.longPressTask(parentText);
+    // Always target the parent task specifically (not a subtask with the same name)
+    const parent = await this.getTaskByText(parentText);
+    const taskContent = await parent.locator('.task-content').first();
+
+    // Perform long press on the parent
+    await taskContent.hover();
+    await this.page.mouse.down();
+    await this.page.waitForTimeout(700);
+    await this.page.mouse.up();
+    await this.page.waitForTimeout(100);
+
     await this.selectContextMenuItem('Add Subtask');
 
     // Wait for inline subtask input to appear
-    const parent = await this.getTaskByText(parentText);
     const subtaskInput = parent.locator('.subtask-input');
     await subtaskInput.fill(subtaskText);
     await subtaskInput.press('Enter');
