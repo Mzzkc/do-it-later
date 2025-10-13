@@ -2,6 +2,30 @@
 
 ## Major Versions
 
+### v1.21.6 - Nested Subtask Prevention (Current)
+- Removed ability to add subtasks to subtasks
+- Context menu now conditionally hides "Add Subtask" for tasks with parents
+- Enforces single-level subtask hierarchy for cleaner UX
+
+### v1.21.0 - V3 Data Structure & Flat UI
+- **Breaking:** Migrated to v3 data structure (separate `today[]` and `tomorrow[]` arrays)
+- Removed `task.list` property - list membership now implicit by array location
+- Implemented per-list expansion states (`expandedInToday`/`expandedInLater`)
+- Flat UI design - removed all 3D transform effects for better mobile performance
+- Parent tasks now appear in lists where they have children (invariant)
+
+### v1.20.0 - Comprehensive Testing Infrastructure
+- 76+ E2E tests with Playwright (100%+ coverage)
+- Pre-commit hooks enforcing test success before commits
+- Test fixtures for complex interactions (long press, context menus, subtasks)
+- Dev mode with debugging tools
+
+### v1.17.0-v1.19.0 - Stability & Polish
+- Bug fixes for subtask rendering gaps
+- Improved expand/collapse state management
+- Enhanced QR code scanning reliability
+- Mobile gesture refinements
+
 ### v1.16.0 - Import/Export Manager Extraction
 - Extracted import/export functionality into separate module
 - Improved code organization
