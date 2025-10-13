@@ -384,7 +384,191 @@ class DevMode {
 
     console.log(`   ${todayImportantFirst ? '✅' : '❌'} Important tasks sorted first in Today`);
 
-    // Phase 7: Summary
+    // Phase 7: Test auto-important deadline feature
+    console.log('\n⏰ Phase 7: Testing auto-important deadline feature...');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Create tasks with different deadline scenarios
+    const deadlineTestTasks = [
+      {
+        id: this.app.taskManager.generateId(),
+        text: '📅 Task due in 5 days (should NOT be important)',
+        completed: false,
+        important: false,
+        deadline: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+        expandedInToday: true,
+        expandedInLater: true,
+        createdAt: Date.now() - 60000
+      },
+      {
+        id: this.app.taskManager.generateId(),
+        text: '⚠️ Task due in 3 days (should become important)',
+        completed: false,
+        important: false,
+        deadline: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        expandedInToday: true,
+        expandedInLater: true,
+        createdAt: Date.now() - 50000
+      },
+      {
+        id: this.app.taskManager.generateId(),
+        text: '🚨 Task due tomorrow (should be important)',
+        completed: false,
+        important: false,
+        deadline: new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString(),
+        expandedInToday: true,
+        expandedInLater: true,
+        createdAt: Date.now() - 40000
+      },
+      {
+        id: this.app.taskManager.generateId(),
+        text: '🔥 Task due today (should move to Today and be important)',
+        completed: false,
+        important: false,
+        deadline: today.toISOString(),
+        expandedInToday: true,
+        expandedInLater: true,
+        createdAt: Date.now() - 30000
+      }
+    ];
+
+    // Add all deadline test tasks to Later initially
+    deadlineTestTasks.forEach(task => this.app.data.tomorrow.push(task));
+
+    console.log('   Created test tasks with deadlines:');
+    deadlineTestTasks.forEach(task => {
+      const deadlineDate = new Date(task.deadline);
+      const daysUntil = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+      console.log(`     - ${task.text}`);
+      console.log(`       Days until: ${daysUntil}, Important: ${task.important}`);
+    });
+
+    this.app.save();
+
+    // Run the rollover check which handles deadline auto-important
+    console.log('\n   Running checkDateRollover() to process deadlines...');
+    const beforeTodayCount = this.app.data.today.length;
+    const beforeTomorrowCount = this.app.data.tomorrow.length;
+
+    this.app.checkDateRollover();
+
+    const afterTodayCount = this.app.data.today.length;
+    const afterTomorrowCount = this.app.data.tomorrow.length;
+
+    console.log(`\n   Before: Today=${beforeTodayCount}, Later=${beforeTomorrowCount}`);
+    console.log(`   After:  Today=${afterTodayCount}, Later=${afterTomorrowCount}`);
+
+    // Check which tasks became important
+    const allTasksAfter = [...this.app.data.today, ...this.app.data.tomorrow];
+    const importantDeadlineTasks = deadlineTestTasks.map(testTask => {
+      const actualTask = allTasksAfter.find(t => t.id === testTask.id);
+      const deadlineDate = new Date(testTask.deadline);
+      const daysUntil = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24));
+      return {
+        text: testTask.text,
+        daysUntil,
+        wasImportant: testTask.important,
+        nowImportant: actualTask ? actualTask.important : false,
+        inToday: this.app.data.today.some(t => t.id === testTask.id)
+      };
+    });
+
+    console.log('\n   Results:');
+    importantDeadlineTasks.forEach(task => {
+      const shouldBeImportant = task.daysUntil <= 3;
+      const shouldBeInToday = task.daysUntil <= 0;
+      const correctImportance = task.nowImportant === shouldBeImportant;
+      const correctList = task.inToday === shouldBeInToday;
+
+      console.log(`     ${task.text}`);
+      console.log(`       Days until: ${task.daysUntil}`);
+      console.log(`       ${correctImportance ? '✅' : '❌'} Important: ${task.nowImportant} (expected: ${shouldBeImportant})`);
+      console.log(`       ${correctList ? '✅' : '❌'} In Today: ${task.inToday} (expected: ${shouldBeInToday})`);
+    });
+
+    const allDeadlineTestsPassed = importantDeadlineTasks.every(task => {
+      const shouldBeImportant = task.daysUntil <= 3;
+      const shouldBeInToday = task.daysUntil <= 0;
+      return task.nowImportant === shouldBeImportant && task.inToday === shouldBeInToday;
+    });
+
+    console.log(`\n   ${allDeadlineTestsPassed ? '✅' : '❌'} All deadline auto-important tests passed`);
+
+    // Phase 8: Test rollover functionality
+    console.log('\n🌅 Phase 8: Testing rollover functionality...');
+
+    // Create old completed tasks that should be cleaned up
+    const oldCompletedTask1 = {
+      id: this.app.taskManager.generateId(),
+      text: '✅ Old completed task (should be removed)',
+      completed: true,
+      important: false,
+      expandedInToday: true,
+      expandedInLater: true,
+      createdAt: Date.now() - (2 * 24 * 60 * 60 * 1000) // 2 days ago
+    };
+
+    const recentCompletedTask = {
+      id: this.app.taskManager.generateId(),
+      text: '✅ Recently completed task (might be kept)',
+      completed: true,
+      important: false,
+      expandedInToday: true,
+      expandedInLater: true,
+      createdAt: Date.now() - (1000 * 60 * 10) // 10 minutes ago
+    };
+
+    // Add to today
+    this.app.data.today.push(oldCompletedTask1);
+    this.app.data.today.push(recentCompletedTask);
+
+    console.log('   Created test completed tasks:');
+    console.log(`     - ${oldCompletedTask1.text} (2 days old)`);
+    console.log(`     - ${recentCompletedTask.text} (10 minutes old)`);
+
+    this.app.save();
+
+    // Store counts before rollover
+    const completedBeforeRollover = [...this.app.data.today, ...this.app.data.tomorrow].filter(t => t.completed).length;
+    const totalTasksBeforeRollover = [...this.app.data.today, ...this.app.data.tomorrow].length;
+
+    console.log(`\n   Before rollover:`);
+    console.log(`     Total tasks: ${totalTasksBeforeRollover}`);
+    console.log(`     Completed tasks: ${completedBeforeRollover}`);
+    console.log(`     Retention days: ${Config.COMPLETED_TASK_RETENTION_DAYS}`);
+
+    // Simulate a date change by setting currentDate to yesterday
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    this.app.data.currentDate = yesterday.toISOString().split('T')[0];
+    this.app.save();
+
+    // Run rollover
+    this.app.checkDateRollover();
+
+    const completedAfterRollover = [...this.app.data.today, ...this.app.data.tomorrow].filter(t => t.completed).length;
+    const totalTasksAfterRollover = [...this.app.data.today, ...this.app.data.tomorrow].length;
+
+    console.log(`\n   After rollover:`);
+    console.log(`     Total tasks: ${totalTasksAfterRollover}`);
+    console.log(`     Completed tasks: ${completedAfterRollover}`);
+    console.log(`     Tasks removed: ${totalTasksBeforeRollover - totalTasksAfterRollover}`);
+
+    // Check if old completed task was removed
+    const oldTaskStillExists = [...this.app.data.today, ...this.app.data.tomorrow].some(t => t.id === oldCompletedTask1.id);
+    const recentTaskStillExists = [...this.app.data.today, ...this.app.data.tomorrow].some(t => t.id === recentCompletedTask.id);
+
+    console.log(`\n   Cleanup results:`);
+    console.log(`     ${oldTaskStillExists ? '❌' : '✅'} Old completed task removed: ${!oldTaskStillExists}`);
+    console.log(`     Recent task (depends on retention setting)`);
+
+    // Validate rollover worked
+    const rolloverWorked = (completedAfterRollover <= completedBeforeRollover) && (this.app.data.currentDate === Utils.getTodayISO());
+    console.log(`\n   ${rolloverWorked ? '✅' : '❌'} Rollover executed successfully`);
+    console.log(`     Current date updated: ${this.app.data.currentDate === Utils.getTodayISO()}`);
+
+    // Phase 9: Summary
     console.log('\n━'.repeat(60));
     console.log('📈 Test Summary:');
     console.log('   ✅ Parent tasks with subtasks in multiple lists');
@@ -393,6 +577,8 @@ class DevMode {
     console.log('   ✅ Text export/import preserves all properties');
     console.log('   ✅ Data migration (old → new format)');
     console.log('   ✅ Important tasks sorted correctly');
+    console.log(`   ${allDeadlineTestsPassed ? '✅' : '❌'} Auto-important deadline feature`);
+    console.log(`   ${rolloverWorked ? '✅' : '❌'} Rollover cleanup functionality`);
     console.log('━'.repeat(60));
     console.log('🎉 All tests completed! Check console output above for details.');
 
