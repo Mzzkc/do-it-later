@@ -101,6 +101,7 @@ class TaskManager {
 
   /**
    * Move a task to a different list
+   * v3: Maintains invariant that parents appear in lists where they have children
    * @param {string} id - Task ID
    * @param {string} toList - Target list name
    * @returns {boolean} True if task was moved, false otherwise
@@ -120,6 +121,35 @@ class TaskManager {
     // Add to target list if not already there
     if (!this.app.data[toList].find(t => t.id === id)) {
       this.app.data[toList].push(task);
+    }
+
+    // v3 INVARIANT: If moving a subtask, ensure parent is in destination list
+    if (task.parentId) {
+      const parent = this.findTaskById(task.parentId);
+      if (parent) {
+        // Add parent to destination list if not already there
+        if (!this.app.data[toList].find(t => t.id === task.parentId)) {
+          this.app.data[toList].push(parent);
+        }
+
+        // Remove parent from source list if no children remain there
+        const remainingChildrenInSource = this.app.data[fromList]
+          .filter(t => t.parentId === task.parentId && t.id !== id);
+
+        if (remainingChildrenInSource.length === 0) {
+          // Check if parent itself is in the source list (not just as a parent)
+          // Only remove if parent is there solely because of children
+          const parentInSource = this.app.data[fromList].find(t => t.id === task.parentId);
+          if (parentInSource && !parentInSource.parentId) {
+            // Parent is top-level in source, check if it has any reason to stay
+            // Remove it from source list since it has no children there
+            const parentIndex = this.app.data[fromList].findIndex(t => t.id === task.parentId);
+            if (parentIndex !== -1) {
+              this.app.data[fromList].splice(parentIndex, 1);
+            }
+          }
+        }
+      }
     }
 
     return true;
@@ -356,15 +386,8 @@ class TaskManager {
    * @param {string} id - Task ID
    */
   pushToTomorrow(id) {
-    // Animate the task item being pushed right
-    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (taskElement) {
-      taskElement.classList.add('pushing-right');
-      setTimeout(() => {
-        taskElement.classList.remove('pushing-right');
-        this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
-      }, 150);
-    }
+    // Call animateTaskMovement directly (it handles animation)
+    this.animateTaskMovement(id, 'today', 'tomorrow', 'right');
   }
 
   /**
@@ -372,15 +395,8 @@ class TaskManager {
    * @param {string} id - Task ID
    */
   pullToToday(id) {
-    // Animate the task item being pushed left
-    const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (taskElement) {
-      taskElement.classList.add('pushing-left');
-      setTimeout(() => {
-        taskElement.classList.remove('pushing-left');
-        this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
-      }, 150);
-    }
+    // Call animateTaskMovement directly (it handles animation)
+    this.animateTaskMovement(id, 'tomorrow', 'today', 'left');
   }
 
   /**
@@ -393,12 +409,15 @@ class TaskManager {
    */
   animateTaskMovement(id, fromList, toList, direction) {
     const taskElement = document.querySelector(`[data-task-id="${id}"]`);
-    if (!taskElement) return false;
 
-    // Add moving-out animation in correct direction
-    taskElement.classList.add(`moving-out-${direction}`);
+    // If element found, add animation class
+    if (taskElement) {
+      taskElement.classList.add(`moving-out-${direction}`);
+    }
 
-    // Wait for animation, then move the task
+    // Perform the data manipulation regardless of animation
+    // Use shorter timeout if no element (for tests)
+    const timeout = taskElement ? 150 : 0;
     setTimeout(() => {
       const task = this.findTaskById(id);
       if (!task) return false;
@@ -433,8 +452,15 @@ class TaskManager {
         const parentList = this.getTaskList(parent.id);
         console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent is in ${parentList}`);
 
-        // Ensure parent appears in target list if not already there
-        if (!this.app.data[toList].find(t => t.id === parent.id)) {
+        // Check if a parent with the same text already exists in target list
+        const existingParentInTarget = this.app.data[toList].find(t => !t.parentId && t.text === parent.text);
+
+        if (existingParentInTarget && existingParentInTarget.id !== parent.id) {
+          // Parent with same text already exists - merge by updating subtask's parentId
+          console.log(`🐛 [MOVE] Parent "${parent.text}" already exists in ${toList}, merging by updating subtask's parentId`);
+          task.parentId = existingParentInTarget.id;
+        } else if (!this.app.data[toList].find(t => t.id === parent.id)) {
+          // No parent with same text, add the original parent
           this.app.data[toList].push(parent);
           console.log(`🐛 [MOVE] Added parent to ${toList} since it has children there`);
         }
@@ -836,39 +862,51 @@ class TaskManager {
   }
 
   /**
-   * Get complete render-ready data for a list
-   * Returns fully prepared, sorted, hierarchical task data ready for rendering
-   * BUG FIX #2, #3, #4: Parents appear ONLY in lists that contain their children
+   * Get complete render-ready data for a list (IMPROVED BOTTOM-UP)
+   * Returns hierarchical task data with children arrays
+   * Uses bottom-up walk to find all tasks that should appear in this list
+   *
    * @param {string} listName - Name of the list ('today' or 'tomorrow')
-   * @returns {Array<Object>} Array of render-ready task objects
+   * @returns {Array<Object>} Array of render-ready task objects with children
    */
   getRenderData(listName) {
-    // Get all tasks in this list
+    // Get all tasks that are explicitly in this list
     const tasksInList = this.getTasksByList(listName);
 
-    // Get subtasks in this list
-    const childrenInList = tasksInList.filter(task => task.parentId);
+    // Use Set to collect all top-level tasks to render (tasks without parents, or parents with children in this list)
+    const topLevelTaskIds = new Set();
 
-    // Get parent IDs that have children in this list
-    const parentIdsWithChildrenHere = new Set(childrenInList.map(task => task.parentId));
-
-    // Get top-level tasks to show:
-    // 1. Regular tasks (not parents) in this list
-    // 2. Parent tasks that have at least one child in this list
-    const topLevelTasks = [];
-
-    // Add non-parent tasks from this list
-    topLevelTasks.push(...tasksInList.filter(task => !task.parentId && !this.hasChildren(task.id)));
-
-    // Add parent tasks that have children in this list
-    parentIdsWithChildrenHere.forEach(parentId => {
-      const parent = this.findTaskById(parentId);
-      if (parent) {
-        topLevelTasks.push(parent);
+    // BOTTOM-UP APPROACH: For each task in list, walk UP parent chain
+    // This ensures we include all parent tasks needed for proper rendering
+    tasksInList.forEach(task => {
+      if (!task.parentId) {
+        // This is a top-level task
+        topLevelTaskIds.add(task.id);
+      } else {
+        // Walk up to find the root parent
+        let current = task;
+        while (current.parentId) {
+          const parent = this.findTaskById(current.parentId);
+          if (!parent) {
+            // Parent not found, treat current as top-level
+            topLevelTaskIds.add(current.id);
+            break;
+          }
+          current = parent;
+        }
+        // Add the root parent
+        if (!current.parentId) {
+          topLevelTaskIds.add(current.id);
+        }
       }
     });
 
-    // Sort and return with children filtered to this list only
+    // Get actual task objects for top-level tasks
+    const topLevelTasks = Array.from(topLevelTaskIds)
+      .map(id => this.findTaskById(id))
+      .filter(task => task !== undefined);
+
+    // Sort and return with children arrays (filtered to this list only)
     const sorted = this.sortTasks(topLevelTasks);
 
     return sorted.map(task => ({

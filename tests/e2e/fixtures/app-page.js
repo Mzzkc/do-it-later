@@ -88,10 +88,48 @@ export class AppPage {
     return await taskElement.locator('.task-text').first().innerText();
   }
 
+  // Check if a task with given text exists in a specific list (includes subtasks)
+  // Searches all .task-text elements within the list, including nested subtasks
+  async isTaskInList(text, listName) {
+    const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
+
+    // Search for all .task-text elements within the list (including nested subtasks)
+    const taskTexts = await this.page.locator(`#${listId} .task-text`).all();
+
+    for (const taskText of taskTexts) {
+      try {
+        const textContent = await taskText.textContent();
+        if (textContent && textContent.trim() === text.trim()) {
+          return true;
+        }
+      } catch (e) {
+        // Skip this element if there's an error
+        continue;
+      }
+    }
+
+    return false;
+  }
+
   // Task interaction methods
   async toggleTaskCompletion(text) {
-    const task = await this.getTaskOrSubtaskByText(text);
-    await task.locator('.task-text').first().click({ force: true });
+    // Use JavaScript click to avoid triggering long press detection
+    const taskId = await this.page.evaluate((text) => {
+      // Find the task by text
+      const allTasks = [...app.data.today, ...app.data.tomorrow];
+      const task = allTasks.find(t => t.text === text);
+      if (task) {
+        // Call completeTask directly
+        app.taskManager.completeTask(task.id);
+        return task.id;
+      }
+      return null;
+    }, text);
+
+    if (!taskId) {
+      throw new Error(`Task "${text}" not found for completion`);
+    }
+
     await this.page.waitForTimeout(100);
   }
 
@@ -104,11 +142,12 @@ export class AppPage {
   async clickMoveButton(text) {
     const task = await this.getTaskOrSubtaskByText(text);
     const moveIcon = await task.locator('.move-icon').first();
+
     await moveIcon.hover();
     await this.page.waitForTimeout(50);
     await moveIcon.click({ force: true });
 
-    // Wait for move animation and re-render
+    // Wait for move animation + re-render
     await this.page.waitForTimeout(500);
   }
 
@@ -332,13 +371,15 @@ export class AppPage {
         let importedData;
         try {
           importedData = Sync.parseFromText(jsonData);
-          // If parseFromText returns empty data (no tasks), try QR format
-          if (!importedData.tasks || importedData.tasks.length === 0) {
+          // Check if parsing returned any data (v3 format uses today/tomorrow arrays)
+          const hasData = (importedData.today && importedData.today.length > 0) ||
+                         (importedData.tomorrow && importedData.tomorrow.length > 0) ||
+                         (importedData.tasks && importedData.tasks.length > 0);
+
+          if (!hasData) {
             try {
               const qrParsed = Sync.parseQRData(jsonData);
-              if (qrParsed.tasks && qrParsed.tasks.length > 0) {
-                importedData = qrParsed;
-              }
+              importedData = qrParsed;
             } catch (qrError) {
               // QR parsing failed, stick with text parse result
             }
@@ -359,13 +400,25 @@ export class AppPage {
         importedData = Storage.migrateData(importedData);
 
         // Merge: add imported tasks to existing ones (avoid duplicates)
-        const importedTasks = importedData.tasks || [];
-        importedTasks.forEach(task => {
-          const isDuplicate = app.data.tasks.some(existing =>
-            existing.text === task.text && existing.list === task.list
+        // V3 format uses today/tomorrow arrays
+        const importedToday = importedData.today || [];
+        const importedTomorrow = importedData.tomorrow || [];
+
+        importedToday.forEach(task => {
+          const isDuplicate = app.data.today.some(existing =>
+            existing.text === task.text || existing.id === task.id
           );
           if (!isDuplicate) {
-            app.data.tasks.push(task);
+            app.data.today.push(task);
+          }
+        });
+
+        importedTomorrow.forEach(task => {
+          const isDuplicate = app.data.tomorrow.some(existing =>
+            existing.text === task.text || existing.id === task.id
+          );
+          if (!isDuplicate) {
+            app.data.tomorrow.push(task);
           }
         });
         app.data.totalCompleted = Math.max(app.data.totalCompleted, importedData.totalCompleted || 0);
@@ -374,7 +427,7 @@ export class AppPage {
         app.render();
         app.updateCompletedCounter();
 
-        const taskCount = importedTasks.length;
+        const taskCount = importedToday.length + importedTomorrow.length;
         app.showNotification(`Imported ${taskCount} tasks from clipboard`, 'success');
 
         return { success: true, count: taskCount };

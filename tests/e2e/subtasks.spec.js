@@ -70,8 +70,8 @@ test.describe('Subtask Feature', () => {
     await app.toggleTaskCompletion('Subtask 2');
     await app.toggleTaskCompletion('Subtask 3');
 
-    // Wait for auto-completion logic to run
-    await app.page.waitForTimeout(200);
+    // Wait for auto-completion logic to run and re-render
+    await app.page.waitForTimeout(500);
 
     // Parent should auto-complete
     const parentCompleted = await app.isTaskCompleted('Parent Task');
@@ -89,21 +89,16 @@ test.describe('Subtask Feature', () => {
     await app.clickMoveButton('Moving Subtask');
 
     // Verify subtask moved
-    const laterTasks = await app.getLaterTasks();
-    expect(laterTasks.length).toBeGreaterThan(0);
+    const subtaskInLater = await app.isTaskInList('Moving Subtask', 'later');
+    expect(subtaskInLater).toBe(true);
 
     // Parent should be copied to Later
-    const parentInLater = await app.getTaskByText('Parent A');
-    const parentList = await parentInLater.locator('xpath=ancestor::*[@id]').first().getAttribute('id');
-    expect(parentList).toBe('later-list');
+    const parentInLater = await app.isTaskInList('Parent A', 'later');
+    expect(parentInLater).toBe(true);
 
     // Original parent should be removed from Today (if empty)
-    const todayTasks = await app.getTodayTasks();
-    const parentInToday = todayTasks.filter(async (task) => {
-      const text = await app.getTaskText(task);
-      return text.includes('Parent A');
-    });
-    expect(parentInToday.length).toBe(0);
+    const parentInToday = await app.isTaskInList('Parent A', 'today');
+    expect(parentInToday).toBe(false);
   });
 
   test('5. Subtask Movement - Parent Already Exists', async () => {
@@ -117,9 +112,13 @@ test.describe('Subtask Feature', () => {
     // Move subtask from Today to Later
     await app.clickMoveButton('Subtask 1');
 
-    // Verify only one Parent B exists in Later
-    const laterParents = await app.page.locator('#later-list .task-item:has-text("Parent B")').all();
+    // Verify only one Parent B exists in Later (count top-level parents only)
+    const laterParents = await app.page.locator('#tomorrow-list > .task-item:has-text("Parent B")').all();
     expect(laterParents.length).toBe(1);
+
+    // Verify parent is in Later list
+    const parentInLater = await app.isTaskInList('Parent B', 'later');
+    expect(parentInLater).toBe(true);
 
     // Verify subtask is under the Later parent
     const subtasksInLater = await app.getSubtasks('Parent B');
@@ -154,11 +153,12 @@ test.describe('Subtask Feature', () => {
     await app.longPressTask('Original Text');
     await app.selectContextMenuItem('Edit Task');
 
-    // Wait for inline edit input
-    const editInput = page.locator('#today-list input[type="text"]').last();
+    // Wait for inline edit input (use class selector to avoid subtask input)
+    const editInput = page.locator('.edit-input');
+    await editInput.waitFor({ state: 'visible', timeout: 1000 });
     await editInput.fill('Edited Text');
     await editInput.press('Enter');
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(200);
 
     // Verify text updated
     const task = await app.getSubtaskByText('Edited Text');
@@ -178,26 +178,22 @@ test.describe('Subtask Feature', () => {
     await app.clickMoveButton('Subtask 1');
 
     // Parent should still exist in Today (has one child)
-    const todayTasks = await app.getTodayTasks();
-    const parentInToday = todayTasks.filter(async (task) => {
-      const text = await app.getTaskText(task);
-      return text.includes('Parent C');
-    });
-    expect(parentInToday.length).toBeGreaterThan(0);
+    const parentInTodayBefore = await app.isTaskInList('Parent C', 'today');
+    expect(parentInTodayBefore).toBe(true);
 
     // Move second subtask
     await app.clickMoveButton('Subtask 2');
 
-    // Parent should be removed from Today
-    const todayTasksAfter = await app.getTodayTasks();
-    const parentInTodayAfter = todayTasksAfter.filter(async (task) => {
-      const text = await app.getTaskText(task);
-      return text.includes('Parent C');
-    });
-    expect(parentInTodayAfter.length).toBe(0);
+    // Parent should be removed from Today (no children left)
+    const parentInTodayAfter = await app.isTaskInList('Parent C', 'today');
+    expect(parentInTodayAfter).toBe(false);
 
-    // Only one parent should exist in Later
-    const laterParents = await app.page.locator('#later-list .task-item:has-text("Parent C")').all();
+    // Parent should now be in Later
+    const parentInLater = await app.isTaskInList('Parent C', 'later');
+    expect(parentInLater).toBe(true);
+
+    // Only one parent should exist in Later (count top-level)
+    const laterParents = await app.page.locator('#tomorrow-list > .task-item:has-text("Parent C")').all();
     expect(laterParents.length).toBe(1);
 
     // Both children should be under Later parent

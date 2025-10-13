@@ -11,7 +11,14 @@ class QRHandler {
    * Creates a modal interface for sharing tasks via QR code or scanning QR codes
    */
   showModal() {
-    const qrData = Sync.generateQRData(this.app.data);
+    let qrData;
+    try {
+      qrData = Sync.generateQRData(this.app.data);
+    } catch (error) {
+      console.error('QR generation failed:', error);
+      this.app.showNotification(`QR generation failed: ${error.message}`, 'error');
+      return;
+    }
     const dataSize = qrData.length;
     const maxSize = 2950; // QR code practical limit with Low error correction (v5 delimiter format)
     const isTooBig = dataSize > maxSize;
@@ -79,7 +86,7 @@ class QRHandler {
             </div>
           </div>
           <p class="qr-stats" style="margin-top: 1rem; opacity: 0.7;">
-            ${this.app.data.tasks.filter(t => !t.completed).length} tasks • ${dataSize} bytes
+            ${(this.app.data.today || []).filter(t => !t.completed).length + (this.app.data.tomorrow || []).filter(t => !t.completed).length} tasks • ${dataSize} bytes
           </p>
         `}
       </div>
@@ -459,23 +466,35 @@ class QRHandler {
       if (shouldReplace) {
         this.app.data = importedData;
       } else {
-        // Merge: add imported tasks to existing ones
-        const importedTasks = importedData.tasks || [];
-        importedTasks.forEach(task => {
-          const isDuplicate = this.app.data.tasks.some(existing =>
-            existing.text === task.text && existing.list === task.list
+        // Merge: add imported tasks to existing ones (v3 format uses today/tomorrow arrays)
+        const importedToday = importedData.today || [];
+        const importedTomorrow = importedData.tomorrow || [];
+
+        importedToday.forEach(task => {
+          const isDuplicate = this.app.data.today.some(existing =>
+            existing.text === task.text || existing.id === task.id
           );
           if (!isDuplicate) {
-            this.app.data.tasks.push(task);
+            this.app.data.today.push(task);
           }
         });
+
+        importedTomorrow.forEach(task => {
+          const isDuplicate = this.app.data.tomorrow.some(existing =>
+            existing.text === task.text || existing.id === task.id
+          );
+          if (!isDuplicate) {
+            this.app.data.tomorrow.push(task);
+          }
+        });
+
         this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
       }
 
       this.app.save();
       this.app.render();
 
-      const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+      const taskCount = (importedData.today || []).length + (importedData.tomorrow || []).length;
       this.app.showNotification(`Imported ${taskCount} tasks from QR scan`, 'success');
 
       // Close modal

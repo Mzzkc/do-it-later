@@ -14,7 +14,7 @@ const Sync = {
     let output = `${Config.APP_NAME} - ${dateStr}\n`;
     output += `Exported: ${now.toLocaleString()}\n`;
     output += `Tasks Completed Lifetime: ${data.totalCompleted || 0}\n`;
-    output += `Format: JSON (v2 - includes all task properties)\n\n`;
+    output += `Format: JSON (v3 - list arrays with all task properties)\n\n`;
 
     // Export full data as JSON to preserve ALL properties
     output += JSON.stringify(data, null, 2);
@@ -165,18 +165,29 @@ const Sync = {
   generateQRData(data) {
     // Ultra-compressed format v5 - delimiter-based, no JSON/base64
     // Only include incomplete tasks to reduce size
-    // V3 format: get tasks from today/tomorrow arrays
-    const todayIncompleteTasks = (data.today || []).filter(task => !task.completed && !task.parentId);
-    const tomorrowIncompleteTasks = (data.tomorrow || []).filter(task => !task.completed && !task.parentId);
-    const allIncompleteTasks = [...todayIncompleteTasks, ...tomorrowIncompleteTasks];
+    // V3 format: deduplicate tasks from today/tomorrow arrays
+    // (parents can appear in both lists if they have children in both)
 
-    // Get all subtasks (incomplete only)
-    const todaySubtasks = (data.today || []).filter(task => !task.completed && task.parentId);
-    const tomorrowSubtasks = (data.tomorrow || []).filter(task => !task.completed && task.parentId);
-    const allSubtasks = [...todaySubtasks, ...tomorrowSubtasks];
+    // Collect unique parents first (no parentId), then subtasks
+    // This order is critical for parent reference indices to work correctly
+    const seenIds = new Set();
+    const incompleteParents = [];
+    const incompleteSubtasks = [];
 
-    // Combine all incomplete tasks
-    const incompleteTasks = [...allIncompleteTasks, ...allSubtasks];
+    // Collect all incomplete tasks from both lists, deduplicating by ID
+    [...(data.today || []), ...(data.tomorrow || [])].forEach(task => {
+      if (!task.completed && !seenIds.has(task.id)) {
+        seenIds.add(task.id);
+        if (task.parentId) {
+          incompleteSubtasks.push(task);
+        } else {
+          incompleteParents.push(task);
+        }
+      }
+    });
+
+    // Combine: parents first, then subtasks (for correct parent reference indices)
+    const incompleteTasks = [...incompleteParents, ...incompleteSubtasks];
 
     // Create ID→index mapping
     const idMap = new Map();
