@@ -52,7 +52,8 @@ class TaskController {
       if (expandIcon) {
         e.stopPropagation();
         const taskId = expandIcon.dataset.taskId;
-        this.app.taskManager.toggleSubtaskExpansion(taskId);
+        const taskElement = expandIcon.closest('[data-task-id]');
+        this.app.taskManager.toggleSubtaskExpansion(taskId, taskElement);
         return;
       }
 
@@ -160,7 +161,8 @@ class TaskController {
       if (expandIcon) {
         e.stopPropagation();
         const taskId = expandIcon.dataset.taskId;
-        this.app.taskManager.toggleSubtaskExpansion(taskId);
+        const taskElement = expandIcon.closest('[data-task-id]');
+        this.app.taskManager.toggleSubtaskExpansion(taskId, taskElement);
         this.touchState.delete(taskId);
         return;
       }

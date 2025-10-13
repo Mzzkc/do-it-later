@@ -200,4 +200,45 @@ test.describe('Subtask Feature', () => {
     const laterSubtasks = await app.getSubtasks('Parent C');
     expect(laterSubtasks.length).toBe(2);
   });
+
+  test('11. No Rendering Gap After Subtask Movement', async () => {
+    // Reproduce exact scenario from bug report:
+    // Parent "jkkjik" in Later with two subtasks, move one to Today
+    await app.addLaterTask('jkkjik');
+    await app.addSubtask('jkkjik', 'jkkjik');  // First subtask (same name as parent)
+    await app.addSubtask('jkkjik', 'hijjkklk');  // Second subtask
+
+    // Add another task below for gap detection
+    await app.addLaterTask('ghj');
+
+    // Move first subtask to Today (helper prefers subtasks over parents when both have same name)
+    await app.clickMoveButton('jkkjik');
+    await app.page.waitForTimeout(300);  // Wait for movement animation
+
+    // Verify parent still exists in Later with one subtask
+    const parentInLater = await app.isTaskInList('jkkjik', 'later');
+    expect(parentInLater).toBe(true);
+
+    // Count all visible task items in Later list (excluding empty messages)
+    const laterTasks = await app.page.locator('#tomorrow-list > .task-item').all();
+
+    // Should have exactly 2 top-level tasks: parent "jkkjik" and "ghj"
+    expect(laterTasks.length).toBe(2);
+
+    // Verify no empty or hidden elements causing gaps
+    for (const task of laterTasks) {
+      const text = await task.textContent();
+      expect(text.trim()).not.toBe('');  // No empty tasks
+      const isVisible = await task.isVisible();
+      expect(isVisible).toBe(true);  // All should be visible
+    }
+
+    // Verify subtasks under parent
+    const remainingSubtasks = await app.getSubtasks('jkkjik');
+    expect(remainingSubtasks.length).toBe(1);  // Only "hijjkklk" should remain
+
+    // Verify the moved subtask is now in Today under the parent
+    const parentInToday = await app.isTaskInList('jkkjik', 'today');
+    expect(parentInToday).toBe(true);  // Parent should be copied to Today
+  });
 });

@@ -112,7 +112,9 @@ class Renderer {
     li.appendChild(taskContent);
 
     // Render children if present OR if adding a subtask
-    if (task.hasChildren || task._addingSubtask) {
+    // Only create container if there are actual children in this list OR adding a subtask
+    const hasChildrenInThisList = task.children && task.children.length > 0;
+    if (hasChildrenInThisList || task._addingSubtask) {
       const subtaskContainer = this.createSubtaskContainer(task, listName);
       li.appendChild(subtaskContainer);
     }
@@ -209,8 +211,9 @@ class Renderer {
    * @returns {string} HTML string
    */
   getTaskHTML(task, listName) {
-    // Expand/collapse icon
-    const expandIcon = task.hasChildren ?
+    // Expand/collapse icon - only show if there are children in THIS list
+    const hasChildrenInThisList = task.children && task.children.length > 0;
+    const expandIcon = hasChildrenInThisList ?
       `<span class="expand-icon" data-task-id="${task.id}">${task.isExpanded ? '▼' : '▶'}</span>` : '';
 
     // Movement button

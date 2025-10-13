@@ -751,8 +751,9 @@ class TaskManager {
   /**
    * Toggle subtask expansion
    * @param {string} taskId - Task ID
+   * @param {HTMLElement} taskElement - Specific task element that was clicked (optional)
    */
-  toggleSubtaskExpansion(taskId) {
+  toggleSubtaskExpansion(taskId, taskElement = null) {
     const taskInfo = this.findTask(taskId);
     if (!taskInfo) return;
 
@@ -762,21 +763,38 @@ class TaskManager {
       actualTask.isExpanded = !actualTask.isExpanded;
       this.app.save();
 
-      // Instead of full render, just toggle the subtask list display and update icon
-      const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-      if (taskElement) {
+      // Update the clicked element if provided, otherwise update the first matching element
+      const targetElement = taskElement || document.querySelector(`[data-task-id="${taskId}"]`);
+
+      if (targetElement) {
         // Find the expand icon and update it
-        const expandIcon = taskElement.querySelector('.expand-icon');
+        const expandIcon = targetElement.querySelector('.expand-icon');
         if (expandIcon) {
           expandIcon.textContent = actualTask.isExpanded ? '▼' : '▶';
         }
 
         // Find the subtask container (it's a child of the task element)
-        const subtaskList = taskElement.querySelector('.subtask-list');
+        const subtaskList = targetElement.querySelector('.subtask-list');
         if (subtaskList) {
           subtaskList.style.display = actualTask.isExpanded ? 'block' : 'none';
         }
       }
+
+      // Also update ALL other instances of this task (in case it's in multiple lists)
+      const allElements = document.querySelectorAll(`[data-task-id="${taskId}"]`);
+      allElements.forEach(el => {
+        if (el === targetElement) return; // Already updated above
+
+        const icon = el.querySelector('.expand-icon');
+        if (icon) {
+          icon.textContent = actualTask.isExpanded ? '▼' : '▶';
+        }
+
+        const list = el.querySelector('.subtask-list');
+        if (list) {
+          list.style.display = actualTask.isExpanded ? 'block' : 'none';
+        }
+      });
     }
   }
 
