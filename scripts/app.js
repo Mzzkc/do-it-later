@@ -165,15 +165,15 @@ class DoItTomorrowApp {
   checkDateRollover() {
     const today = new Date().toISOString().split('T')[0];
     if (this.data.currentDate !== today) {
-      // New day detected - perform daily cleanup
-      const completedToday = this.data.tasks.filter(task => task.list === 'today' && task.completed).length;
-      const completedLater = this.data.tasks.filter(task => task.list === 'tomorrow' && task.completed).length;
+      // New day detected - perform daily cleanup (v3 format: today/tomorrow arrays)
+      const completedToday = this.data.today.filter(task => task.completed).length;
+      const completedLater = this.data.tomorrow.filter(task => task.completed).length;
 
       // Remove completed tasks from Today
-      this.data.tasks = this.data.tasks.filter(task => !(task.list === 'today' && task.completed));
+      this.data.today = this.data.today.filter(task => !task.completed);
 
-      // Remove completed tasks from Later, but keep incomplete ones there
-      const incompleteLaterTasks = this.data.tasks.filter(task => task.list === 'tomorrow' && !task.completed);
+      // Remove completed tasks from Later
+      this.data.tomorrow = this.data.tomorrow.filter(task => !task.completed);
 
       // Check for week-old Later tasks (7+ days old) and move them to Today
       const weekAgo = new Date();
@@ -181,18 +181,27 @@ class DoItTomorrowApp {
       const weekAgoTimestamp = weekAgo.getTime();
 
       let weekOldTasksMoved = 0;
-      incompleteLaterTasks.forEach(task => {
-        const taskAge = task.createdAt || Date.now(); // Fallback for tasks without timestamp
+      const tasksToMove = [];
+
+      this.data.tomorrow.forEach(task => {
+        const taskAge = task.createdAt || Date.now();
         if (taskAge < weekAgoTimestamp) {
-          // Task is 7+ days old, move to Today
-          task.list = 'today';
+          tasksToMove.push(task);
           weekOldTasksMoved++;
         }
-        // Task is already in the list, just update the list property
+      });
+
+      // Remove from tomorrow and add to today
+      tasksToMove.forEach(task => {
+        const index = this.data.tomorrow.findIndex(t => t.id === task.id);
+        if (index !== -1) {
+          this.data.tomorrow.splice(index, 1);
+          this.data.today.push(task);
+        }
       });
 
       // Check deadlines on all tasks
-      const allTasks = this.data.tasks;
+      const allTasks = [...this.data.today, ...this.data.tomorrow];
       const todayDate = new Date(today);
       const threeDaysFromNow = new Date(todayDate);
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
@@ -207,9 +216,14 @@ class DoItTomorrowApp {
           // If deadline is today, move to Today list
           if (task.deadline === today) {
             // Move from Later to Today if not already there
-            if (task.list === 'tomorrow') {
-              task.list = 'today';
-              deadlineTasksMoved++;
+            const inTomorrow = this.data.tomorrow.find(t => t.id === task.id);
+            if (inTomorrow) {
+              const index = this.data.tomorrow.findIndex(t => t.id === task.id);
+              if (index !== -1) {
+                this.data.tomorrow.splice(index, 1);
+                this.data.today.push(task);
+                deadlineTasksMoved++;
+              }
             }
           }
 
