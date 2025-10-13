@@ -90,14 +90,36 @@ const Storage = {
       }
     }
 
+    // Migrate expansion properties: isExpanded → expandedInToday + expandedInLater
+    const migrateExpansionProps = (task) => {
+      // If already has new properties, leave them as-is
+      if (task.hasOwnProperty('expandedInToday') || task.hasOwnProperty('expandedInLater')) {
+        return task;
+      }
+
+      // Convert from old isExpanded property, or default to true
+      const expanded = task.isExpanded !== false; // Default to true if undefined
+      const { isExpanded, ...taskWithoutOldProp } = task;
+
+      return {
+        ...taskWithoutOldProp,
+        expandedInToday: expanded,
+        expandedInLater: expanded
+      };
+    };
+
+    // Apply migration to all tasks
+    const migratedToday = today.map(migrateExpansionProps);
+    const migratedTomorrow = tomorrow.map(migrateExpansionProps);
+
     // Add parents to lists where their children are
     // This ensures parents appear in both lists if they have children in both
-    const allTasks = [...today, ...tomorrow];
+    const allTasks = [...migratedToday, ...migratedTomorrow];
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
 
     // Find all parent IDs with children in today
     const parentsNeededInToday = new Set();
-    today.forEach(task => {
+    migratedToday.forEach(task => {
       if (task.parentId && !parentsNeededInToday.has(task.parentId)) {
         parentsNeededInToday.add(task.parentId);
       }
@@ -105,7 +127,7 @@ const Storage = {
 
     // Find all parent IDs with children in tomorrow
     const parentsNeededInTomorrow = new Set();
-    tomorrow.forEach(task => {
+    migratedTomorrow.forEach(task => {
       if (task.parentId && !parentsNeededInTomorrow.has(task.parentId)) {
         parentsNeededInTomorrow.add(task.parentId);
       }
@@ -114,24 +136,24 @@ const Storage = {
     // Add parents to today if they have children there and aren't already there
     parentsNeededInToday.forEach(parentId => {
       const parent = taskMap.get(parentId);
-      if (parent && !today.find(t => t.id === parentId)) {
-        today.push(parent);
+      if (parent && !migratedToday.find(t => t.id === parentId)) {
+        migratedToday.push(parent);
       }
     });
 
     // Add parents to tomorrow if they have children there and aren't already there
     parentsNeededInTomorrow.forEach(parentId => {
       const parent = taskMap.get(parentId);
-      if (parent && !tomorrow.find(t => t.id === parentId)) {
-        tomorrow.push(parent);
+      if (parent && !migratedTomorrow.find(t => t.id === parentId)) {
+        migratedTomorrow.push(parent);
       }
     });
 
-    console.log(`✅ Migrated to v3: ${today.length} tasks in today, ${tomorrow.length} tasks in tomorrow`);
+    console.log(`✅ Migrated to v3: ${migratedToday.length} tasks in today, ${migratedTomorrow.length} tasks in tomorrow`);
 
     return {
-      today,
-      tomorrow,
+      today: migratedToday,
+      tomorrow: migratedTomorrow,
       lastUpdated: oldData.lastUpdated || Date.now(),
       currentDate: oldData.currentDate || Utils.getTodayISO(),
       totalCompleted: oldData.totalCompleted || 0,

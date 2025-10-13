@@ -368,7 +368,8 @@ const Sync = {
         important: task.important,
         deadline: task.deadline,
         parentId: task.parentIdx !== null ? idMap.get(task.parentIdx) : null,
-        isExpanded: true,  // default true
+        expandedInToday: true,  // default true
+        expandedInLater: true,  // default true
         createdAt: Date.now()
       }));
 

@@ -109,6 +109,8 @@ class DevMode {
         text: '📅 Normal task added first',
         completed: false,
         important: false,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 300000 // 5 minutes ago
       },
       {
@@ -116,6 +118,8 @@ class DevMode {
         text: '⭐ Important: High priority task',
         completed: false,
         important: true,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 200000 // 3+ minutes ago
       },
       {
@@ -123,6 +127,8 @@ class DevMode {
         text: '🔥 Important: Most recent urgent task',
         completed: false,
         important: true,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 100000 // 1+ minutes ago
       },
       {
@@ -130,6 +136,8 @@ class DevMode {
         text: '📅 Another normal task',
         completed: false,
         important: false,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 50000 // 50 seconds ago
       },
       {
@@ -137,6 +145,8 @@ class DevMode {
         text: '✅ Completed important task',
         completed: true,
         important: true,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 400000 // 6+ minutes ago
       },
       {
@@ -144,6 +154,8 @@ class DevMode {
         text: '✅ Completed normal task',
         completed: true,
         important: false,
+        expandedInToday: true,
+        expandedInLater: true,
         createdAt: Date.now() - 250000 // 4+ minutes ago
       }
     ];

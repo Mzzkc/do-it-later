@@ -187,7 +187,8 @@ class TaskManager {
       important: false,
       createdAt: Date.now(),
       parentId: parentId,
-      isExpanded: true
+      expandedInToday: true,
+      expandedInLater: true
     };
 
     this.addTaskToList(task, list);
@@ -682,10 +683,9 @@ class TaskManager {
     // Mark this task as having an active subtask input
     actualTask._addingSubtask = true;
 
-    // Make sure the task is expanded so we can see the input
-    if (!actualTask.isExpanded) {
-      actualTask.isExpanded = true;
-    }
+    // Make sure the task is expanded in both lists so we can see the input
+    actualTask.expandedInToday = true;
+    actualTask.expandedInLater = true;
 
     console.log('🐛 [SUBTASK] Marked task for subtask input, re-rendering...');
     this.app.save();
@@ -760,41 +760,25 @@ class TaskManager {
     // Find the actual task in the data array (not the copy) using helper method
     const actualTask = this.findTaskById(taskId);
     if (actualTask) {
-      actualTask.isExpanded = !actualTask.isExpanded;
-      this.app.save();
-
-      // Update the clicked element if provided, otherwise update the first matching element
+      // Determine which list this element is in
       const targetElement = taskElement || document.querySelector(`[data-task-id="${taskId}"]`);
+      if (!targetElement) return;
 
-      if (targetElement) {
-        // Find the expand icon and update it
-        const expandIcon = targetElement.querySelector('.expand-icon');
-        if (expandIcon) {
-          expandIcon.textContent = actualTask.isExpanded ? '▼' : '▶';
-        }
+      const listContainer = targetElement.closest('#today-list, #tomorrow-list');
+      const listName = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
 
-        // Find the subtask container (it's a child of the task element)
-        const subtaskList = targetElement.querySelector('.subtask-list');
-        if (subtaskList) {
-          subtaskList.style.display = actualTask.isExpanded ? 'block' : 'none';
-        }
-      }
+      // Toggle expansion for this specific list
+      const expandedProp = listName === 'today' ? 'expandedInToday' : 'expandedInLater';
 
-      // Also update ALL other instances of this task (in case it's in multiple lists)
-      const allElements = document.querySelectorAll(`[data-task-id="${taskId}"]`);
-      allElements.forEach(el => {
-        if (el === targetElement) return; // Already updated above
+      // Get current state (default to true if undefined for backwards compatibility)
+      const currentState = actualTask[expandedProp] !== false;
+      const newExpandedState = !currentState;
 
-        const icon = el.querySelector('.expand-icon');
-        if (icon) {
-          icon.textContent = actualTask.isExpanded ? '▼' : '▶';
-        }
+      // Update the property
+      actualTask[expandedProp] = newExpandedState;
 
-        const list = el.querySelector('.subtask-list');
-        if (list) {
-          list.style.display = actualTask.isExpanded ? 'block' : 'none';
-        }
-      });
+      this.app.save();
+      this.app.render();
     }
   }
 
@@ -931,6 +915,7 @@ class TaskManager {
       ...task,
       children: this.getChildrenSorted(task.id, listName),
       hasChildren: this.hasChildren(task.id),
+      isExpanded: listName === 'today' ? (task.expandedInToday !== false) : (task.expandedInLater !== false),  // Backwards compatible default to true
       moveAction: listName === 'today' ? 'push' : 'pull',
       moveIcon: listName === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
     }));
