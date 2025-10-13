@@ -256,7 +256,7 @@ header {
 }
 
 .delete-mode-toggle:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -273,7 +273,7 @@ header {
 }
 
 .delete-mode-toggle.active:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -424,7 +424,7 @@ ul {
 /* Active/pressed state for important tasks */
 .task-item.important:active,
 .task-item.important.button-pressed {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px) !important;
+  transform: none !important;
   box-shadow:
     0 0 8px rgba(249, 247, 237, 0.2),
     0 1px 4px rgba(0, 0, 0, 0.1),
@@ -498,7 +498,7 @@ ul {
     0 0 16px rgba(220, 38, 38, 0.2),
     0 2px 8px rgba(0, 0, 0, 0.1);
   color: #dc2626;
-  transform: skewX(1deg) scaleX(0.98) translateY(-1px);
+  transform: translateY(-1px);
 }
 
 /* Moving animation respect for important tasks */
@@ -721,7 +721,7 @@ ul {
 
   /* Allow click feedback even with reduced motion */
   .task-item:active {
-    transform: skewX(3deg) scaleX(0.97) translateY(0px);
+    transform: none;
     transition: transform 0.1s ease;
   }
 
@@ -924,7 +924,7 @@ ul {
 }
 
 .move-icon:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   background: rgba(255, 255, 255, 0.1);
   transition: transform 0.1s ease, background 0.1s ease;
 }
@@ -958,54 +958,39 @@ ul {
   transform: translateY(-1px) !important;
 }
 
-/* Active/click state - exact copy of delete button pattern */
+/* Active/click state - flat, no skew */
 .task-item:active,
 .task-item.button-pressed {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px) !important;
+  transform: none !important;
   transition: transform 0.1s ease !important;
 }
 
 /* Delete mode styles */
 .list-section.delete-mode .task-item:hover {
   background: rgba(220, 38, 38, 0.15);
-  transform: skewX(1deg) scaleX(0.98);
+  transform: none;
   color: #dc2626;
 }
 
 .list-section.delete-mode .task-item:active {
   background: rgba(220, 38, 38, 0.25);
-  transform: skewX(2deg) scaleX(0.96) scaleY(0.94);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
 /* Marquee removed - was causing text to move independently */
 
-/* Ripple effect for touch interactions */
+/* Ripple effect disabled for flat UI */
 .task-text::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.3);
-  transform: translate(-50%, -50%);
-  transition: all 0.5s ease;
-  pointer-events: none;
-  opacity: 0;
+  display: none;
 }
 
 .task-text.ripple::after {
-  width: 200px;
-  height: 200px;
-  opacity: 1;
-  transition: all 0.3s ease;
+  display: none;
 }
 
 .task-text.ripple-fade::after {
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  display: none;
 }
 
 .empty-message {
@@ -1070,7 +1055,7 @@ ul {
 }
 
 .add-button:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -1117,13 +1102,13 @@ footer {
 .sync-btn:hover {
   background: var(--background);
   border-color: var(--text-muted);
-  transform: skewX(-2deg) translateY(-1px);
+  transform: translateY(-1px);
   filter: brightness(1.05);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .sync-btn:active {
-  transform: skewX(-2deg) scaleX(0.98) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -1193,7 +1178,7 @@ footer {
   color: var(--text);
   border-color: var(--text-muted);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transform: skewX(-2deg) translateY(-1px);
+  transform: translateY(-1px);
 }
 
 .nav-btn:hover {
@@ -1202,7 +1187,7 @@ footer {
 }
 
 .nav-btn:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -1212,7 +1197,7 @@ footer {
 }
 
 .nav-btn.active:active {
-  transform: skewX(3deg) scaleX(0.97) translateY(0px);
+  transform: none;
   transition: transform 0.1s ease;
 }
 
@@ -1357,7 +1342,7 @@ footer {
 
 .qr-tab:hover {
   background: var(--surface);
-  transform: skewX(-2deg);
+  transform: none;
   filter: brightness(1.05);
 }
 
@@ -1410,12 +1395,12 @@ footer {
 
 .qr-btn:hover {
   background: var(--background);
-  transform: skewX(-2deg);
+  transform: none;
   filter: brightness(1.05);
 }
 
 .qr-btn:active {
-  transform: skewX(-2deg) scaleX(0.98);
+  transform: none;
 }
 
 .qr-btn svg {

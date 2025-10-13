@@ -308,10 +308,10 @@ class TaskManager {
    * @returns {boolean} True if task was toggled, false otherwise
    */
   completeTask(id, event) {
-    // Add ripple effect if event is provided
-    if (event && event.target) {
-      this.addRippleEffect(event.target);
-    }
+    // Ripple effect disabled for flat UI
+    // if (event && event.target) {
+    //   this.addRippleEffect(event.target);
+    // }
 
     // Find the actual task object (not a copy) in the data arrays
     const task = this.findTaskById(id);
