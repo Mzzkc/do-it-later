@@ -24,10 +24,15 @@ Thumbs.db
 *.temp
 
 # Claude Code specific files (local state only)
-.claude/settings.local.json
+.claude/
+
+# AI documentation (local only - not for humans)
+docs/codebase-flow/
 
 # Test files (local only)
 tests/*.html
+test-debug.html
+test-qr-debug.html
 
 # Test artifacts
 test-results/
