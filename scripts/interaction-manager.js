@@ -26,6 +26,7 @@ class LongPressManager {
     // State tracking
     this.isActive = false;
     this.timer = null;
+    this.startTime = null;
     this.startPosition = null;
     this.currentElement = null;
     this.startEvent = null;
@@ -55,6 +56,7 @@ class LongPressManager {
     this.isActive = true;
     this.currentElement = element;
     this.startEvent = event;
+    this.startTime = Date.now();
 
     // Get position from touch or mouse event
     const position = this.getEventPosition(event);
@@ -149,7 +151,13 @@ class LongPressManager {
       document.removeEventListener('touchend', endHandler);
       document.removeEventListener('touchcancel', endHandler);
       if (this.isActive) {
-        this.cancel('touchend');
+        // Check if threshold time has been met
+        const elapsed = Date.now() - this.startTime;
+        if (elapsed >= this.timeout) {
+          this.triggerLongPress();
+        } else {
+          this.cancel('touchend');
+        }
       }
     };
 
@@ -176,7 +184,13 @@ class LongPressManager {
       document.removeEventListener('mouseup', upHandler);
       document.removeEventListener('mouseleave', upHandler);
       if (this.isActive) {
-        this.cancel('mouseup');
+        // Check if threshold time has been met
+        const elapsed = Date.now() - this.startTime;
+        if (elapsed >= this.timeout) {
+          this.triggerLongPress();
+        } else {
+          this.cancel('mouseup');
+        }
       }
     };
 

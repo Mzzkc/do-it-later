@@ -32,6 +32,7 @@ class DeadlinePicker {
 
     // Create modal
     const modal = document.createElement('div');
+    modal.id = 'deadline-picker';
     modal.className = 'deadline-modal';
     modal.style.cssText = `
       background: var(--surface);
@@ -57,7 +58,7 @@ class DeadlinePicker {
         style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px;
         background: var(--background); color: var(--text); font-size: 1rem; margin-bottom: 16px;">
       <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        ${currentDeadline ? '<button id="remove-deadline-btn" style="padding: 10px 20px; border: 1px solid #dc2626; background: transparent; color: #dc2626; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Remove</button>' : ''}
+        ${currentDeadline ? '<button id="remove-deadline-btn" style="padding: 10px 20px; border: 1px solid #dc2626; background: transparent; color: #dc2626; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Clear</button>' : ''}
         <button id="cancel-deadline-btn" style="padding: 10px 20px; border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Cancel</button>
         <button id="set-deadline-btn" style="padding: 10px 20px; border: none; background: var(--primary-color); color: white; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Set Deadline</button>
       </div>

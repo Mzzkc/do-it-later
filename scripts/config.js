@@ -12,7 +12,7 @@ const Config = {
   THEME_KEY: 'do-it-later-theme',
 
   // Timing constants
-  SAVE_DEBOUNCE_MS: 100,
+  SAVE_DEBOUNCE_MS: 10,  // Reduced from 100ms to prevent data loss during rapid operations
   RENDER_DEBOUNCE_MS: 16, // ~60fps
   LONG_PRESS_TIMEOUT_MS: 600,
   LONG_PRESS_TOLERANCE_PX: 10,

@@ -94,7 +94,8 @@ class ImportExportManager {
             }
           });
 
-          this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
+          // Sum the counters when merging (not taking max)
+          this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + (importedData.totalCompleted || 0);
         }
 
         this.app.save();
@@ -193,13 +194,14 @@ class ImportExportManager {
             }
           });
 
-          this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
+          // Sum the counters when merging (not taking max)
+          this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + (importedData.totalCompleted || 0);
         }
 
         this.app.save();
         this.app.render();
 
-        const taskCount = importedData.tasks ? importedData.tasks.length : 0;
+        const taskCount = (importedData.today || []).length + (importedData.tomorrow || []).length;
         this.app.showNotification(`Imported ${taskCount} tasks from clipboard`, 'success');
 
       } catch (error) {

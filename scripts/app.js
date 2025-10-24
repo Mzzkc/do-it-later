@@ -9,6 +9,10 @@ class DoItTomorrowApp {
     this.currentMobileView = 'today'; // Default to today on mobile
     this.logs = [];
 
+    // Save queue system to prevent data loss during rapid operations
+    this.saveQueue = [];
+    this.isSaving = false;
+
     // Simple scroll detection
     this.isScrolling = false;
 
@@ -408,23 +412,60 @@ class DoItTomorrowApp {
   }
   
   save() {
-    // Debounce saves to improve performance
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
+    // WAVE 1 FIX: Enhanced save queue to prevent data loss during rapid operations
+    // Queue timestamp for tracking, but also snapshot current operation count
+    this.saveQueue.push({
+      timestamp: Date.now(),
+      operationCount: this.operationCount || 0
+    });
+
+    if (!this.isSaving) {
+      this.processSaveQueue();
+    }
+  }
+
+  processSaveQueue() {
+    if (this.saveQueue.length === 0) {
+      this.isSaving = false;
+      return;
     }
 
-    this.saveTimeout = setTimeout(() => {
+    this.isSaving = true;
+    const queuedCount = this.saveQueue.length;
+
+    // Debounce for performance, but ensure ALL queued operations are captured
+    setTimeout(() => {
       try {
+        // Process all queued saves as ONE atomic operation
+        // Clear queue FIRST to prevent new operations from interfering
+        const processedQueue = this.saveQueue.splice(0);  // Atomic clear
+
         this.data.lastUpdated = Date.now();
         const success = Storage.save(this.data);
+
         if (!success) {
           this.showNotification('Storage quota exceeded! Please clear some browser data.', 'error');
+        }
+
+        if (this.devMode.isActive()) {
+          console.log(`💾 SAVE: Processed ${processedQueue.length} queued operations, ${this.saveQueue.length} new ones pending`);
         }
       } catch (error) {
         console.error('Save error:', error);
         this.showNotification('Failed to save data. Your changes might be lost.', 'error');
       }
-    }, 100);
+
+      // Continue processing if more saves were queued DURING this operation
+      this.isSaving = false;
+      if (this.saveQueue.length > 0) {
+        this.processSaveQueue();
+      }
+    }, Config.SAVE_DEBOUNCE_MS);
+  }
+
+  // WAVE 1 FIX: Add operation counter for tracking modifications
+  incrementOperationCount() {
+    this.operationCount = (this.operationCount || 0) + 1;
   }
 
   // Debounced render for performance
@@ -807,14 +848,14 @@ class DoItTomorrowApp {
   }
 
   applyTheme(theme) {
-    const body = document.body;
+    const root = document.documentElement;
     const themeLabel = document.querySelector('.theme-label');
 
     if (theme === 'light') {
-      body.classList.add('light-theme');
+      root.classList.add('light-theme');
       if (themeLabel) themeLabel.textContent = 'Light';
     } else {
-      body.classList.remove('light-theme');
+      root.classList.remove('light-theme');
       if (themeLabel) themeLabel.textContent = 'Dark';
     }
     this.currentTheme = theme;

@@ -148,8 +148,9 @@ export class AppPage {
     await this.page.waitForTimeout(50);
     await moveIcon.click({ force: true });
 
-    // Wait for move animation + re-render
-    await this.page.waitForTimeout(500);
+    // WAVE 3 FIX: Wait for move animation (300ms) + save debounce (100ms) + buffer
+    // This ensures the move is fully saved before the next operation starts
+    await this.page.waitForTimeout(450);
   }
 
   async longPressTask(text) {
@@ -221,7 +222,10 @@ export class AppPage {
     const subtaskInput = parent.locator('.subtask-input');
     await subtaskInput.fill(subtaskText);
     await subtaskInput.press('Enter');
-    await this.page.waitForTimeout(100);
+
+    // WAVE 3 FIX: Wait for save debounce to complete (100ms) + buffer
+    // This ensures the subtask is saved before the next operation starts
+    await this.page.waitForTimeout(150);
   }
 
   async getSubtasks(parentText) {
@@ -469,8 +473,8 @@ export class AppPage {
   }
 
   async getCurrentTheme() {
-    const body = await this.page.locator('body');
-    const classes = await body.getAttribute('class');
+    const root = await this.page.locator('html');
+    const classes = await root.getAttribute('class');
     return classes && classes.includes('light-theme') ? 'light' : 'dark';
   }
 

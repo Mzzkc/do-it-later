@@ -249,7 +249,7 @@ class Renderer {
 
     const daysUntil = Math.ceil((deadlineDay - today) / (1000 * 60 * 60 * 24));
 
-    let deadlineClass = 'deadline-indicator';
+    let deadlineClass = 'deadline deadline-indicator';
     let deadlineText = '';
 
     if (daysUntil < 0) {
