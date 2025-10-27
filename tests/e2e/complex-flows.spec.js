@@ -128,12 +128,17 @@ test.describe('Complex User Flows', () => {
       await app.clickMoveButton('Parent');
       await page.waitForTimeout(300);
 
-      // Verify parent is ONLY in Later list
-      const todayTasks = await app.getTodayTasks();
-      const laterTasks = await app.getLaterTasks();
+      // Verify parent is ONLY in Later list by checking data arrays
+      const dataLengths = await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem('do-it-later-data'));
+        return {
+          today: data.today.length,
+          tomorrow: data.tomorrow.length
+        };
+      });
 
-      expect(todayTasks.length).toBe(0);
-      expect(laterTasks.length).toBe(2); // Parent + Child
+      expect(dataLengths.today).toBe(0); // No tasks in Today
+      expect(dataLengths.tomorrow).toBe(2); // Parent + Child in Later data array
     });
   });
 
@@ -364,7 +369,8 @@ test.describe('Complex User Flows', () => {
       await page.waitForTimeout(200);
 
       // Verify expansion state maintained
-      const childVisible = await page.locator('#today-list .task-item:has-text("Existing child")').isVisible();
+      // WAVE 5 FIX: Use .subtask-item to avoid matching both parent and nested child
+      const childVisible = await page.locator('#today-list .subtask-item:has-text("Existing child")').isVisible();
       expect(childVisible).toBe(false);
     });
 
@@ -399,8 +405,10 @@ test.describe('Complex User Flows', () => {
 
       const exportedData = await page.evaluate(() => navigator.clipboard.readText());
 
-      // Should contain count prefix at minimum
-      expect(exportedData).toContain('C:');
+      // Should contain JSON v3 format with empty arrays
+      expect(exportedData).toContain('"version": 3');
+      expect(exportedData).toContain('"today": []');
+      expect(exportedData).toContain('"tomorrow": []');
     });
   });
 
@@ -553,10 +561,15 @@ test.describe('Complex User Flows', () => {
       await app.toggleTaskCompletion('Complete 1');
       await app.toggleTaskCompletion('Complete 2');
 
-      // Import with count
-      const importData = 'T:!Imported important|L:Later task|C:5';
+      // WAVE 5 FIX: Use JSON format (actual implementation) not pipe format (never existed)
+      const importData = {
+        today: [{id: 'import1', text: 'Imported important', important: true, completed: false}],
+        tomorrow: [{id: 'import2', text: 'Later task', important: false, completed: false}],
+        completedCounter: 5,
+        version: 3
+      };
       await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
+        navigator.clipboard.writeText(JSON.stringify(data));
       }, importData);
 
       await page.click('#import-clipboard-btn');

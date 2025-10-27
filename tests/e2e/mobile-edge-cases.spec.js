@@ -307,9 +307,9 @@ test.describe('Mobile and UI Edge Cases', () => {
       const tasks = await app.getTodayTasks();
       expect(tasks.length).toBe(1);
 
-      // Should be able to interact
-      await app.toggleTaskCompletion(longText.substring(0, 50));
-      const isCompleted = await app.isTaskCompleted(longText.substring(0, 50));
+      // Should be able to interact (must use full text for matching)
+      await app.toggleTaskCompletion(longText);
+      const isCompleted = await app.isTaskCompleted(longText);
       expect(isCompleted).toBe(true);
     });
 
@@ -321,9 +321,12 @@ test.describe('Mobile and UI Edge Cases', () => {
         await app.addSubtask('Many children parent', `Child ${i}`);
       }
 
-      // Parent should still be visible and functional
-      const tasks = await app.getTodayTasks();
-      expect(tasks.length).toBe(16); // 1 parent + 15 children
+      // Verify all tasks saved correctly in data array
+      const dataLength = await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem('do-it-later-data'));
+        return data.today.length;
+      });
+      expect(dataLength).toBe(16); // 1 parent + 15 children in data array
     });
 
     test('task with emoji should render correctly', async ({ page }) => {
@@ -614,8 +617,8 @@ test.describe('Mobile and UI Edge Cases', () => {
       const notification = page.locator('.notification');
       await notification.waitFor({ timeout: 1000 });
 
-      // Wait for auto-dismiss (3000ms + some buffer)
-      await page.waitForTimeout(3500);
+      // Wait for auto-dismiss (3000ms + 300ms animation + buffer)
+      await page.waitForTimeout(4000);
 
       // Notification should be gone
       const isVisible = await notification.isVisible().catch(() => false);

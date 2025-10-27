@@ -34,9 +34,24 @@
   .add-button {
     min-height: 48px;
   }
-  
+
   .add-button:active {
     background: #1e40af;
     transform: scale(0.98);
   }
+}
+
+/* WAVE 5 FIX: Layout constraints for edge cases (Phase 2) */
+/* Prevent very long text from breaking layout */
+.task-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Prevent many subtasks from breaking parent layout */
+.subtask-list {
+  max-height: 500px;
+  overflow-y: auto;
 }

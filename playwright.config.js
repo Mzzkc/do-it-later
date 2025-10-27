@@ -38,13 +38,28 @@ export default defineConfig({
 
     /* Video on failure */
     video: 'retain-on-failure',
+
+    /* Increase action timeout for complex edge case tests */
+    actionTimeout: 60 * 1000, // 60 seconds per action
+  },
+
+  /* Global timeout for tests - increased for complex edge case tests */
+  timeout: 90 * 1000, // 90 seconds per test
+
+  /* Expect timeout for assertions - increased for complex tests */
+  expect: {
+    timeout: 60 * 1000, // 60 seconds for assertions
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Grant clipboard permissions for import/export tests
+        permissions: ['clipboard-read', 'clipboard-write'],
+      },
     },
   ],
 

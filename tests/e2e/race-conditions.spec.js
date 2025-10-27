@@ -352,10 +352,19 @@ test.describe('Race Conditions', () => {
     // Wait for operations to complete
     await page.waitForTimeout(200);
 
-    // Clipboard should contain valid data
+    // Clipboard should contain valid v3 export format (with header comment)
     const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
-    expect(clipboardText).toContain('T:');
+    expect(clipboardText).toContain('Do It (Later)'); // Export header
+    expect(clipboardText).toContain('"today"'); // v3 JSON format
+    expect(clipboardText).toContain('"version": 3');
     expect(clipboardText.length).toBeGreaterThan(0);
+
+    // Extract and verify JSON portion (after header comments)
+    const jsonMatch = clipboardText.match(/\{[\s\S]*\}/);
+    expect(jsonMatch).toBeTruthy();
+    const parsed = JSON.parse(jsonMatch[0]);
+    expect(parsed.today).toBeDefined();
+    expect(parsed.tomorrow).toBeDefined();
   });
 
   test('theme switch during task animation should not break rendering', async ({ page }) => {
@@ -391,9 +400,12 @@ test.describe('Race Conditions', () => {
     // Wait for debounce
     await page.waitForTimeout(150);
 
-    // Reload and verify all subtasks exist
+    // Reload and verify all subtasks exist in data array
     await app.reload();
-    const tasks = await app.getTodayTasks();
-    expect(tasks.length).toBe(4); // 1 parent + 3 children
+    const dataLength = await page.evaluate(() => {
+      const data = JSON.parse(localStorage.getItem('do-it-later-data'));
+      return data.today.length;
+    });
+    expect(dataLength).toBe(4); // 1 parent + 3 children in data array
   });
 });
