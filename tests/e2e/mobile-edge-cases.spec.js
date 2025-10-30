@@ -300,14 +300,15 @@ test.describe('Mobile and UI Edge Cases', () => {
 
   test.describe('UI Overflow and Layout', () => {
     test('very long task text should not break layout', async ({ page }) => {
-      const longText = 'A'.repeat(300);
+      // Use 195 chars - just under the 200 char MAX_TASK_LENGTH limit
+      const longText = 'A'.repeat(195);
       await app.addTodayTask(longText);
 
       // Check that UI is still functional
       const tasks = await app.getTodayTasks();
       expect(tasks.length).toBe(1);
 
-      // Should be able to interact (must use full text for matching)
+      // Should be able to interact with long text
       await app.toggleTaskCompletion(longText);
       const isCompleted = await app.isTaskCompleted(longText);
       expect(isCompleted).toBe(true);
