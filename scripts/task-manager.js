@@ -165,6 +165,14 @@ class TaskManager {
     // WAVE 1 FIX: Perform all additions in one pass (batch operation)
     tasksToMove.forEach(taskToMove => {
       if (!this.app.data[toList].find(t => t.id === taskToMove.id)) {
+        // Initialize expansion property for destination list if undefined
+        // This ensures tasks default to expanded when first moved to a list
+        const expandedProp = toList === 'today' ? 'expandedInToday' : 'expandedInLater';
+        console.log(`🐛 [MOVE] Moving ${taskToMove.text} to ${toList}: ${expandedProp} was ${taskToMove[expandedProp]}`);
+        if (taskToMove[expandedProp] === undefined) {
+          taskToMove[expandedProp] = true;
+          console.log(`🐛 [MOVE] Initialized ${expandedProp} to true`);
+        }
         this.app.data[toList].push(taskToMove);
       }
     });
@@ -562,6 +570,12 @@ class TaskManager {
         }
 
         // Move the parent task - remove from BOTH lists first to prevent duplication
+        // BUGFIX: Explicitly preserve expansion state before list manipulation
+        const preservedState = {
+          expandedInToday: task.expandedInToday,
+          expandedInLater: task.expandedInLater
+        };
+
         const todayIndex = this.app.data.today.findIndex(t => t.id === task.id);
         if (todayIndex !== -1) {
           this.app.data.today.splice(todayIndex, 1);
@@ -574,8 +588,12 @@ class TaskManager {
         // Initialize expansion properties if missing to prevent undefined state
         if (task.expandedInToday === undefined) task.expandedInToday = true;
         if (task.expandedInLater === undefined) task.expandedInLater = true;
+
+        // BUGFIX: Restore preserved expansion state (overrides initialization if state existed)
+        if (preservedState.expandedInToday !== undefined) task.expandedInToday = preservedState.expandedInToday;
+        if (preservedState.expandedInLater !== undefined) task.expandedInLater = preservedState.expandedInLater;
+
         this.app.data[toList].push(task);
-        console.log(`🐛 [MOVE] Parent moved to ${toList}`);
       }
 
       this.app.save();
@@ -1050,14 +1068,18 @@ class TaskManager {
     // Sort and return with children arrays (filtered to this list only)
     const sorted = this.sortTasks(topLevelTasks);
 
-    return sorted.map(task => ({
-      ...task,
-      children: this.getChildrenSorted(task.id, listName),
-      hasChildren: this.hasChildren(task.id),
-      isExpanded: listName === 'today' ? (task.expandedInToday !== false) : (task.expandedInLater !== false),  // Backwards compatible default to true
-      moveAction: listName === 'today' ? 'push' : 'pull',
-      moveIcon: listName === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
-    }));
+    return sorted.map(task => {
+      const isExpanded = listName === 'today' ? (task.expandedInToday !== false) : (task.expandedInLater !== false);
+
+      return {
+        ...task,
+        children: this.getChildrenSorted(task.id, listName),
+        hasChildren: this.hasChildren(task.id),
+        isExpanded,  // Backwards compatible default to true
+        moveAction: listName === 'today' ? 'push' : 'pull',
+        moveIcon: listName === 'today' ? Config.MOVE_ICON_ARROW_RIGHT : Config.MOVE_ICON_ARROW_LEFT
+      };
+    });
   }
 }
 

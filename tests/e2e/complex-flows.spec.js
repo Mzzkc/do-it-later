@@ -61,7 +61,8 @@ test.describe('Complex User Flows', () => {
       await page.waitForTimeout(300);
 
       // Should remember collapsed state in Today
-      const todayChild = page.locator('#today-list .task-item:has-text("Child")').first();
+      // BUGFIX: Use .subtask-item instead of .task-item to avoid matching parent
+      const todayChild = page.locator('#today-list .subtask-item:has-text("Child")').first();
       const isVisibleInToday = await todayChild.isVisible();
       expect(isVisibleInToday).toBe(false);
     });
