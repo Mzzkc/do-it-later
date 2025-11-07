@@ -134,7 +134,17 @@ test.describe('Race Conditions', () => {
 
     // Verify parent-child relationship is maintained
     const tasks = await app.getTodayTasks();
-    expect(tasks.length).toBe(2); // Parent + child
+    expect(tasks.length).toBe(1); // Parent task
+
+    // Verify child subtask still exists
+    const subtasks = await app.getSubtasks('Parent');
+    expect(subtasks.length).toBe(1);
+
+    // Verify both are completed (edit is cancelled by parent completion)
+    const parentCompleted = await app.isTaskCompleted('Parent');
+    const childCompleted = await app.isTaskCompleted('Child');
+    expect(parentCompleted).toBe(true);
+    expect(childCompleted).toBe(true);
   });
 
   test('importing data while save is pending should not cause data loss', async ({ page }) => {
@@ -189,14 +199,19 @@ test.describe('Race Conditions', () => {
     // Wait for animations
     await page.waitForTimeout(500);
 
-    // All 3 tasks (parent + 2 children) should be in the same list
+    // Parent and 2 children should be in the same list
     const todayTasks = await app.getTodayTasks();
     const laterTasks = await app.getLaterTasks();
 
-    const todayHasAll = todayTasks.length === 3;
-    const laterHasAll = laterTasks.length === 3;
+    // Check if parent is in Today or Later
+    const parentInToday = todayTasks.length === 1;
+    const parentInLater = laterTasks.length === 1;
+    expect(parentInToday || parentInLater).toBe(true);
 
-    expect(todayHasAll || laterHasAll).toBe(true);
+    // Verify children stayed with parent
+    const parentLocation = parentInToday ? 'Moving parent' : 'Moving parent';
+    const subtasks = await app.getSubtasks(parentLocation);
+    expect(subtasks.length).toBe(2);
   });
 
   test('completing parent during child edit should not break edit mode', async ({ page }) => {
