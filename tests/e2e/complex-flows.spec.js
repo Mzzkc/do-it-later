@@ -298,11 +298,13 @@ test.describe('Complex User Flows', () => {
 
       // Import new data
       const importData = 'T:Imported task';
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
-      }, importData);
 
       await page.click('#import-clipboard-btn');
+      await page.waitForTimeout(100);
+
+      // Fill paste dialog
+      await page.locator('#paste-area').fill(importData);
+      await page.click('#paste-import');
       await page.waitForTimeout(200);
 
       // Pomodoro should either stop or continue on valid task
@@ -338,12 +340,16 @@ test.describe('Complex User Flows', () => {
       await app.clearLocalStorage();
       await app.reload();
 
-      // Import
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
-      }, exportedData);
-
+      // Import - use paste dialog
       await page.click('#import-clipboard-btn');
+      await page.waitForTimeout(100);
+
+      // Fill the paste dialog
+      const pasteArea = page.locator('#paste-area');
+      await pasteArea.fill(exportedData);
+
+      // Click import button
+      await page.click('#paste-import');
       await page.waitForTimeout(200);
 
       // Verify properties preserved
@@ -362,11 +368,13 @@ test.describe('Complex User Flows', () => {
 
       // Import new tasks
       const importData = 'T:New task 1|T:New task 2';
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
-      }, importData);
 
       await page.click('#import-clipboard-btn');
+      await page.waitForTimeout(100);
+
+      // Fill paste dialog
+      await page.locator('#paste-area').fill(importData);
+      await page.click('#paste-import');
       await page.waitForTimeout(200);
 
       // Verify expansion state maintained
@@ -387,11 +395,13 @@ test.describe('Complex User Flows', () => {
 
       // Import
       const importData = 'T:Imported task';
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
-      }, importData);
 
       await page.click('#import-clipboard-btn');
+      await page.waitForTimeout(100);
+
+      // Fill paste dialog
+      await page.locator('#paste-area').fill(importData);
+      await page.click('#paste-import');
       await page.waitForTimeout(200);
 
       // Edit should be cancelled, original text preserved
@@ -569,11 +579,12 @@ test.describe('Complex User Flows', () => {
         completedCounter: 5,
         version: 3
       };
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(JSON.stringify(data));
-      }, importData);
-
       await page.click('#import-clipboard-btn');
+      await page.waitForTimeout(100);
+
+      // Fill paste dialog
+      await page.locator('#paste-area').fill(JSON.stringify(importData));
+      await page.click('#paste-import');
       await page.waitForTimeout(200);
 
       // Verify merge: existing important + imported important + later task
