@@ -560,6 +560,11 @@ test.describe('Complex User Flows', () => {
     });
 
     test('importing tasks with all states during active session should merge correctly', async ({ page }) => {
+      // Listen for dialogs and dismiss them (to trigger merge path)
+      page.on('dialog', dialog => {
+        dialog.dismiss(); // Click "Cancel" to trigger merge
+      });
+
       // Create existing task
       await app.addTodayTask('Existing');
       await app.longPressTask('Existing');
@@ -576,7 +581,7 @@ test.describe('Complex User Flows', () => {
       const importData = {
         today: [{id: 'import1', text: 'Imported important', important: true, completed: false}],
         tomorrow: [{id: 'import2', text: 'Later task', important: false, completed: false}],
-        completedCounter: 5,
+        totalCompleted: 5,
         version: 3
       };
       await page.click('#import-clipboard-btn');

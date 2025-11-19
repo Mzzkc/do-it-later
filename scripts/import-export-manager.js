@@ -100,6 +100,7 @@ class ImportExportManager {
 
         this.app.save();
         this.app.render();
+        this.app.updateCompletedCounter();
 
         const taskCount = (importedData.today || []).length + (importedData.tomorrow || []).length;
         this.app.showNotification(`Imported ${taskCount} tasks`, 'success');
@@ -200,6 +201,7 @@ class ImportExportManager {
 
         this.app.save();
         this.app.render();
+        this.app.updateCompletedCounter();
 
         const taskCount = (importedData.today || []).length + (importedData.tomorrow || []).length;
         this.app.showNotification(`Imported ${taskCount} tasks from clipboard`, 'success');
