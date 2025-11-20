@@ -346,6 +346,7 @@ class ContextMenu {
 
     // Create menu
     this.menuElement = document.createElement('div');
+    this.menuElement.id = 'context-menu';
     this.menuElement.className = 'context-menu';
     this.menuElement.setAttribute('role', 'menu');
     this.menuElement.setAttribute('aria-label', `Task options for "${task.text}"`);
