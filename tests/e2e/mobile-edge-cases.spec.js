@@ -752,7 +752,7 @@ test.describe('Mobile and UI Edge Cases', () => {
       await app.longPressTask('Menu slip');
       await page.waitForTimeout(100);
 
-      const deleteBtn = page.locator('#context-menu button:has-text("Delete")');
+      const deleteBtn = page.locator('#context-menu [data-action="delete"]');
       const box = await deleteBtn.boundingBox();
 
       // Mouse down on button, move off, then up

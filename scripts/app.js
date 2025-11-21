@@ -670,7 +670,7 @@ class DoItTomorrowApp {
     if (!task) return;
 
     // Check if we're in delete mode - just edit quickly
-    const isDeleteMode = task.list === 'today' ? this.deleteModeToday : this.deleteModeTomorrow;
+    const isDeleteMode = task.list === 'today' ? this.deleteMode.today : this.deleteMode.tomorrow;
     if (isDeleteMode) {
       setTimeout(() => this.taskManager.enterEditMode(taskId), 10);
       return;

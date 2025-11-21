@@ -173,13 +173,29 @@ export class AppPage {
   // Context menu methods
   async selectContextMenuItem(itemText) {
     // Handle common aliases for menu items
-    const textMap = {
-      'Toggle Important': 'Important',
-      'Edit': 'Edit Task'
+    // Use data-action attribute for stable selection instead of text matching
+    const actionMap = {
+      'Toggle Important': 'important',
+      'Edit': 'edit',
+      'Edit Task': 'edit',
+      'Set Deadline': 'deadline',
+      'Change Deadline': 'deadline',
+      'Start Pomodoro': 'pomodoro',
+      'Add Subtask': 'add-subtask',
+      'Delete': 'delete',
+      'Delete Task': 'delete'
     };
 
-    const searchText = textMap[itemText] || itemText;
-    await this.page.locator(`${this.contextMenu} .context-menu-item:has-text("${searchText}")`).click();
+    const action = actionMap[itemText];
+
+    if (action) {
+      // Use data-action for reliable selection (text changes conditionally)
+      await this.page.locator(`${this.contextMenu} .context-menu-item[data-action="${action}"]`).click();
+    } else {
+      // Fall back to text matching for unknown items
+      await this.page.locator(`${this.contextMenu} .context-menu-item:has-text("${itemText}")`).click();
+    }
+
     await this.page.waitForTimeout(100);
   }
 
