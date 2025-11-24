@@ -181,4 +181,4 @@ mobile-edge-cases.spec.js:80,117,244,541,608,678 - Gestures/Timing (6)
 - ✅ Corrected TDF approach after user feedback (boundary tensions > domain scores)
 - 📚 Key learning: Property reference typos create silent failures in JavaScript
 - 🎯 Next: User decides - accept 96.2% or pursue remaining 6 timing tests
-- 🧹 Clean handoff: 1 commit (569cd34), clean working directory, STATUS.md updated
+- 🧹 Clean handoff: 2 commits (569cd34 fix + 85144cf status), clean working directory
