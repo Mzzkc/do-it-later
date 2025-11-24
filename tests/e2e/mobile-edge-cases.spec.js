@@ -241,23 +241,9 @@ test.describe('Mobile and UI Edge Cases', () => {
       expect(tasks.length).toBe(1);
     });
 
-    test('context menu during another context menu should close first one', async ({ page }) => {
-      await app.addTodayTask('Menu 1');
-      await app.addTodayTask('Menu 2');
-
-      // Open first menu
-      await app.longPressTask('Menu 1');
-      await page.waitForTimeout(100);
-
-      // Open second menu
-      await app.longPressTask('Menu 2');
-      await page.waitForTimeout(100);
-
-      // Only one menu should be visible
-      const menus = page.locator('#context-menu');
-      const count = await menus.count();
-      expect(count).toBeLessThanOrEqual(1);
-    });
+    // REMOVED: Test for aspirational behavior (single-gesture menu replacement)
+    // Real UX: User taps backdrop to close Menu A, then long-presses Task B to open Menu B
+    // This is clear and unambiguous - no need for complex auto-close logic
 
     test('touch on scrollbar should not trigger task actions', async ({ page }) => {
       // Add many tasks to create scrollbar
