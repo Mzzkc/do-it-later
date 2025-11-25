@@ -199,6 +199,7 @@ class Renderer {
         placeholder="Add a subtask..."
         data-parent-id="${parentId}"
         id="subtask-input-${parentId}"
+        enterkeyhint="done"
       />
     `;
     return inputLi;

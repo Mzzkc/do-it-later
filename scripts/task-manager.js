@@ -682,6 +682,7 @@ class TaskManager {
     input.type = 'text';
     input.value = taskInfo.text;
     input.className = 'edit-input';
+    input.setAttribute('enterkeyhint', 'done');
     input.style.cssText = `
       width: 100%;
       background: transparent;
