@@ -80,14 +80,35 @@ class TaskManager {
    * @returns {boolean} True if task was removed, false otherwise
    */
   removeTaskById(id) {
+    // Find task first to get parent info before deleting
+    const taskInfo = this.findTask(id);
+    const task = taskInfo ? taskInfo.task : null;
+
     // Try to remove from today list
     let index = this.app.data.today.findIndex(t => t.id === id);
     if (index !== -1) {
       this.app.data.today.splice(index, 1);
+
+      // Message parent: subtask leaving
+      if (task && task.parentId) {
+        this.decrementSubtaskTotal(task.parentId, 'today');
+        if (task.completed) {
+          this.decrementSubtaskCompleted(task.parentId, 'today');
+        }
+      }
+
       // Task might also be in tomorrow list (if it's a parent with children in both)
       index = this.app.data.tomorrow.findIndex(t => t.id === id);
       if (index !== -1) {
         this.app.data.tomorrow.splice(index, 1);
+
+        // Message parent: subtask leaving
+        if (task && task.parentId) {
+          this.decrementSubtaskTotal(task.parentId, 'tomorrow');
+          if (task.completed) {
+            this.decrementSubtaskCompleted(task.parentId, 'tomorrow');
+          }
+        }
       }
       return true;
     }
@@ -96,6 +117,15 @@ class TaskManager {
     index = this.app.data.tomorrow.findIndex(t => t.id === id);
     if (index !== -1) {
       this.app.data.tomorrow.splice(index, 1);
+
+      // Message parent: subtask leaving
+      if (task && task.parentId) {
+        this.decrementSubtaskTotal(task.parentId, 'tomorrow');
+        if (task.completed) {
+          this.decrementSubtaskCompleted(task.parentId, 'tomorrow');
+        }
+      }
+
       return true;
     }
 
@@ -417,20 +447,35 @@ class TaskManager {
         }
       }
 
-      // Check if parent should auto-complete OR auto-uncomplete
+      // Subtask messages parent about completion state changes
       if (task.parentId) {
-        const parent = this.findTaskById(task.parentId);
-        if (parent) {
-          // If task was just completed, check if all siblings are complete → complete parent
-          if (task.completed && !wasCompleted) {
-            this.checkParentCompletion(task.parentId);
+        const taskInfo = this.findTask(id);
+        const listName = taskInfo ? taskInfo.list : null;
+
+        if (listName) {
+          // Message parent: completed/uncompleted
+          if (!wasCompleted && task.completed) {
+            this.incrementSubtaskCompleted(task.parentId, listName);
+          } else if (wasCompleted && !task.completed) {
+            this.decrementSubtaskCompleted(task.parentId, listName);
           }
-          // If task was just uncompleted and parent is complete → uncomplete parent
-          else if (!task.completed && wasCompleted && parent.completed) {
-            parent.completed = false;
-            // Decrement counter for parent
-            this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
-            this.app.updateCompletedCounter();
+
+          // Check if parent should auto-complete
+          const parent = this.findTaskById(task.parentId);
+          if (parent && parent.subtaskCounts) {
+            const listKey = listName === 'tomorrow' ? 'later' : 'today';
+            const counts = parent.subtaskCounts[listKey];
+
+            if (counts.completed === counts.total && counts.total > 0 && !parent.completed) {
+              parent.completed = true;
+              this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
+              this.app.updateCompletedCounter();
+              this.app.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
+            } else if (counts.completed < counts.total && parent.completed) {
+              parent.completed = false;
+              this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
+              this.app.updateCompletedCounter();
+            }
           }
         }
       }
@@ -892,6 +937,10 @@ class TaskManager {
 
     // Add to the same list as the parent using helper method
     this.addTaskToList(newTask, taskInfo.list);
+
+    // Message parent: subtask entering
+    this.incrementSubtaskTotal(parentTaskId, taskInfo.list);
+
     this.app.save();
 
     // Re-render to show the new subtask
@@ -965,6 +1014,75 @@ class TaskManager {
     }
 
     return children;
+  }
+
+  /**
+   * Initialize subtask counts for a parent task
+   * @param {Object} parent - Parent task
+   */
+  initSubtaskCounts(parent) {
+    if (!parent.subtaskCounts) {
+      parent.subtaskCounts = {
+        today: { total: 0, completed: 0 },
+        later: { total: 0, completed: 0 }
+      };
+    }
+  }
+
+  /**
+   * Subtask messages parent when entering a list
+   * @param {string} parentId - Parent task ID
+   * @param {string} listName - 'today' or 'later'
+   */
+  incrementSubtaskTotal(parentId, listName) {
+    const parent = this.findTaskById(parentId);
+    if (!parent) return;
+
+    this.initSubtaskCounts(parent);
+    const listKey = listName === 'tomorrow' ? 'later' : 'today';
+    parent.subtaskCounts[listKey].total++;
+  }
+
+  /**
+   * Subtask messages parent when leaving a list
+   * @param {string} parentId - Parent task ID
+   * @param {string} listName - 'today' or 'later'
+   */
+  decrementSubtaskTotal(parentId, listName) {
+    const parent = this.findTaskById(parentId);
+    if (!parent) return;
+
+    this.initSubtaskCounts(parent);
+    const listKey = listName === 'tomorrow' ? 'later' : 'today';
+    parent.subtaskCounts[listKey].total = Math.max(0, parent.subtaskCounts[listKey].total - 1);
+  }
+
+  /**
+   * Subtask messages parent when completed
+   * @param {string} parentId - Parent task ID
+   * @param {string} listName - 'today' or 'later'
+   */
+  incrementSubtaskCompleted(parentId, listName) {
+    const parent = this.findTaskById(parentId);
+    if (!parent) return;
+
+    this.initSubtaskCounts(parent);
+    const listKey = listName === 'tomorrow' ? 'later' : 'today';
+    parent.subtaskCounts[listKey].completed++;
+  }
+
+  /**
+   * Subtask messages parent when uncompleted
+   * @param {string} parentId - Parent task ID
+   * @param {string} listName - 'today' or 'later'
+   */
+  decrementSubtaskCompleted(parentId, listName) {
+    const parent = this.findTaskById(parentId);
+    if (!parent) return;
+
+    this.initSubtaskCounts(parent);
+    const listKey = listName === 'tomorrow' ? 'later' : 'today';
+    parent.subtaskCounts[listKey].completed = Math.max(0, parent.subtaskCounts[listKey].completed - 1);
   }
 
   /**
