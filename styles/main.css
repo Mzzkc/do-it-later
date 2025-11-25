@@ -846,6 +846,19 @@ ul {
   user-select: none;
   color: var(--text-muted);
   font-size: 0.75rem;
+  position: relative;
+}
+
+/* Larger touch target for mobile using pseudo-element */
+.expand-icon::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;  /* WCAG recommended minimum */
+  height: 44px;
+  /* Invisible but clickable */
 }
 
 .expand-icon:hover {

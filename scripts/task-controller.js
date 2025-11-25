@@ -159,6 +159,7 @@ class TaskController {
       // Handle expand icon
       const expandIcon = e.target.closest('.expand-icon');
       if (expandIcon) {
+        e.preventDefault();
         e.stopPropagation();
         const taskId = expandIcon.dataset.taskId;
         const taskElement = expandIcon.closest('[data-task-id]');
