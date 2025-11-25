@@ -20,6 +20,40 @@ class TaskManager {
 
     // Operation locking system to prevent state corruption during edit mode
     this.lockedTasks = new Set();
+
+    // Initialize subtask counts from existing data
+    this.initializeSubtaskCounts();
+  }
+
+  /**
+   * Initialize subtask counts for all parent tasks from existing data
+   * Children message their parents about their existence and completion state
+   */
+  initializeSubtaskCounts() {
+    const allTasks = [...this.app.data.today, ...this.app.data.tomorrow];
+
+    // For each subtask, message its parent
+    allTasks.forEach(task => {
+      if (task.parentId) {
+        // Find which list(s) this subtask is in
+        const inToday = this.app.data.today.find(t => t.id === task.id);
+        const inLater = this.app.data.tomorrow.find(t => t.id === task.id);
+
+        if (inToday) {
+          this.incrementSubtaskTotal(task.parentId, 'today');
+          if (task.completed) {
+            this.incrementSubtaskCompleted(task.parentId, 'today');
+          }
+        }
+
+        if (inLater) {
+          this.incrementSubtaskTotal(task.parentId, 'tomorrow');
+          if (task.completed) {
+            this.incrementSubtaskCompleted(task.parentId, 'tomorrow');
+          }
+        }
+      }
+    });
   }
 
   // ==================== HELPER METHODS ====================
@@ -188,11 +222,23 @@ class TaskManager {
     }
 
     // WAVE 1 FIX: Perform all removals in one pass (batch operation)
+    // Message parents when subtasks leave
+    tasksToRemoveFromSource.forEach(taskId => {
+      const taskToRemove = this.findTaskById(taskId);
+      if (taskToRemove && taskToRemove.parentId) {
+        this.decrementSubtaskTotal(taskToRemove.parentId, fromList);
+        if (taskToRemove.completed) {
+          this.decrementSubtaskCompleted(taskToRemove.parentId, fromList);
+        }
+      }
+    });
+
     this.app.data[fromList] = this.app.data[fromList].filter(
       t => !tasksToRemoveFromSource.includes(t.id)
     );
 
     // WAVE 1 FIX: Perform all additions in one pass (batch operation)
+    // Message parents when subtasks enter
     tasksToMove.forEach(taskToMove => {
       if (!this.app.data[toList].find(t => t.id === taskToMove.id)) {
         // Initialize expansion property for destination list if undefined
@@ -204,6 +250,14 @@ class TaskManager {
           console.log(`🐛 [MOVE] Initialized ${expandedProp} to true`);
         }
         this.app.data[toList].push(taskToMove);
+
+        // Message parent: subtask entering
+        if (taskToMove.parentId) {
+          this.incrementSubtaskTotal(taskToMove.parentId, toList);
+          if (taskToMove.completed) {
+            this.incrementSubtaskCompleted(taskToMove.parentId, toList);
+          }
+        }
       }
     });
 
@@ -400,24 +454,19 @@ class TaskManager {
         this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
         this.app.updateCompletedCounter();
 
-        // If this is a parent being completed, track which children are already completed
-        // so we don't uncomplete them later if parent is uncompleted
+        // Parent manually completed → cascade to children by calling completeTask()
+        // Children will message parent back with proper counts
         if (!task.parentId) {
-          const children = this.getChildren(id);
-          children.forEach(child => {
-            // Store the original completion state before parent completion
-            child._wasCompletedBeforeParent = child.completed;
-
-            // Cascade completion to uncompleted children, but skip children in edit mode
-            if (!child.completed && !this.lockedTasks.has(child.id)) {
-              child.completed = true;
-              this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
-              console.log(`🐛 [COMPLETE] Cascaded completion to child: ${child.text.substring(0, 20)}`);
-            } else if (this.lockedTasks.has(child.id)) {
-              console.log(`🐛 [COMPLETE] Skipping locked child (in edit mode): ${child.text.substring(0, 20)}`);
-            }
-          });
-          this.app.updateCompletedCounter();
+          const taskInfo = this.findTask(id);
+          if (taskInfo) {
+            const children = this.getChildren(id, taskInfo.list);
+            children.forEach(child => {
+              if (!child.completed) {
+                // Call completeTask() so child messages parent properly
+                this.completeTask(child.id);
+              }
+            });
+          }
         }
       }
       // Decrement counter when unmarking (undo)
@@ -426,24 +475,17 @@ class TaskManager {
         this.app.updateCompletedCounter();
       }
 
-      // If this is a parent task being marked incomplete, also mark all children incomplete
-      // BUT: only uncomplete children that weren't already completed before parent was completed
+      // Parent manually uncompleted → cascade to children
       if (wasCompleted && !task.completed && !task.parentId) {
-        // Get ALL children regardless of which list they're in
-        const children = this.getChildren(id);
-        if (children.length > 0) {
+        const taskInfo = this.findTask(id);
+        if (taskInfo) {
+          const children = this.getChildren(id, taskInfo.list);
           children.forEach(child => {
-            // Only uncomplete children that were NOT already completed before parent completion
-            // This preserves independently completed children when uncompleting parent
-            if (child.completed && !child._wasCompletedBeforeParent) {
-              child.completed = false;
-              // Decrement counter for each child
-              this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
+            if (child.completed) {
+              // Call completeTask() to toggle child and message parent
+              this.completeTask(child.id);
             }
-            // Clean up tracking flag
-            delete child._wasCompletedBeforeParent;
           });
-          this.app.updateCompletedCounter();
         }
       }
 
@@ -1102,12 +1144,6 @@ class TaskManager {
       // Find the parent task
       const parent = this.findTaskById(parentId);
       if (parent && !parent.completed) {
-        // Mark all children as having been completed BEFORE parent auto-completion
-        // This preserves their completion state if parent is later uncompleted
-        children.forEach(child => {
-          child._wasCompletedBeforeParent = true;
-        });
-
         parent.completed = true;
         // Increment the completed counter for the parent too
         this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
@@ -1203,8 +1239,18 @@ class TaskManager {
     return sorted.map(task => {
       const isExpanded = listName === 'today' ? (task.expandedInToday !== false) : (task.expandedInLater !== false);
 
+      // Compute completion for parent tasks from counts
+      let completed = task.completed;
+      if (!task.parentId && task.subtaskCounts) {
+        const listKey = listName === 'tomorrow' ? 'later' : 'today';
+        const counts = task.subtaskCounts[listKey];
+        // Parent is complete in this list if all subtasks in this list are complete
+        completed = counts.completed === counts.total && counts.total > 0;
+      }
+
       return {
         ...task,
+        completed,  // Use computed completion for parents
         children: this.getChildrenSorted(task.id, listName),
         hasChildren: this.hasChildren(task.id),
         isExpanded,  // Backwards compatible default to true
