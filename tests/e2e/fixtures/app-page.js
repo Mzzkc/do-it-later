@@ -32,8 +32,23 @@ export class AppPage {
   }
 
   async clearLocalStorage() {
-    await this.page.evaluate(() => {
+    await this.page.evaluate(async () => {
+      // Clear localStorage
       localStorage.clear();
+
+      // Unregister all service workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
+      }
+
+      // Clear all caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
     });
   }
 
