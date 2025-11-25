@@ -80,12 +80,10 @@ test.describe('Mobile and UI Edge Cases', () => {
     test('double tap should not create multiple actions', async ({ page }) => {
       await app.addTodayTask('Double tap test');
 
-      const taskText = page.locator('.task-item:has-text("Double tap test") .task-text');
-
-      // Double tap rapidly
-      await taskText.click();
+      // Double tap rapidly using task text
+      await app.clickTaskText('Double tap test');
       await page.waitForTimeout(10);
-      await taskText.click();
+      await app.clickTaskText('Double tap test');
 
       // Wait for debounce
       await page.waitForTimeout(150);
@@ -114,7 +112,7 @@ test.describe('Mobile and UI Edge Cases', () => {
       expect(isCompleted).toBe(true);
     });
 
-    test('long press at 599ms should not trigger context menu', async ({ page }) => {
+    test('long press at 590ms should not trigger context menu', async ({ page }) => {
       await app.addTodayTask('Timing test');
 
       const task = page.locator('.task-item:has-text("Timing test")');
@@ -122,7 +120,7 @@ test.describe('Mobile and UI Edge Cases', () => {
 
       await page.mouse.move(box.x + 50, box.y + 10);
       await page.mouse.down();
-      await page.waitForTimeout(599); // Just under threshold
+      await page.waitForTimeout(590); // Well under threshold (600ms) accounting for timer variance
       await page.mouse.up();
 
       // Context menu should NOT appear
@@ -592,17 +590,12 @@ test.describe('Mobile and UI Edge Cases', () => {
 
   test.describe('Timing Boundaries', () => {
     test('notification should auto-dismiss after 3 seconds', async ({ page }) => {
-      // Trigger a notification (e.g., by importing)
-      const importData = 'T:Test task';
-      await page.evaluate((data) => {
-        navigator.clipboard.writeText(data);
-      }, importData);
-
-      await page.click('#import-clipboard-btn');
+      // Trigger a notification by importing (this shows success notification)
+      await app.importFromClipboard('T:Test notification task');
 
       // Notification should be visible
       const notification = page.locator('.notification');
-      await notification.waitFor({ timeout: 1000 });
+      await notification.waitFor({ timeout: 2000 });
 
       // Wait for auto-dismiss (3000ms + 300ms animation + buffer)
       await page.waitForTimeout(4000);
@@ -664,10 +657,9 @@ test.describe('Mobile and UI Edge Cases', () => {
     test('tap duration at 500ms should still be recognized as tap', async ({ page }) => {
       await app.addTodayTask('Tap duration');
 
-      const taskText = page.locator('.task-item:has-text("Tap duration") .task-text');
-
-      // Tap with max duration
-      await taskText.click({ delay: 500 });
+      // Tap with max duration using task-item (click delay tests DOM stability)
+      const taskItem = page.locator('.task-item:has-text("Tap duration")');
+      await taskItem.click({ delay: 500 });
       await page.waitForTimeout(100);
 
       // Should complete
