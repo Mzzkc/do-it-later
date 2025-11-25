@@ -80,12 +80,12 @@ test.describe('Mobile and UI Edge Cases', () => {
     test('double tap should not create multiple actions', async ({ page }) => {
       await app.addTodayTask('Double tap test');
 
-      const checkbox = page.locator('.task-item:has-text("Double tap test") input[type="checkbox"]');
+      const taskText = page.locator('.task-item:has-text("Double tap test") .task-text');
 
       // Double tap rapidly
-      await checkbox.click();
+      await taskText.click();
       await page.waitForTimeout(10);
-      await checkbox.click();
+      await taskText.click();
 
       // Wait for debounce
       await page.waitForTimeout(150);
@@ -524,11 +524,11 @@ test.describe('Mobile and UI Edge Cases', () => {
   });
 
   test.describe('Touch Precision', () => {
-    test('tapping edge of checkbox should still toggle', async ({ page }) => {
+    test('tapping edge of task text should still toggle', async ({ page }) => {
       await app.addTodayTask('Edge tap');
 
-      const checkbox = page.locator('.task-item:has-text("Edge tap") input[type="checkbox"]');
-      const box = await checkbox.boundingBox();
+      const taskText = page.locator('.task-item:has-text("Edge tap") .task-text');
+      const box = await taskText.boundingBox();
 
       // Tap very edge (1px from edge)
       await page.mouse.click(box.x + 1, box.y + 1);
@@ -664,10 +664,10 @@ test.describe('Mobile and UI Edge Cases', () => {
     test('tap duration at 500ms should still be recognized as tap', async ({ page }) => {
       await app.addTodayTask('Tap duration');
 
-      const checkbox = page.locator('.task-item:has-text("Tap duration") input[type="checkbox"]');
+      const taskText = page.locator('.task-item:has-text("Tap duration") .task-text');
 
       // Tap with max duration
-      await checkbox.click({ delay: 500 });
+      await taskText.click({ delay: 500 });
       await page.waitForTimeout(100);
 
       // Should complete
