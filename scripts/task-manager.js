@@ -417,9 +417,22 @@ class TaskManager {
         }
       }
 
-      // Check if parent should auto-complete
+      // Check if parent should auto-complete OR auto-uncomplete
       if (task.parentId) {
-        this.checkParentCompletion(task.parentId);
+        const parent = this.findTaskById(task.parentId);
+        if (parent) {
+          // If task was just completed, check if all siblings are complete → complete parent
+          if (task.completed && !wasCompleted) {
+            this.checkParentCompletion(task.parentId);
+          }
+          // If task was just uncompleted and parent is complete → uncomplete parent
+          else if (!task.completed && wasCompleted && parent.completed) {
+            parent.completed = false;
+            // Decrement counter for parent
+            this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
+            this.app.updateCompletedCounter();
+          }
+        }
       }
 
       this.app.save();

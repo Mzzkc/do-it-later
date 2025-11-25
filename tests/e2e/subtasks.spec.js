@@ -81,6 +81,45 @@ test.describe('Subtask Feature', () => {
     await app.waitForNotification('All subtasks done');
   });
 
+  test('3a. Auto-uncompletion of Parent when Subtask Toggled Incomplete', async () => {
+    await app.addTodayTask('Parent Task');
+    await app.addSubtask('Parent Task', 'Subtask 1');
+    await app.addSubtask('Parent Task', 'Subtask 2');
+    await app.addSubtask('Parent Task', 'Subtask 3');
+
+    // Complete all subtasks (parent will auto-complete)
+    await app.toggleTaskCompletion('Subtask 1');
+    await app.toggleTaskCompletion('Subtask 2');
+    await app.toggleTaskCompletion('Subtask 3');
+
+    // Wait for auto-completion logic to run and re-render
+    await app.page.waitForTimeout(500);
+
+    // Verify parent is completed
+    let parentCompleted = await app.isTaskCompleted('Parent Task');
+    expect(parentCompleted).toBe(true);
+
+    // Now toggle one subtask back to incomplete
+    await app.toggleTaskCompletion('Subtask 2');
+
+    // Wait for logic to run
+    await app.page.waitForTimeout(500);
+
+    // Parent should auto-uncomplete (regression test for bug)
+    parentCompleted = await app.isTaskCompleted('Parent Task');
+    expect(parentCompleted).toBe(false);
+
+    // Subtask 2 should be incomplete
+    const subtask2Completed = await app.isTaskCompleted('Subtask 2');
+    expect(subtask2Completed).toBe(false);
+
+    // Subtask 1 and 3 should still be complete
+    const subtask1Completed = await app.isTaskCompleted('Subtask 1');
+    const subtask3Completed = await app.isTaskCompleted('Subtask 3');
+    expect(subtask1Completed).toBe(true);
+    expect(subtask3Completed).toBe(true);
+  });
+
   test('4. Subtask Movement Between Lists', async () => {
     await app.addTodayTask('Parent A');
     await app.addSubtask('Parent A', 'Moving Subtask');
