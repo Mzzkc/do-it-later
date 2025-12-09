@@ -170,6 +170,107 @@ const Storage = {
     } catch (error) {
       console.error('Failed to clear storage:', error);
     }
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Tree Conversion Helpers (v4 architecture)
+  // Storage format stays v3 (flat arrays) for backwards compatibility
+  // These helpers convert flat ↔ tree at the app layer
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Convert a flat array of tasks (with parentId references) to a TaskTree
+   * @param {Array} flatTasks - Flat array of task objects with parentId
+   * @param {string} treeName - Name for the tree ('today' or 'tomorrow')
+   * @param {Function} TaskTreeClass - The TaskTree constructor
+   * @param {Function} TaskNodeClass - The TaskNode constructor
+   * @returns {TaskTree} Tree structure with parent/child references
+   */
+  convertFlatToTree(flatTasks, treeName, TaskTreeClass, TaskNodeClass) {
+    const tree = new TaskTreeClass(treeName);
+
+    // Build a map of id -> node for quick lookup
+    const nodeMap = new Map();
+
+    // First pass: create all nodes
+    flatTasks.forEach(task => {
+      const node = new TaskNodeClass(task.text, {
+        id: task.id,
+        completed: task.completed,
+        important: task.important,
+        expandedInToday: task.expandedInToday,
+        expandedInLater: task.expandedInLater,
+        deadline: task.deadline,
+        createdAt: task.createdAt
+      });
+      nodeMap.set(task.id, { node, parentId: task.parentId });
+    });
+
+    // Second pass: build parent/child relationships
+    nodeMap.forEach(({ node, parentId }, id) => {
+      if (parentId && nodeMap.has(parentId)) {
+        // Has a parent in this list - attach as child
+        const parentEntry = nodeMap.get(parentId);
+        node.parent = parentEntry.node;
+        parentEntry.node.children.push(node);
+      } else if (!parentId) {
+        // Top-level task - attach to tree root
+        node.parent = tree.root;
+        tree.root.children.push(node);
+      }
+      // Tasks with parentId pointing to parent not in this list
+      // are orphaned subtasks - treat as top-level for now
+      else {
+        node.parent = tree.root;
+        tree.root.children.push(node);
+      }
+    });
+
+    // Sort children by importance and creation time
+    tree.root.children.forEach(node => {
+      if (node.children.length > 0) {
+        node.sortChildren();
+      }
+    });
+    tree.root.sortChildren();
+
+    return tree;
+  },
+
+  /**
+   * Convert a TaskTree back to flat array format (for storage/export)
+   * @param {TaskTree} tree - Tree structure to flatten
+   * @returns {Array} Flat array of task objects with parentId references
+   */
+  convertTreeToFlat(tree) {
+    const flatTasks = [];
+
+    const flattenNode = (node, parentId = null) => {
+      // Skip virtual root
+      if (node.isVirtualRoot()) {
+        node.children.forEach(child => flattenNode(child, null));
+        return;
+      }
+
+      // Create flat task object
+      flatTasks.push({
+        id: node.id,
+        text: node.text,
+        completed: node.completed,
+        important: node.important,
+        expandedInToday: node.expansionState.today,
+        expandedInLater: node.expansionState.later,
+        deadline: node.deadline,
+        createdAt: node.createdAt,
+        parentId: parentId
+      });
+
+      // Recursively flatten children
+      node.children.forEach(child => flattenNode(child, node.id));
+    };
+
+    flattenNode(tree.root);
+    return flatTasks;
   }
 };
 

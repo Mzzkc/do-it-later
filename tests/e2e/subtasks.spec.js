@@ -280,4 +280,56 @@ test.describe('Subtask Feature', () => {
     const parentInToday = await app.isTaskInList('jkkjik', 'today');
     expect(parentInToday).toBe(true);  // Parent should be copied to Today
   });
+
+  test('12. Real DOM Click Completion (Regression for CSS pointer-events bug)', async () => {
+    // REGRESSION TEST: User reported subtasks can't be clicked in production
+    // Root cause: .task-content div intercepts pointer events before reaching .task-item
+    // Tests previously passed because they used {force: true} or JavaScript API
+    //
+    // This test validates REAL DOM clicking behavior (no force, no JS API)
+    // Uses JavaScript API to CREATE tasks, but tests REAL DOM clicks for completion
+
+    // Setup: Create parent with 2 subtasks via JavaScript API (bypassing UI complexity)
+    await app.page.evaluate(() => {
+      const parent = app.taskManager.addTask('Click Test Parent', 'today');
+      // addTask returns the task object, so we get the ID from it
+      app.taskManager.addTask('Click Subtask 1', 'today', parent.id);
+      app.taskManager.addTask('Click Subtask 2', 'today', parent.id);
+    });
+    await app.page.waitForTimeout(200);
+
+    // Verify initial state - neither subtask is completed
+    const subtask1Before = await app.isTaskCompleted('Click Subtask 1');
+    const subtask2Before = await app.isTaskCompleted('Click Subtask 2');
+    expect(subtask1Before).toBe(false);
+    expect(subtask2Before).toBe(false);
+
+    // Real DOM click on first subtask - click on .task-item directly (where event handler lives)
+    // With pointer-events: none on .task-content, clicks pass through to .task-item
+    const subtask1 = await app.getSubtaskByText('Click Subtask 1');
+    await subtask1.click();  // Click the task-item directly
+    await app.page.waitForTimeout(200);
+
+    // Verify first subtask is now completed
+    const subtask1After = await app.isTaskCompleted('Click Subtask 1');
+    expect(subtask1After).toBe(true);
+
+    // Real DOM click on second subtask
+    const subtask2 = await app.getSubtaskByText('Click Subtask 2');
+    await subtask2.click();  // Click the task-item directly
+    await app.page.waitForTimeout(200);
+
+    // Verify second subtask is now completed
+    const subtask2After = await app.isTaskCompleted('Click Subtask 2');
+    expect(subtask2After).toBe(true);
+
+    // Also test parent task real DOM clicking
+    const parent = await app.getTaskByText('Click Test Parent');
+    await parent.click();  // Click the task-item directly
+    await app.page.waitForTimeout(200);
+
+    // Parent was auto-completed, this click toggles it incomplete
+    const parentAfterClick = await app.isTaskCompleted('Click Test Parent');
+    expect(parentAfterClick).toBe(false);
+  });
 });

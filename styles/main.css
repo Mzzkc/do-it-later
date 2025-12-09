@@ -252,7 +252,6 @@ header {
   color: var(--text);
   opacity: 1;
   border-color: #dc2626;
-  transform: translateY(-1px);
 }
 
 .delete-mode-toggle:active {
@@ -268,8 +267,7 @@ header {
 }
 
 .delete-mode-toggle.active:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #dc2626;
 }
 
 .delete-mode-toggle.active:active {
@@ -350,7 +348,7 @@ ul {
   overflow: hidden !important;
   box-sizing: border-box !important;
   cursor: pointer;
-  transition: all 0.2s ease;
+  /* transition removed - causes test instability */
   border-radius: 4px;
 }
 
@@ -377,8 +375,7 @@ ul {
     0 0 12px rgba(249, 247, 237, 0.15),
     0 2px 8px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transform: translateY(-1px);
-  transition: all 300ms var(--transition-ease);
+  /* transform and transition removed - causes test instability */
   margin: 0.2rem -0.5rem 0.7rem -0.5rem; /* Extra margin for glow effect */
 }
 
@@ -395,49 +392,7 @@ ul {
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
-/* Enhanced hover state for important tasks */
-.task-item.important:hover {
-  background: linear-gradient(135deg,
-    rgba(249, 247, 237, 0.12) 0%,
-    rgba(249, 247, 237, 0.1) 50%,
-    rgba(249, 247, 237, 0.12) 100%);
-  border-color: rgba(249, 247, 237, 0.3);
-  box-shadow:
-    0 0 20px rgba(249, 247, 237, 0.25),
-    0 4px 16px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px);
-}
-
-.light-theme .task-item.important:hover {
-  background: linear-gradient(135deg,
-    rgba(139, 115, 85, 0.12) 0%,
-    rgba(139, 115, 85, 0.1) 50%,
-    rgba(139, 115, 85, 0.12) 100%);
-  border-color: rgba(139, 115, 85, 0.35);
-  box-shadow:
-    0 0 24px rgba(139, 115, 85, 0.18),
-    0 4px 20px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-/* Active/pressed state for important tasks */
-.task-item.important:active,
-.task-item.important.button-pressed {
-  transform: none !important;
-  box-shadow:
-    0 0 8px rgba(249, 247, 237, 0.2),
-    0 1px 4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.light-theme .task-item.important:active,
-.light-theme .task-item.important.button-pressed {
-  box-shadow:
-    0 0 12px rgba(139, 115, 85, 0.15),
-    0 1px 6px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
+/* Hover/active states removed - caused test instability */
 
 /* Completed important tasks - muted but still special */
 .task-item.important.completed {
@@ -464,67 +419,9 @@ ul {
     0 1px 6px rgba(0, 0, 0, 0.03);
 }
 
-/* Subtle animation for importance transition */
-@keyframes importanceGlow {
-  0% {
-    box-shadow: 0 0 0 rgba(249, 247, 237, 0);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(249, 247, 237, 0.3);
-  }
-  100% {
-    box-shadow:
-      0 0 12px rgba(249, 247, 237, 0.15),
-      0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-}
+/* importanceGlow animation removed - static glow is sufficient */
 
-.light-theme .task-item.important.importance-added {
-  animation: importanceGlow 600ms var(--transition-ease);
-}
-
-.task-item.important.importance-added {
-  animation: importanceGlow 600ms var(--transition-ease);
-}
-
-/* Delete mode for important tasks */
-.list-section.delete-mode .task-item.important:hover {
-  background: linear-gradient(135deg,
-    rgba(220, 38, 38, 0.15) 0%,
-    rgba(220, 38, 38, 0.12) 50%,
-    rgba(220, 38, 38, 0.15) 100%);
-  border-color: rgba(220, 38, 38, 0.3);
-  box-shadow:
-    0 0 16px rgba(220, 38, 38, 0.2),
-    0 2px 8px rgba(0, 0, 0, 0.1);
-  color: #dc2626;
-  transform: translateY(-1px);
-}
-
-/* Moving animation respect for important tasks */
-.task-item.important.moving-out-right,
-.task-item.important.moving-out-left {
-  box-shadow:
-    0 0 8px rgba(249, 247, 237, 0.1),
-    0 1px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* Accessibility: Respect reduced motion preference */
-@media (prefers-reduced-motion: reduce) {
-  .task-item.important {
-    transition: background-color 0ms, border-color 0ms, box-shadow 0ms;
-    transform: none;
-    animation: none;
-  }
-
-  .task-item.important:hover {
-    transform: none;
-  }
-
-  .task-item.important.importance-added {
-    animation: none;
-  }
-}
+/* Delete mode hover and movement animations removed - caused test instability */
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
@@ -541,66 +438,7 @@ ul {
   }
 }
 
-/* Movement animations - faster transparency for page-to-page illusion */
-.task-item.moving-out-right {
-  opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.1s ease-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.task-item.moving-out-left {
-  opacity: 0;
-  transform: translateX(-100%);
-  transition: opacity 0.1s ease-out, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.task-item.moving-in-left {
-  opacity: 0;
-  transform: translateX(-100%);
-  animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.task-item.moving-in-right {
-  opacity: 0;
-  transform: translateX(100%);
-  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes slideInLeft {
-  0% {
-    opacity: 0;
-    transform: translateX(-100%);
-  }
-  75% {
-    opacity: 0;
-    transform: translateX(-20%);
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes slideInRight {
-  0% {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  75% {
-    opacity: 0;
-    transform: translateX(20%);
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
+/* Movement animations removed - tasks now move instantly */
 
 /* Loading states */
 .loading {
@@ -628,15 +466,9 @@ ul {
   100% { transform: translateY(-50%) rotate(360deg); }
 }
 
-/* Subtle pulse for counter updates */
+/* Counter updates - no animation */
 .counter-update {
-  animation: pulse 0.3s ease-out;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  /* Animation removed for flat UI */
 }
 
 .task-item.completed {
@@ -659,55 +491,11 @@ ul {
   pointer-events: none;
 }
 
-/* Performance optimizations */
-.task-item,
-.move-icon,
-.task-text,
-.notebook-input {
-  will-change: transform, opacity;
-}
+/* will-change optimizations removed - no longer using animations */
 
-.task-item.moving-out,
-.task-item.moving-in {
-  will-change: transform, opacity;
-}
+/* will-change cleanup rules removed - no animations to clean up */
 
-/* Phase 3: Performance optimizations for important tasks */
-.task-item.important {
-  will-change: transform, box-shadow, border-color;
-}
-
-.task-item.important.importance-added {
-  will-change: transform, box-shadow, border-color, background;
-}
-
-/* Phase 4: Performance optimizations for sorting animations */
-.task-item:nth-child(1),
-.task-item:nth-child(2),
-.task-item:nth-child(3),
-.task-item:nth-child(4),
-.task-item:nth-child(5) {
-  will-change: transform, opacity;
-}
-
-/* Clean up will-change after animations */
-.task-item:not(.moving-out):not(.moving-in):not(.completed):not(.importance-added) {
-  will-change: auto;
-}
-
-.task-item.important:not(.importance-added):not(:hover) {
-  will-change: transform, box-shadow;
-}
-
-/* Clean up will-change after sort animations complete */
-.task-item {
-  animation-fill-mode: both;
-}
-
-.task-item:not(.important):nth-child(n+4) {
-  will-change: auto;
-  animation: none;
-}
+/* nth-child animation optimization removed */
 
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
@@ -942,53 +730,25 @@ ul {
   transition: transform 0.1s ease, background 0.1s ease;
 }
 
-/* Task item push animation - shows direction it will move */
-.task-item.pushing-right {
-  animation: taskPushRight 0.3s ease-out;
-}
-
-.task-item.pushing-left {
-  animation: taskPushLeft 0.3s ease-out;
-}
-
-@keyframes taskPushRight {
-  0% { transform: translateX(0); }
-  30% { transform: translateX(15px) skewX(-3deg); }
-  100% { transform: translateX(0); }
-}
-
-@keyframes taskPushLeft {
-  0% { transform: translateX(0); }
-  30% { transform: translateX(-15px) skewX(3deg); }
-  100% { transform: translateX(0); }
-}
-
-/* Normal hover state - exact copy of delete button pattern */
+/* Task hover - flat, no animations */
 .task-item:hover {
   background: var(--surface);
-  color: var(--text);
-  border-color: var(--text-muted);
-  transform: translateY(-1px) !important;
 }
 
-/* Active/click state - flat, no skew */
+/* Active/click state - flat */
 .task-item:active,
 .task-item.button-pressed {
-  transform: none !important;
-  transition: transform 0.1s ease !important;
+  background: var(--surface);
 }
 
 /* Delete mode styles */
 .list-section.delete-mode .task-item:hover {
   background: rgba(220, 38, 38, 0.15);
-  transform: none;
   color: #dc2626;
 }
 
 .list-section.delete-mode .task-item:active {
   background: rgba(220, 38, 38, 0.25);
-  transform: none;
-  transition: transform 0.1s ease;
 }
 
 /* Marquee removed - was causing text to move independently */
@@ -1063,13 +823,10 @@ ul {
 
 .add-button:hover {
   filter: brightness(1.1);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .add-button:active {
-  transform: none;
-  transition: transform 0.1s ease;
+  filter: brightness(0.95);
 }
 
 footer {
@@ -1115,20 +872,15 @@ footer {
 .sync-btn:hover {
   background: var(--background);
   border-color: var(--text-muted);
-  transform: translateY(-1px);
-  filter: brightness(1.05);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .sync-btn:active {
-  transform: none;
-  transition: transform 0.1s ease;
+  background: var(--surface);
 }
 
 /* Light theme subtle variations */
 .light-theme .sync-btn:hover {
   background: #f8f8f8;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .donation-section {
@@ -1159,7 +911,6 @@ footer {
 
 .donation-link:hover {
   text-decoration: underline;
-  filter: brightness(1.1);
 }
 
 .storage-notice {
@@ -1190,28 +941,22 @@ footer {
   background: var(--background);
   color: var(--text);
   border-color: var(--text-muted);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
 }
 
 .nav-btn:hover {
   background: var(--surface);
-  transform: translateY(-1px);
 }
 
 .nav-btn:active {
-  transform: none;
-  transition: transform 0.1s ease;
+  background: var(--background);
 }
 
 .nav-btn.active:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: var(--background);
 }
 
 .nav-btn.active:active {
-  transform: none;
-  transition: transform 0.1s ease;
+  background: var(--background);
 }
 
 /* Mobile optimizations */
@@ -1304,7 +1049,6 @@ footer {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.3s ease-out;
 }
 
 .qr-modal-content {
@@ -1316,7 +1060,6 @@ footer {
   max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  animation: slideUp 0.3s ease-out;
   position: relative;
   border: 1px solid var(--border);
   margin: 1rem;
@@ -1355,8 +1098,6 @@ footer {
 
 .qr-tab:hover {
   background: var(--surface);
-  transform: none;
-  filter: brightness(1.05);
 }
 
 .qr-tab.active {
@@ -1408,12 +1149,10 @@ footer {
 
 .qr-btn:hover {
   background: var(--background);
-  transform: none;
-  filter: brightness(1.05);
 }
 
 .qr-btn:active {
-  transform: none;
+  background: var(--surface);
 }
 
 .qr-btn svg {
@@ -1429,7 +1168,6 @@ footer {
 
 .qr-btn-primary:hover {
   background: var(--primary-color);
-  filter: brightness(1.1);
 }
 
 .qr-btn-secondary {
@@ -1446,7 +1184,6 @@ footer {
 
 .qr-btn-success:hover {
   background: var(--success-color);
-  filter: brightness(1.1);
 }
 
 .qr-btn-hidden {
@@ -1469,7 +1206,6 @@ footer {
 .qr-close:hover {
   background: var(--background);
   color: var(--text);
-  transform: rotate(90deg);
 }
 
 /* QR Modal Panel & Content Styles */
@@ -1689,22 +1425,7 @@ footer {
   }
 }
 
-/* QR Modal Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* QR Modal Animations removed for flat UI */
 
 /* Phase 2: Context Menu Styles - Ultra-comprehensive implementation */
 
@@ -1733,10 +1454,6 @@ footer {
   min-width: 180px;
   padding: 8px;
   z-index: 1001;
-  opacity: 0;
-  transform: scale(0.8);
-  transition: opacity 200ms var(--transition-ease),
-              transform 200ms var(--transition-ease);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -1762,8 +1479,6 @@ footer {
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 500;
-  transition: background-color 150ms ease,
-              transform 100ms ease;
   outline: none;
   position: relative;
   min-height: 44px; /* Touch-friendly size */
@@ -1774,7 +1489,6 @@ footer {
   width: 16px;
   height: 16px;
   color: var(--text-muted);
-  transition: color 150ms ease;
   flex-shrink: 0;
 }
 
@@ -1782,7 +1496,6 @@ footer {
 .context-menu-item span {
   flex: 1;
   white-space: nowrap;
-  transition: color 150ms ease;
 }
 
 /* Hover and focus states */
@@ -1791,7 +1504,6 @@ footer {
   background: var(--background);
   color: var(--text);
   border: 1px solid var(--notebook-yellow);
-  transform: translateY(-1px);
 }
 
 .context-menu-item:hover svg,
@@ -1801,9 +1513,7 @@ footer {
 
 /* Active/pressed state */
 .context-menu-item:active {
-  transform: translateY(0);
   background: var(--background);
-  opacity: 0.9;
 }
 
 /* Focus ring for accessibility */
@@ -1821,77 +1531,7 @@ footer {
   color: rgba(255, 255, 255, 0.9);
 }
 
-/* Animation keyframes for menu appearance */
-@keyframes contextMenuFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8) translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Phase 4: Subtle sorting animations */
-@keyframes taskSortSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Staggered animation for sorted important tasks */
-.task-item.important:nth-child(1) {
-  animation: taskSortSlideIn 400ms var(--transition-ease) 0ms both;
-}
-
-.task-item.important:nth-child(2) {
-  animation: taskSortSlideIn 400ms var(--transition-ease) 50ms both;
-}
-
-.task-item.important:nth-child(3) {
-  animation: taskSortSlideIn 400ms var(--transition-ease) 100ms both;
-}
-
-.task-item.important:nth-child(4) {
-  animation: taskSortSlideIn 400ms var(--transition-ease) 150ms both;
-}
-
-.task-item.important:nth-child(5) {
-  animation: taskSortSlideIn 400ms var(--transition-ease) 200ms both;
-}
-
-/* Normal tasks have subtle entrance too */
-.task-item:not(.important):nth-child(1) {
-  animation: taskSortSlideIn 300ms var(--transition-ease) 100ms both;
-}
-
-.task-item:not(.important):nth-child(2) {
-  animation: taskSortSlideIn 300ms var(--transition-ease) 125ms both;
-}
-
-.task-item:not(.important):nth-child(3) {
-  animation: taskSortSlideIn 300ms var(--transition-ease) 150ms both;
-}
-
-/* Respect reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-  .task-item.important:nth-child(1),
-  .task-item.important:nth-child(2),
-  .task-item.important:nth-child(3),
-  .task-item.important:nth-child(4),
-  .task-item.important:nth-child(5),
-  .task-item:not(.important):nth-child(1),
-  .task-item:not(.important):nth-child(2),
-  .task-item:not(.important):nth-child(3) {
-    animation: none;
-  }
-}
+/* Sorting animations removed for flat UI */
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
@@ -1910,22 +1550,7 @@ footer {
   }
 }
 
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .context-menu-backdrop,
-  .context-menu,
-  .context-menu-item {
-    transition: none;
-  }
-
-  .context-menu {
-    transform: none;
-  }
-
-  .context-menu-item:hover {
-    transform: none;
-  }
-}
+/* Reduced motion support - already flat UI */
 
 /* Mobile-specific adjustments */
 @media (max-width: 768px) {
@@ -1940,8 +1565,6 @@ footer {
     max-width: 100%;
     border-radius: 24px 24px 0 0;
     padding: 20px 16px calc(env(safe-area-inset-bottom) + 16px);
-    transform: translateY(0) !important;
-    animation: slideUpFromBottom 300ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .context-menu {
@@ -1984,16 +1607,7 @@ footer {
   }
 }
 
-@keyframes slideUpFromBottom {
-  from {
-    transform: translateY(100%);
-    opacity: 0.8;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* slideUpFromBottom animation removed for flat UI */
 
 /* Ultra-small screens */
 @media (max-width: 320px) {
@@ -2036,18 +1650,6 @@ footer {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   display: none;
-  animation: slideInFromBottom 300ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-@keyframes slideInFromBottom {
-  from {
-    transform: translateY(100px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 .pomodoro-timer-content {
@@ -2106,7 +1708,6 @@ footer {
   background: #ef4444;
   border-color: #ef4444;
   color: white;
-  transform: scale(1.1);
 }
 
 /* Pomodoro Completion Prompt */
@@ -2121,7 +1722,6 @@ footer {
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 200ms ease;
 }
 
 .pomodoro-prompt-content {
@@ -2131,18 +1731,6 @@ footer {
   max-width: 400px;
   width: 90%;
   text-align: center;
-  animation: scaleIn 300ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-@keyframes scaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
 }
 
 .pomodoro-prompt-content h3 {
@@ -2188,8 +1776,6 @@ footer {
 
 .pomodoro-btn-success:hover {
   background: #059669;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .pomodoro-btn-secondary {
@@ -2199,7 +1785,6 @@ footer {
 
 .pomodoro-btn-secondary:hover {
   background: var(--text-muted);
-  transform: translateY(-2px);
 }
 
 .pomodoro-btn-primary {
@@ -2209,8 +1794,6 @@ footer {
 
 .pomodoro-btn-primary:hover {
   background: #059669;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 /* Subtask Modal Styles */
@@ -2225,7 +1808,6 @@ footer {
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  animation: fadeIn 200ms ease;
 }
 
 .subtask-modal-content {
@@ -2234,7 +1816,6 @@ footer {
   padding: 32px;
   max-width: 400px;
   width: 90%;
-  animation: scaleIn 300ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .subtask-modal-content h3 {
@@ -2288,7 +1869,6 @@ footer {
 
 .subtask-modal-actions button.primary:hover {
   background: #059669;
-  transform: translateY(-2px);
 }
 
 .subtask-modal-actions button:not(.primary) {

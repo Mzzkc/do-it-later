@@ -93,16 +93,9 @@ class Renderer {
     li.className = this.getTaskClasses(task);
     li.setAttribute('data-task-id', task.id);
 
-    // Handle move-in animation
+    // Animation removed for flat UI - clear any stale move flag
     if (task._justMoved) {
-      li.classList.add(`moving-in-${task._justMoved}`);
-
-      setTimeout(() => {
-        const element = document.querySelector(`[data-task-id="${task.id}"]`);
-        if (element) {
-          element.classList.remove(`moving-in-${task._justMoved}`);
-        }
-      }, 300);
+      delete task._justMoved;
     }
 
     // Wrap task content in a container to fix flexbox layout issue

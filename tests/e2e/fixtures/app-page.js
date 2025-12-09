@@ -170,9 +170,9 @@ export class AppPage {
 
   async longPressTask(text) {
     const task = await this.getTaskOrSubtaskByText(text);
-    // Hover over the main task-content div (where event handlers are attached)
-    const taskContent = await task.locator('.task-content').first();
-    await taskContent.hover();
+    // Hover on task-content with force to bypass pointer-events: none on task-text
+    const taskContent = task.locator('.task-content').first();
+    await taskContent.hover({ force: true });
     await this.page.mouse.down();
     await this.page.waitForTimeout(700); // Long press duration (600ms + buffer)
     await this.page.mouse.up();
@@ -238,10 +238,10 @@ export class AppPage {
   async addSubtask(parentText, subtaskText) {
     // Always target the parent task specifically (not a subtask with the same name)
     const parent = await this.getTaskByText(parentText);
-    const taskContent = await parent.locator('.task-content').first();
 
-    // Perform long press on the parent
-    await taskContent.hover();
+    // Hover on task-content with force to bypass pointer-events: none on task-text
+    const taskContent = parent.locator('.task-content').first();
+    await taskContent.hover({ force: true });
     await this.page.mouse.down();
     await this.page.waitForTimeout(700);
     await this.page.mouse.up();
