@@ -470,6 +470,10 @@ export class AppPage {
         });
         app.data.totalCompleted = Math.max(app.data.totalCompleted, importedData.totalCompleted || 0);
 
+        // Rebuild trees and counts after importing new tasks
+        app.taskManager.buildTreesFromFlatData();
+        app.taskManager.initializeSubtaskCounts();
+
         app.save();
         app.render();
         app.updateCompletedCounter();

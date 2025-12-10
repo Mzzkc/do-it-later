@@ -491,6 +491,10 @@ class QRHandler {
         this.app.data.totalCompleted = Math.max(this.app.data.totalCompleted, importedData.totalCompleted || 0);
       }
 
+      // Rebuild trees and counts after importing new tasks
+      this.app.taskManager.buildTreesFromFlatData();
+      this.app.taskManager.initializeSubtaskCounts();
+
       this.app.save();
       this.app.render();
 

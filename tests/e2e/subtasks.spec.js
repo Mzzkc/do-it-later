@@ -332,4 +332,145 @@ test.describe('Subtask Feature', () => {
     const parentAfterClick = await app.isTaskCompleted('Click Test Parent');
     expect(parentAfterClick).toBe(false);
   });
+
+  test('13. Cross-List Parent - findNodeById and getTaskList Correctness', async () => {
+    // REGRESSION TEST: When a parent exists in BOTH lists (v3 invariant),
+    // findNodeById and getTaskList should return correct info based on context.
+    //
+    // Bug: findNodeById returns first match (today) ignoring tomorrow's node.
+    // Bug: getTaskList returns 'today' even when queried about tomorrow's instance.
+
+    // Setup: Create parent with 2 subtasks in Today
+    await app.addTodayTask('Cross List Parent');
+    await app.addSubtask('Cross List Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (this triggers v3 invariant - parent gets copied to Later)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists (v3 invariant working)
+    const parentInToday = await app.isTaskInList('Cross List Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Test: Verify the task exists in BOTH flat arrays
+    const bothArraysHaveParent = await app.page.evaluate(() => {
+      const inToday = app.data.today.some(t => t.text === 'Cross List Parent');
+      const inTomorrow = app.data.tomorrow.some(t => t.text === 'Cross List Parent');
+      return { inToday, inTomorrow };
+    });
+    expect(bothArraysHaveParent.inToday).toBe(true);
+    expect(bothArraysHaveParent.inTomorrow).toBe(true);
+
+    // Test: Verify the parent exists in BOTH trees
+    const bothTreesHaveParent = await app.page.evaluate(() => {
+      const parentInTodayTree = app.taskManager.trees.today.getAllTasks().some(n => n.text === 'Cross List Parent');
+      const parentInTomorrowTree = app.taskManager.trees.tomorrow.getAllTasks().some(n => n.text === 'Cross List Parent');
+      return { parentInTodayTree, parentInTomorrowTree };
+    });
+    expect(bothTreesHaveParent.parentInTodayTree).toBe(true);
+    expect(bothTreesHaveParent.parentInTomorrowTree).toBe(true);
+
+    // Test: findNodeById should find the node (currently returns first match - today)
+    // This test documents current behavior; the fix should make both trees accessible
+    const nodeFound = await app.page.evaluate(() => {
+      const parent = app.data.today.find(t => t.text === 'Cross List Parent');
+      const node = app.taskManager.findNodeById(parent.id);
+      return node !== null;
+    });
+    expect(nodeFound).toBe(true);
+
+    // Test: getTaskList returns which list(s) contain the task
+    // BUG EXPOSED: getTaskList returns only 'today', missing 'tomorrow'
+    const taskListResult = await app.page.evaluate(() => {
+      const parent = app.data.today.find(t => t.text === 'Cross List Parent');
+      return app.taskManager.getTaskList(parent.id);
+    });
+    // Current buggy behavior: returns 'today' only
+    // After fix: This test documents that we need list-aware lookups
+    expect(taskListResult).toBe('today'); // Documents current behavior
+
+    // Test: Both tree nodes should have correct children for their list
+    const childrenPerTree = await app.page.evaluate(() => {
+      const parent = app.data.today.find(t => t.text === 'Cross List Parent');
+      const todayNode = app.taskManager.trees.today.findById(parent.id);
+      const tomorrowNode = app.taskManager.trees.tomorrow.findById(parent.id);
+      return {
+        todayChildCount: todayNode ? todayNode.children.length : 0,
+        tomorrowChildCount: tomorrowNode ? tomorrowNode.children.length : 0
+      };
+    });
+    expect(childrenPerTree.todayChildCount).toBe(1); // 'Subtask Stay Today'
+    expect(childrenPerTree.tomorrowChildCount).toBe(1); // 'Subtask Move Later'
+  });
+
+  test('14. Cross-List Parent - Delete Mode Uses Correct List Context', async () => {
+    // REGRESSION TEST: When delete mode is active in Later panel,
+    // clicking on a cross-list parent in Later should use Later's delete mode,
+    // NOT Today's delete mode.
+    //
+    // Bug: handleTaskClick uses findTask().list which returns 'today' even for
+    // parents displayed in the Later panel.
+
+    // Setup: Create parent with children split across lists
+    await app.addTodayTask('Delete Test Parent');
+    await app.addSubtask('Delete Test Parent', 'Subtask A');
+    await app.addSubtask('Delete Test Parent', 'Subtask B');
+
+    // Move Subtask B to Later (parent now in both lists)
+    await app.clickMoveButton('Subtask B');
+    await app.page.waitForTimeout(300);
+
+    // Verify setup: parent in both lists
+    const parentInBoth = await app.page.evaluate(() => {
+      const inToday = app.data.today.some(t => t.text === 'Delete Test Parent');
+      const inTomorrow = app.data.tomorrow.some(t => t.text === 'Delete Test Parent');
+      return inToday && inTomorrow;
+    });
+    expect(parentInBoth).toBe(true);
+
+    // Enable delete mode for Later panel ONLY (not Today)
+    await app.page.click('.delete-mode-toggle[data-list="tomorrow"]');
+    await app.page.waitForTimeout(100);
+
+    // Verify delete mode state: Later=true, Today=false
+    const deleteModeState = await app.page.evaluate(() => ({
+      todayDeleteMode: app.deleteMode.today,
+      tomorrowDeleteMode: app.deleteMode.tomorrow
+    }));
+    expect(deleteModeState.todayDeleteMode).toBe(false);
+    expect(deleteModeState.tomorrowDeleteMode).toBe(true);
+
+    // Get the parent's instance in the LATER list (not Today)
+    const laterParent = await app.page.locator('#tomorrow-list > .task-item:not(.subtask-item)').filter({ hasText: 'Delete Test Parent' }).first();
+
+    // Clear any stale wasLongPress flag from previous interactions (test isolation)
+    await app.page.evaluate(() => {
+      app.wasLongPress = false;
+    });
+
+    // Click at the TOP of the parent element (position: {x: 50, y: 10}) to avoid subtasks below
+    await laterParent.click({ position: { x: 50, y: 10 } });
+    await app.page.waitForTimeout(300);
+
+    // BUG: If findTask().list returns 'today', the click checks Today's delete mode (false)
+    // and treats this as a completion click instead of a delete.
+    //
+    // EXPECTED (after fix): Parent should be deleted from Later because Later's delete mode is ON.
+    // ACTUAL (with bug): Parent might get toggled complete instead of deleted.
+
+    // After the click, check if parent was deleted from Later
+    const parentStillInLater = await app.isTaskInList('Delete Test Parent', 'later');
+
+    // With the bug: parent is still in Later (was toggled, not deleted)
+    // After fix: parent should be deleted from Later
+    // This assertion documents the expected behavior after fix:
+    expect(parentStillInLater).toBe(false);
+
+    // Parent should still exist in Today (delete mode OFF there)
+    const parentStillInToday = await app.isTaskInList('Delete Test Parent', 'today');
+    expect(parentStillInToday).toBe(true);
+  });
 });

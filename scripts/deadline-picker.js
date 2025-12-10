@@ -146,6 +146,9 @@ class DeadlinePicker {
       this.app.showNotification('Deadline removed', Config.NOTIFICATION_TYPES.SUCCESS);
     }
 
+    // Rebuild trees after flat array modification (no count reinit - that would reset completion state)
+    this.app.taskManager.buildTreesFromFlatData();
+
     this.app.save();
     this.app.render();
   }

@@ -594,13 +594,15 @@ class DoItTomorrowApp {
 
 
   // Handle task click (completion or edit)
-  handleTaskClick(id, event) {
+  // listName is passed from DOM context (task-controller.js) for accurate cross-list parent handling
+  handleTaskClick(id, event, listName = null) {
     if (this.devMode.isActive()) {
       console.log('👆 TASK CLICK:', {
         taskId: id,
         editingTask: this.editingTask,
         wasLongPress: this.wasLongPress,
-        eventType: event.type
+        eventType: event.type,
+        listNameFromDOM: listName
       });
     }
 
@@ -620,14 +622,24 @@ class DoItTomorrowApp {
       return;
     }
 
-    // Check if we're in delete mode for this list
-    const taskInfo = this.taskManager.findTask(id);
-    if (!taskInfo) return;
+    // Determine list name from DOM context (passed from task-controller) or fallback to event target
+    // This correctly handles cross-list parents that exist in both lists
+    let effectiveListName = listName;
+    if (!effectiveListName && event && event.target) {
+      const listContainer = event.target.closest('#today-list, #tomorrow-list');
+      effectiveListName = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
+    }
 
-    const listName = taskInfo.list;
-    if (this.deleteMode[listName]) {
-      // Delete mode - delete the task
-      this.taskManager.deleteTask(id);
+    // Final fallback: use findTask (may be incorrect for cross-list parents, but better than failing)
+    if (!effectiveListName) {
+      const taskInfo = this.taskManager.findTask(id);
+      if (!taskInfo) return;
+      effectiveListName = taskInfo.list;
+    }
+
+    if (this.deleteMode[effectiveListName]) {
+      // Delete mode - delete the task from this specific list (handles cross-list parents correctly)
+      this.taskManager.deleteTask(id, effectiveListName);
       this.showNotification('Task deleted', 'success');
       this.render();
       return;
@@ -669,8 +681,12 @@ class DoItTomorrowApp {
     const task = this.taskManager.findTask(taskId);
     if (!task) return;
 
-    // Check if we're in delete mode - just edit quickly
-    const isDeleteMode = task.list === 'today' ? this.deleteMode.today : this.deleteMode.tomorrow;
+    // Determine list from DOM context (element) for correct cross-list parent handling
+    const listContainer = element.closest('#today-list, #tomorrow-list');
+    const listNameFromDOM = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
+
+    // Check if we're in delete mode using DOM-based list (not task.list which may be wrong for cross-list parents)
+    const isDeleteMode = this.deleteMode[listNameFromDOM];
     if (isDeleteMode) {
       setTimeout(() => this.taskManager.enterEditMode(taskId), 10);
       return;
@@ -684,7 +700,8 @@ class DoItTomorrowApp {
       console.log('✅ LONG PRESS TRIGGERED - CONTEXT MENU:', {
         taskId,
         position,
-        isImportant: task.important
+        isImportant: task.important,
+        listNameFromDOM
       });
     }
   }

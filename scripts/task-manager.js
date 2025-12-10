@@ -116,22 +116,22 @@ class TaskManager {
   }
 
   /**
-   * Find a task node in trees by ID
+   * Find a task node in trees by ID (O(1) lookup)
    * @param {string} id - Task ID
    * @returns {TaskNode|null} TaskNode or null if not found
    */
   findNodeById(id) {
-    this.ensureTreesFresh(); // Ensure trees are current
+    // Trees are authoritative - direct lookup, no rebuild needed
     return this.trees.today.findById(id) || this.trees.tomorrow.findById(id);
   }
 
   /**
-   * Get which tree contains a node
+   * Get which tree contains a node (O(1) lookup)
    * @param {string} id - Task ID
    * @returns {string|null} 'today', 'tomorrow', or null
    */
   getNodeTree(id) {
-    this.ensureTreesFresh(); // Ensure trees are current
+    // Trees are authoritative - direct lookup, no rebuild needed
     if (this.trees.today.findById(id)) return 'today';
     if (this.trees.tomorrow.findById(id)) return 'tomorrow';
     return null;
@@ -527,10 +527,17 @@ class TaskManager {
   /**
    * Delete task (simple version - just this node, not children)
    * TREE-FIRST: Detaches node from tree
+   * NOTE: Deletes from ALL trees where task exists. Use deleteTaskFromList for list-specific deletion.
    * @param {string} id - Task ID
+   * @param {string|null} listName - Optional: specific list to delete from (for cross-list parents)
    * @returns {boolean} True if task was deleted, false otherwise
    */
-  deleteTask(id) {
+  deleteTask(id, listName = null) {
+    // If listName specified, use list-specific deletion (handles cross-list parents correctly)
+    if (listName) {
+      return this.deleteTaskFromList(id, listName);
+    }
+
     // TREE-FIRST: Find node in either tree
     const nodeInToday = this.trees.today.findById(id);
     const nodeInTomorrow = this.trees.tomorrow.findById(id);
@@ -561,6 +568,68 @@ class TaskManager {
       }
       nodeInTomorrow.detach();
     }
+
+    // Stop pomodoro if this task was running one
+    if (this.app.pomodoro && this.app.pomodoro.state.taskId === id) {
+      console.log('🐛 [DELETE] Stopping pomodoro for deleted task');
+      this.app.pomodoro.stop();
+    }
+
+    // Sync tree changes to flat arrays
+    this.syncTreestoFlatArrays();
+
+    this.app.save();
+    this.app.render();
+
+    return true;
+  }
+
+  /**
+   * Delete task from a specific list only (for cross-list parent handling)
+   * Used when user clicks delete on a parent that exists in both lists
+   * @param {string} id - Task ID
+   * @param {string} listName - List to delete from ('today' or 'tomorrow')
+   * @returns {boolean} True if task was deleted, false otherwise
+   */
+  deleteTaskFromList(id, listName) {
+    const treeName = listName === 'today' ? 'today' : 'tomorrow';
+    const tree = this.trees[treeName];
+    const node = tree.findById(id);
+
+    if (!node) {
+      // Task doesn't exist in this list - try global delete
+      return this.deleteTask(id, null);
+    }
+
+    // Update subtask counts if this is a subtask
+    if (node.parent && !node.parent.isVirtualRoot()) {
+      this.decrementSubtaskTotal(node.parent.id, listName);
+      if (node.completed) {
+        this.decrementSubtaskCompleted(node.parent.id, listName);
+      }
+    }
+
+    // Also delete children in this list
+    const collectChildren = (n) => {
+      const nodes = [];
+      n.children.forEach(child => {
+        nodes.push(child);
+        nodes.push(...collectChildren(child));
+      });
+      return nodes;
+    };
+    const childNodes = collectChildren(node);
+    childNodes.forEach(child => {
+      if (child.parent && !child.parent.isVirtualRoot()) {
+        this.decrementSubtaskTotal(child.parent.id, listName);
+        if (child.completed) {
+          this.decrementSubtaskCompleted(child.parent.id, listName);
+        }
+      }
+    });
+
+    // Detach the node (and its children)
+    node.detach();
 
     // Stop pomodoro if this task was running one
     if (this.app.pomodoro && this.app.pomodoro.state.taskId === id) {
@@ -1261,8 +1330,7 @@ class TaskManager {
    * @returns {Array<Object>} Array of child tasks (flat task objects for compatibility)
    */
   getChildren(parentId, listName = null) {
-    this.ensureTreesFresh();
-
+    // Trees are authoritative - direct lookup, no rebuild needed
     // If listName is specified, search that tree specifically
     // (parent may exist in both trees with different children)
     let node = null;

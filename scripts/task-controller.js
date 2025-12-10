@@ -253,8 +253,9 @@ class TaskController {
     }
 
     if (this.app.deleteMode[listName]) {
-      // Delete mode - remove task
-      this.app.taskManager.deleteTaskWithSubtasks(taskId);
+      // Delete mode - remove task from THIS list only (handles cross-list parents correctly)
+      // Pass listName to delete from specific list, not both trees
+      this.app.taskManager.deleteTask(taskId, listName);
       this.app.showNotification('Task deleted', 'success');
     } else {
       // Normal mode - toggle completion
