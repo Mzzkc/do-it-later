@@ -1276,13 +1276,19 @@ class TaskManager {
     this.syncTreestoFlatArrays();
 
     this.app.save();
+
+    // Save scroll position before render (keyboard dismiss causes scroll jump on mobile)
+    const scrollY = window.scrollY;
+
     this.app.render();
 
-    // Re-focus the input after render
+    // Re-focus the input after render and restore scroll position
     setTimeout(() => {
       const input = document.getElementById(`subtask-input-${parentTaskId}`);
       if (input) {
-        input.focus();
+        // Restore scroll position first (before keyboard re-shows)
+        window.scrollTo(0, scrollY);
+        input.focus({ preventScroll: true });
         console.log('🐛 [SUBTASK] Re-focused input after adding subtask');
       }
     }, 50);
