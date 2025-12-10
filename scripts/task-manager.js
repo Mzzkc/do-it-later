@@ -1286,8 +1286,6 @@ class TaskManager {
         console.log('🐛 [SUBTASK] Re-focused input after adding subtask');
       }
     }, 50);
-
-    this.app.showNotification('Subtask added', Config.NOTIFICATION_TYPES.SUCCESS);
   }
 
   /**
