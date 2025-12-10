@@ -305,6 +305,9 @@ class ContextMenu {
     this.currentTask = task;
     this.isVisible = true;
 
+    // Prevent body scroll while menu is open
+    document.body.style.overflow = 'hidden';
+
     this.createMenuElement(position, task);
     this.setupMenuInteractions();
 
@@ -326,6 +329,10 @@ class ContextMenu {
     this.isVisible = false;
     this.removeMenuElement();
     this.currentTask = null;
+
+    // Restore body scroll
+    document.body.style.overflow = '';
+
     this.onClose();
 
     if (this.devMode.isActive()) {

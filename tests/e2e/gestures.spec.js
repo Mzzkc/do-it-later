@@ -70,4 +70,34 @@ test.describe('Mobile Gestures', () => {
     expect(await deadlineItem.count()).toBeGreaterThan(0);
     expect(await pomodoroItem.count()).toBeGreaterThan(0);
   });
+
+  test('should prevent body scroll when context menu is open', async ({ page }) => {
+    // Add multiple tasks to ensure page is scrollable
+    for (let i = 1; i <= 10; i++) {
+      await app.addTodayTask(`Scroll test task ${i}`);
+    }
+
+    // Open context menu via long press
+    await app.longPressTask('Scroll test task 1');
+
+    // Verify context menu is visible
+    const contextMenu = page.locator('.context-menu');
+    await expect(contextMenu).toBeVisible();
+
+    // Check that body has overflow: hidden when menu is open
+    const bodyOverflow = await page.evaluate(() => {
+      return window.getComputedStyle(document.body).overflow;
+    });
+    expect(bodyOverflow).toBe('hidden');
+
+    // Close menu by clicking backdrop
+    await page.locator('.context-menu-backdrop').click();
+    await page.waitForTimeout(300);
+
+    // Body overflow should be restored after menu closes
+    const bodyOverflowAfter = await page.evaluate(() => {
+      return window.getComputedStyle(document.body).overflow;
+    });
+    expect(bodyOverflowAfter).not.toBe('hidden');
+  });
 });
