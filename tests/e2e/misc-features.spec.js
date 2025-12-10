@@ -54,6 +54,57 @@ test.describe('Miscellaneous Features', () => {
     expect(isStillActive).toBe(false);
   });
 
+  test('delete mode should be global - both buttons turn red when active', async ({ page }) => {
+    // Enable delete mode via Today button
+    await app.enableDeleteMode('today');
+
+    // Both sections should be in delete mode
+    const todayActive = await app.isDeleteModeActive('today');
+    const laterActive = await app.isDeleteModeActive('tomorrow');
+    expect(todayActive).toBe(true);
+    expect(laterActive).toBe(true);
+
+    // Both buttons should have active class (red styling)
+    const todayButton = page.locator('#today-section .delete-mode-toggle');
+    const laterButton = page.locator('#tomorrow-section .delete-mode-toggle');
+
+    const todayButtonActive = await todayButton.evaluate(el => el.classList.contains('active'));
+    const laterButtonActive = await laterButton.evaluate(el => el.classList.contains('active'));
+
+    expect(todayButtonActive).toBe(true);
+    expect(laterButtonActive).toBe(true);
+
+    // Toggle off via Later button (should turn off globally)
+    await app.enableDeleteMode('tomorrow');
+
+    const todayStillActive = await app.isDeleteModeActive('today');
+    const laterStillActive = await app.isDeleteModeActive('tomorrow');
+    expect(todayStillActive).toBe(false);
+    expect(laterStillActive).toBe(false);
+  });
+
+  test('delete mode should allow task deletion from any list', async ({ page }) => {
+    // Add tasks to both lists
+    await app.addTodayTask('Today task');
+    await app.addLaterTask('Later task');
+
+    // Enable delete mode via Today button
+    await app.enableDeleteMode('today');
+
+    // Should be able to delete task from Later list
+    await app.clickTaskText('Later task');
+
+    // Task should be deleted
+    const laterTasks = await app.getLaterTasks();
+    expect(laterTasks.length).toBe(0);
+
+    // Should still be able to delete from Today list
+    await app.clickTaskText('Today task');
+
+    const todayTasks = await app.getTodayTasks();
+    expect(todayTasks.length).toBe(0);
+  });
+
   test('should display current date', async () => {
     const dateDisplay = await app.getCurrentDateDisplay();
 

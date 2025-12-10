@@ -407,12 +407,11 @@ test.describe('Subtask Feature', () => {
   });
 
   test('14. Cross-List Parent - Delete Mode Uses Correct List Context', async () => {
-    // REGRESSION TEST: When delete mode is active in Later panel,
-    // clicking on a cross-list parent in Later should use Later's delete mode,
-    // NOT Today's delete mode.
+    // REGRESSION TEST: When delete mode is active GLOBALLY,
+    // clicking on a cross-list parent in Later should delete from that list only.
     //
-    // Bug: handleTaskClick uses findTask().list which returns 'today' even for
-    // parents displayed in the Later panel.
+    // v1.28.5: Delete mode is now global (not per-list).
+    // Clicking any delete toggle activates delete mode everywhere.
 
     // Setup: Create parent with children split across lists
     await app.addTodayTask('Delete Test Parent');
@@ -431,17 +430,13 @@ test.describe('Subtask Feature', () => {
     });
     expect(parentInBoth).toBe(true);
 
-    // Enable delete mode for Later panel ONLY (not Today)
+    // Enable delete mode globally (via Later button)
     await app.page.click('.delete-mode-toggle[data-list="tomorrow"]');
     await app.page.waitForTimeout(100);
 
-    // Verify delete mode state: Later=true, Today=false
-    const deleteModeState = await app.page.evaluate(() => ({
-      todayDeleteMode: app.deleteMode.today,
-      tomorrowDeleteMode: app.deleteMode.tomorrow
-    }));
-    expect(deleteModeState.todayDeleteMode).toBe(false);
-    expect(deleteModeState.tomorrowDeleteMode).toBe(true);
+    // Verify delete mode is global (v1.28.5+)
+    const isDeleteModeActive = await app.page.evaluate(() => app.deleteMode === true);
+    expect(isDeleteModeActive).toBe(true);
 
     // Get the parent's instance in the LATER list (not Today)
     const laterParent = await app.page.locator('#tomorrow-list > .task-item:not(.subtask-item)').filter({ hasText: 'Delete Test Parent' }).first();
@@ -455,21 +450,16 @@ test.describe('Subtask Feature', () => {
     await laterParent.click({ position: { x: 50, y: 10 } });
     await app.page.waitForTimeout(300);
 
-    // BUG: If findTask().list returns 'today', the click checks Today's delete mode (false)
-    // and treats this as a completion click instead of a delete.
-    //
-    // EXPECTED (after fix): Parent should be deleted from Later because Later's delete mode is ON.
-    // ACTUAL (with bug): Parent might get toggled complete instead of deleted.
+    // With global delete mode: clicking parent in Later should delete from Later list
+    // (using DOM context to determine which list was clicked)
 
     // After the click, check if parent was deleted from Later
     const parentStillInLater = await app.isTaskInList('Delete Test Parent', 'later');
 
-    // With the bug: parent is still in Later (was toggled, not deleted)
-    // After fix: parent should be deleted from Later
-    // This assertion documents the expected behavior after fix:
+    // Parent should be deleted from Later (delete mode is ON globally)
     expect(parentStillInLater).toBe(false);
 
-    // Parent should still exist in Today (delete mode OFF there)
+    // Parent should still exist in Today (only clicked in Later list context)
     const parentStillInToday = await app.isTaskInList('Delete Test Parent', 'today');
     expect(parentStillInToday).toBe(true);
   });

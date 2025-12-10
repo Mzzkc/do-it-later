@@ -637,7 +637,7 @@ class DoItTomorrowApp {
       effectiveListName = taskInfo.list;
     }
 
-    if (this.deleteMode[effectiveListName]) {
+    if (this.deleteMode) {
       // Delete mode - delete the task from this specific list (handles cross-list parents correctly)
       this.taskManager.deleteTask(id, effectiveListName);
       this.showNotification('Task deleted', 'success');
@@ -685,9 +685,8 @@ class DoItTomorrowApp {
     const listContainer = element.closest('#today-list, #tomorrow-list');
     const listNameFromDOM = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
 
-    // Check if we're in delete mode using DOM-based list (not task.list which may be wrong for cross-list parents)
-    const isDeleteMode = this.deleteMode[listNameFromDOM];
-    if (isDeleteMode) {
+    // Check if we're in delete mode (global, not per-list)
+    if (this.deleteMode) {
       setTimeout(() => this.taskManager.enterEditMode(taskId), 10);
       return;
     }
@@ -884,37 +883,37 @@ class DoItTomorrowApp {
     localStorage.setItem('do-it-later-theme', newTheme);
   }
 
-  // Delete mode functionality
+  // Delete mode functionality (global - affects all lists)
   setupDeleteMode() {
-    this.deleteMode = {
-      today: false,
-      tomorrow: false
-    };
+    this.deleteMode = false;
 
     const deleteModeToggles = document.querySelectorAll('.delete-mode-toggle');
     deleteModeToggles.forEach(toggle => {
-      toggle.addEventListener('click', (e) => {
-        const listName = e.target.closest('.delete-mode-toggle').dataset.list;
-        this.toggleDeleteMode(listName);
+      toggle.addEventListener('click', () => {
+        this.toggleDeleteMode();
       });
     });
   }
 
-  toggleDeleteMode(listName) {
-    this.deleteMode[listName] = !this.deleteMode[listName];
+  toggleDeleteMode() {
+    this.deleteMode = !this.deleteMode;
 
-    const section = document.getElementById(`${listName}-section`);
-    const toggle = section.querySelector('.delete-mode-toggle');
+    // Update both sections globally
+    const sections = ['today', 'tomorrow'];
+    sections.forEach(listName => {
+      const section = document.getElementById(`${listName}-section`);
+      const toggle = section.querySelector('.delete-mode-toggle');
 
-    if (this.deleteMode[listName]) {
-      section.classList.add('delete-mode');
-      toggle.classList.add('active');
-      this.showDeleteModeNotice(section);
-    } else {
-      section.classList.remove('delete-mode');
-      toggle.classList.remove('active');
-      this.hideDeleteModeNotice(section);
-    }
+      if (this.deleteMode) {
+        section.classList.add('delete-mode');
+        toggle.classList.add('active');
+        this.showDeleteModeNotice(section);
+      } else {
+        section.classList.remove('delete-mode');
+        toggle.classList.remove('active');
+        this.hideDeleteModeNotice(section);
+      }
+    });
   }
 
   showDeleteModeNotice(section) {
