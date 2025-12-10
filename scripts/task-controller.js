@@ -195,6 +195,10 @@ class TaskController {
 
         // Only trigger if it was a tap, not a scroll/drag
         if (state && !state.moved && (Date.now() - state.startTime) < 500) {
+          // CRITICAL: Prevent the browser from generating a synthetic click event
+          // Without this, on mobile: touchend calls handleTaskClick, THEN the synthetic click
+          // calls handleTaskClick again, causing double-toggle (task appears to not respond)
+          e.preventDefault();
           this.handleTaskClick(taskId, e, listName);
         }
 
