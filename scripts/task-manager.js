@@ -67,8 +67,34 @@ class TaskManager {
    * Called before save() to ensure flat arrays are up to date
    */
   syncTreestoFlatArrays() {
+    // Preserve UI state from existing flat tasks before syncing
+    const uiStateMap = new Map();
+    [...this.app.data.today, ...this.app.data.tomorrow].forEach(task => {
+      if (task._isEditing || task._addingSubtask || task._editText) {
+        uiStateMap.set(task.id, {
+          _isEditing: task._isEditing,
+          _addingSubtask: task._addingSubtask,
+          _editText: task._editText
+        });
+      }
+    });
+
     this.app.data.today = Storage.convertTreeToFlat(this.trees.today);
     this.app.data.tomorrow = Storage.convertTreeToFlat(this.trees.tomorrow);
+
+    // Restore UI state to the new flat tasks
+    [...this.app.data.today, ...this.app.data.tomorrow].forEach(task => {
+      const savedState = uiStateMap.get(task.id);
+      if (savedState) {
+        if (savedState._isEditing) task._isEditing = savedState._isEditing;
+        if (savedState._addingSubtask) task._addingSubtask = savedState._addingSubtask;
+        if (savedState._editText) task._editText = savedState._editText;
+      }
+    });
+
+    // Reinitialize subtask counts from the fresh flat data
+    // (counts are not stored in tree nodes, so need to rebuild)
+    this.initializeSubtaskCounts();
 
     if (this.app.devMode && this.app.devMode.isActive()) {
       console.log('🌳 [TREE] Synced trees to flat arrays:', {
@@ -374,72 +400,123 @@ class TaskManager {
   addTask(text, list = 'tomorrow', parentId = null) {
     if (!text || !text.trim()) return false;
 
-    const task = {
-      id: this.generateId(),
-      text: text.trim(),
+    const id = this.generateId();
+    const tree = this.trees[list];
+
+    // TREE-FIRST: Add to tree structure directly
+    const nodeOptions = {
+      id,
       completed: false,
       important: false,
-      createdAt: Date.now(),
-      parentId: parentId,
       expandedInToday: true,
-      expandedInLater: true
+      expandedInLater: true,
+      createdAt: Date.now()
     };
 
-    this.addTaskToList(task, list);
+    let node;
+    if (parentId) {
+      // Adding as subtask - find parent in this tree
+      const parentNode = tree.findById(parentId);
+      if (parentNode) {
+        node = parentNode.addChild(text.trim(), nodeOptions);
+        // Update subtask counts (for compatibility with existing UI)
+        this.incrementSubtaskTotal(parentId, list);
+      } else {
+        // Parent not in this tree - add as top-level
+        // (This handles edge cases where parent doesn't exist yet)
+        console.warn(`[TREE] Parent ${parentId} not found in ${list} tree, adding as top-level`);
+        node = tree.addTask(text.trim(), nodeOptions);
+      }
+    } else {
+      // Top-level task
+      node = tree.addTask(text.trim(), nodeOptions);
+    }
+
+    // Sync tree to flat arrays (keeps existing code working)
+    this.syncTreestoFlatArrays();
+
     this.app.save();
     this.app.render();
-    return task;
+
+    // Return flat task object for API compatibility
+    return this.findTaskById(id);
   }
 
   /**
    * Delete task with all its subtasks (recursively)
+   * TREE-FIRST: Uses node.detach() which automatically removes entire subtree
    * @param {string} id - Task ID
    * @returns {boolean} True if task was deleted, false otherwise
    */
   deleteTaskWithSubtasks(id) {
     console.log('🐛 [DELETE] deleteTaskWithSubtasks called', { id });
 
-    let deletedCount = 0;
-    const task = this.findTaskById(id);
+    // TREE-FIRST: Find node in either tree
+    const nodeInToday = this.trees.today.findById(id);
+    const nodeInTomorrow = this.trees.tomorrow.findById(id);
 
-    if (!task) {
-      console.error('🐛 [DELETE] Task not found');
+    if (!nodeInToday && !nodeInTomorrow) {
+      console.error('🐛 [DELETE] Task not found in trees');
       return false;
     }
 
-    console.log(`🐛 [DELETE] Found task:`, {
-      id: task.id,
-      text: task.text.substring(0, 30),
-      hasParent: !!task.parentId
-    });
+    // Track what we're deleting for subtask counts
+    const collectNodes = (node) => {
+      const nodes = [node];
+      node.children.forEach(child => nodes.push(...collectNodes(child)));
+      return nodes;
+    };
 
-    // If this is a parent task, delete all its children first
-    if (!task.parentId) {
-      // Find all children (across all lists)
-      const children = this.getChildren(id);
-      console.log(`🐛 [DELETE] Found ${children.length} children to delete`);
+    let deletedCount = 0;
 
-      children.forEach(child => {
-        this.removeTaskById(child.id);
-        deletedCount++;
-        console.log(`🐛 [DELETE] Deleted child: ${child.text.substring(0, 20)}`);
+    // Delete from Today tree
+    if (nodeInToday) {
+      const nodesToDelete = collectNodes(nodeInToday);
+      console.log(`🐛 [DELETE] Deleting ${nodesToDelete.length} nodes from Today tree`);
+
+      // Update subtask counts for subtasks being deleted
+      nodesToDelete.forEach(node => {
+        if (node.parent && !node.parent.isVirtualRoot()) {
+          this.decrementSubtaskTotal(node.parent.id, 'today');
+          if (node.completed) {
+            this.decrementSubtaskCompleted(node.parent.id, 'today');
+          }
+        }
       });
+
+      nodeInToday.detach();
+      deletedCount += nodesToDelete.length;
     }
 
-    // Delete the task itself
-    const removed = this.removeTaskById(id);
-    if (removed) {
-      deletedCount++;
-      console.log(`🐛 [DELETE] Deleted main task`);
+    // Delete from Tomorrow tree (task could be in both if parent with children in both)
+    if (nodeInTomorrow) {
+      const nodesToDelete = collectNodes(nodeInTomorrow);
+      console.log(`🐛 [DELETE] Deleting ${nodesToDelete.length} nodes from Tomorrow tree`);
+
+      // Update subtask counts
+      nodesToDelete.forEach(node => {
+        if (node.parent && !node.parent.isVirtualRoot()) {
+          this.decrementSubtaskTotal(node.parent.id, 'tomorrow');
+          if (node.completed) {
+            this.decrementSubtaskCompleted(node.parent.id, 'tomorrow');
+          }
+        }
+      });
+
+      nodeInTomorrow.detach();
+      deletedCount += nodesToDelete.length;
     }
 
-    console.log(`🐛 [DELETE] Total tasks deleted: ${deletedCount}`);
+    console.log(`🐛 [DELETE] Total nodes deleted: ${deletedCount}`);
 
     // Stop pomodoro if this task was running one
     if (this.app.pomodoro && this.app.pomodoro.state.taskId === id) {
       console.log('🐛 [DELETE] Stopping pomodoro for deleted task');
       this.app.pomodoro.stop();
     }
+
+    // Sync tree changes to flat arrays
+    this.syncTreestoFlatArrays();
 
     this.app.save();
     this.app.render();
@@ -448,24 +525,56 @@ class TaskManager {
   }
 
   /**
-   * Delete task (simple version without subtasks)
+   * Delete task (simple version - just this node, not children)
+   * TREE-FIRST: Detaches node from tree
    * @param {string} id - Task ID
    * @returns {boolean} True if task was deleted, false otherwise
    */
   deleteTask(id) {
-    const found = this.removeTaskById(id);
+    // TREE-FIRST: Find node in either tree
+    const nodeInToday = this.trees.today.findById(id);
+    const nodeInTomorrow = this.trees.tomorrow.findById(id);
 
-    if (found) {
-      // Stop pomodoro if this task was running one
-      if (this.app.pomodoro && this.app.pomodoro.state.taskId === id) {
-        console.log('🐛 [DELETE] Stopping pomodoro for deleted task');
-        this.app.pomodoro.stop();
-      }
-
-      this.app.save();
-      this.app.render();
+    if (!nodeInToday && !nodeInTomorrow) {
+      return false;
     }
-    return found;
+
+    // Delete from Today tree
+    if (nodeInToday) {
+      // Update subtask counts if this is a subtask
+      if (nodeInToday.parent && !nodeInToday.parent.isVirtualRoot()) {
+        this.decrementSubtaskTotal(nodeInToday.parent.id, 'today');
+        if (nodeInToday.completed) {
+          this.decrementSubtaskCompleted(nodeInToday.parent.id, 'today');
+        }
+      }
+      nodeInToday.detach();
+    }
+
+    // Delete from Tomorrow tree
+    if (nodeInTomorrow) {
+      if (nodeInTomorrow.parent && !nodeInTomorrow.parent.isVirtualRoot()) {
+        this.decrementSubtaskTotal(nodeInTomorrow.parent.id, 'tomorrow');
+        if (nodeInTomorrow.completed) {
+          this.decrementSubtaskCompleted(nodeInTomorrow.parent.id, 'tomorrow');
+        }
+      }
+      nodeInTomorrow.detach();
+    }
+
+    // Stop pomodoro if this task was running one
+    if (this.app.pomodoro && this.app.pomodoro.state.taskId === id) {
+      console.log('🐛 [DELETE] Stopping pomodoro for deleted task');
+      this.app.pomodoro.stop();
+    }
+
+    // Sync tree changes to flat arrays
+    this.syncTreestoFlatArrays();
+
+    this.app.save();
+    this.app.render();
+
+    return true;
   }
 
   /**
@@ -656,6 +765,7 @@ class TaskManager {
 
   /**
    * Move task between lists (instant, no animation)
+   * TREE-FIRST: Operates on tree structure, then syncs to flat arrays
    * @param {string} id - Task ID
    * @param {string} fromList - Source list name
    * @param {string} toList - Target list name
@@ -663,120 +773,157 @@ class TaskManager {
    * @returns {boolean} True if task was moved, false otherwise
    */
   animateTaskMovement(id, fromList, toList, direction) {
-    const task = this.findTaskById(id);
-    if (!task) return false;
+    const sourceTree = this.trees[fromList];
+    const destTree = this.trees[toList];
+    const nodeInSource = sourceTree.findById(id);
+
+    if (!nodeInSource) {
+      console.error('🐛 [MOVE] Task not found in source tree');
+      return false;
+    }
 
     console.log('🐛 [MOVE] Moving task:', {
-      id: task.id,
-      text: task.text.substring(0, 30),
-      hasParent: !!task.parentId,
+      id: nodeInSource.id,
+      text: nodeInSource.text.substring(0, 30),
+      hasParent: nodeInSource.parent && !nodeInSource.parent.isVirtualRoot(),
       fromList,
       toList
     });
 
-    // Handle subtask movement (task being moved IS a subtask)
-    if (task.parentId) {
+    const isSubtask = nodeInSource.parent && !nodeInSource.parent.isVirtualRoot();
+
+    if (isSubtask) {
+      // SUBTASK MOVEMENT
       console.log('🐛 [MOVE] This is a subtask, moving individually...');
-      const parent = this.findTaskById(task.parentId);
+      const parentId = nodeInSource.parent.id;
+      const parentText = nodeInSource.parent.text;
 
-      if (!parent) {
-        console.error('🐛 [MOVE] Parent not found!');
-        return false;
-      }
+      // Detach from source tree
+      nodeInSource.detach();
 
-      // Move subtask from source to target list
-      const fromIndex = this.app.data[fromList].findIndex(t => t.id === task.id);
-      if (fromIndex !== -1) {
-        this.app.data[fromList].splice(fromIndex, 1);
-      }
-      if (!this.app.data[toList].find(t => t.id === task.id)) {
-        this.app.data[toList].push(task);
-      }
+      // Check if parent exists in destination tree (by ID first)
+      let parentInDest = destTree.findById(parentId);
 
-      const parentList = this.getTaskList(parent.id);
-      console.log(`🐛 [MOVE] Moved subtask to ${toList}, parent is in ${parentList}`);
+      if (!parentInDest) {
+        // Parent by ID not found - check if parent with same TEXT exists
+        // This handles merging when a parent with same name exists in dest
+        parentInDest = destTree.findByText(parentText);
 
-      // Check if a parent with the same text already exists in target list
-      const existingParentInTarget = this.app.data[toList].find(t => !t.parentId && t.text === parent.text);
+        if (parentInDest && !parentInDest.isVirtualRoot()) {
+          // Found existing parent with same text - merge subtask under it
+          console.log(`🐛 [MOVE] Found existing parent "${parentText}" in ${toList}, merging subtask`);
+        } else {
+          // No parent with same text - need to create parent from source
+          const parentInSource = sourceTree.findById(parentId);
+          const parentData = parentInSource || this.findTaskById(parentId);
 
-      if (existingParentInTarget && existingParentInTarget.id !== parent.id) {
-        // Parent with same text already exists - merge by updating subtask's parentId
-        console.log(`🐛 [MOVE] Parent "${parent.text}" already exists in ${toList}, merging by updating subtask's parentId`);
-        task.parentId = existingParentInTarget.id;
-      } else if (!this.app.data[toList].find(t => t.id === parent.id)) {
-        // No parent with same text, add the original parent
-        // Initialize expansion properties if missing to prevent undefined state
-        if (parent.expandedInToday === undefined) parent.expandedInToday = true;
-        if (parent.expandedInLater === undefined) parent.expandedInLater = true;
-        this.app.data[toList].push(parent);
-        console.log(`🐛 [MOVE] Added parent to ${toList} since it has children there`);
-      }
-
-      // BUG FIX #4: Clean up parent from source list if it has no children there anymore
-      const childrenInSourceList = this.getChildren(parent.id, fromList);
-      if (childrenInSourceList.length === 0 && this.app.data[fromList].find(t => t.id === parent.id)) {
-        const parentIndex = this.app.data[fromList].findIndex(t => t.id === parent.id);
-        if (parentIndex !== -1) {
-          this.app.data[fromList].splice(parentIndex, 1);
-          console.log(`🐛 [MOVE] Removed parent from ${fromList} since it has no children there`);
+          if (parentData) {
+            console.log(`🐛 [MOVE] Adding parent to ${toList} tree`);
+            parentInDest = destTree.addTask(parentData.text, {
+              id: parentData.id,
+              completed: parentData.completed,
+              important: parentData.important,
+              expandedInToday: parentData.expandedInToday !== false ? true : parentData.expansionState?.today,
+              expandedInLater: parentData.expandedInLater !== false ? true : parentData.expansionState?.later,
+              deadline: parentData.deadline,
+              createdAt: parentData.createdAt
+            });
+          }
         }
       }
-    } else {
-      // Handle parent task movement - move all children with it
-      // Only get children from the source list to avoid moving children already in destination
-      const children = this.getChildren(task.id, fromList);
-      if (children.length > 0) {
-        console.log(`🐛 [MOVE] This is a parent task with ${children.length} children in ${fromList}, moving them all`);
 
-        // Move children from source list to destination
-        children.forEach(child => {
-          // Remove from source list
-          const fromIndex = this.app.data[fromList].findIndex(t => t.id === child.id);
-          if (fromIndex !== -1) {
-            this.app.data[fromList].splice(fromIndex, 1);
-          }
-          // Add to target list if not already there
-          if (!this.app.data[toList].find(t => t.id === child.id)) {
-            this.app.data[toList].push(child);
-          }
-          console.log(`🐛 [MOVE] Moved child: ${child.text.substring(0, 20)}`);
+      // Add subtask to dest tree under parent
+      if (parentInDest && !parentInDest.isVirtualRoot()) {
+        parentInDest.addChild(nodeInSource.text, {
+          id: nodeInSource.id,
+          completed: nodeInSource.completed,
+          important: nodeInSource.important,
+          expandedInToday: nodeInSource.expansionState.today,
+          expandedInLater: nodeInSource.expansionState.later,
+          deadline: nodeInSource.deadline,
+          createdAt: nodeInSource.createdAt
+        });
+      } else {
+        // Fallback: add as top-level if parent couldn't be found/created
+        console.warn('🐛 [MOVE] Parent not found, adding subtask as top-level');
+        destTree.addTask(nodeInSource.text, {
+          id: nodeInSource.id,
+          completed: nodeInSource.completed,
+          important: nodeInSource.important,
+          expandedInToday: nodeInSource.expansionState.today,
+          expandedInLater: nodeInSource.expansionState.later,
+          deadline: nodeInSource.deadline,
+          createdAt: nodeInSource.createdAt
         });
       }
 
-      // Move the parent task - remove from BOTH lists first to prevent duplication
-      // BUGFIX: Explicitly preserve expansion state before list manipulation
-      const preservedState = {
-        expandedInToday: task.expandedInToday,
-        expandedInLater: task.expandedInLater
+      // Clean up parent from source if it has no more children there
+      const parentInSourceAfter = sourceTree.findById(parentId);
+      if (parentInSourceAfter && parentInSourceAfter.children.length === 0) {
+        console.log(`🐛 [MOVE] Removing orphan parent from ${fromList} tree`);
+        parentInSourceAfter.detach();
+      }
+
+    } else {
+      // PARENT TASK MOVEMENT - move entire subtree
+      const childCount = nodeInSource.children.length;
+      console.log(`🐛 [MOVE] This is a parent task with ${childCount} children, moving subtree`);
+
+      // Collect node data before detaching
+      const nodeData = {
+        id: nodeInSource.id,
+        text: nodeInSource.text,
+        completed: nodeInSource.completed,
+        important: nodeInSource.important,
+        expandedInToday: nodeInSource.expansionState.today,
+        expandedInLater: nodeInSource.expansionState.later,
+        deadline: nodeInSource.deadline,
+        createdAt: nodeInSource.createdAt,
+        children: nodeInSource.children.map(child => ({
+          id: child.id,
+          text: child.text,
+          completed: child.completed,
+          important: child.important,
+          expandedInToday: child.expansionState.today,
+          expandedInLater: child.expansionState.later,
+          deadline: child.deadline,
+          createdAt: child.createdAt
+        }))
       };
 
-      const todayIndex = this.app.data.today.findIndex(t => t.id === task.id);
-      if (todayIndex !== -1) {
-        this.app.data.today.splice(todayIndex, 1);
-      }
-      const tomorrowIndex = this.app.data.tomorrow.findIndex(t => t.id === task.id);
-      if (tomorrowIndex !== -1) {
-        this.app.data.tomorrow.splice(tomorrowIndex, 1);
-      }
-      // Now add parent to destination list
-      // Initialize expansion properties if missing to prevent undefined state
-      if (task.expandedInToday === undefined) task.expandedInToday = true;
-      if (task.expandedInLater === undefined) task.expandedInLater = true;
+      // Detach entire subtree from source
+      nodeInSource.detach();
 
-      // BUGFIX: Restore preserved expansion state (overrides initialization if state existed)
-      if (preservedState.expandedInToday !== undefined) task.expandedInToday = preservedState.expandedInToday;
-      if (preservedState.expandedInLater !== undefined) task.expandedInLater = preservedState.expandedInLater;
+      // Add to destination tree
+      const newParent = destTree.addTask(nodeData.text, {
+        id: nodeData.id,
+        completed: nodeData.completed,
+        important: nodeData.important,
+        expandedInToday: nodeData.expandedInToday,
+        expandedInLater: nodeData.expandedInLater,
+        deadline: nodeData.deadline,
+        createdAt: nodeData.createdAt
+      });
 
-      this.app.data[toList].push(task);
+      // Recreate children in destination
+      nodeData.children.forEach(childData => {
+        newParent.addChild(childData.text, {
+          id: childData.id,
+          completed: childData.completed,
+          important: childData.important,
+          expandedInToday: childData.expandedInToday,
+          expandedInLater: childData.expandedInLater,
+          deadline: childData.deadline,
+          createdAt: childData.createdAt
+        });
+        console.log(`🐛 [MOVE] Moved child: ${childData.text.substring(0, 20)}`);
+      });
     }
+
+    // Sync tree changes to flat arrays
+    this.syncTreestoFlatArrays();
 
     this.app.save();
-
-    // Validate V3 invariant: parent should only be in lists where it has children
-    if (task.parentId) {
-      this.validateV3Invariant(task.parentId);
-    }
-
     this.app.render();
 
     return true;
@@ -784,41 +931,27 @@ class TaskManager {
 
   /**
    * Validate V3 invariant: parent should only exist in lists where it has children
+   * TREE-FIRST: Now operates on tree structure
    * @param {string} parentId - Parent task ID to validate
    */
   validateV3Invariant(parentId) {
-    const parent = this.findTaskById(parentId);
-    if (!parent || parent.parentId) return; // Only validate parent tasks
+    // With tree-first, invariants are maintained by tree structure
+    // This is now a verification/logging function
+    const nodeInToday = this.trees.today.findById(parentId);
+    const nodeInTomorrow = this.trees.tomorrow.findById(parentId);
 
-    const inToday = this.app.data.today.some(t => t.id === parentId);
-    const inLater = this.app.data.tomorrow.some(t => t.id === parentId);
-
-    const childrenInToday = this.getChildren(parentId, 'today');
-    const childrenInLater = this.getChildren(parentId, 'tomorrow');
+    if (!nodeInToday && !nodeInTomorrow) return;
 
     console.log('🐛 [V3 VALIDATE] Parent validation:', {
       parentId,
-      inToday,
-      inLater,
-      childrenInToday: childrenInToday.length,
-      childrenInLater: childrenInLater.length
+      inToday: !!nodeInToday,
+      inTomorrow: !!nodeInTomorrow,
+      childrenInToday: nodeInToday ? nodeInToday.children.length : 0,
+      childrenInTomorrow: nodeInTomorrow ? nodeInTomorrow.children.length : 0
     });
 
-    // Parent should only be in lists where it has children
-    if (inToday && childrenInToday.length === 0) {
-      const idx = this.app.data.today.findIndex(t => t.id === parentId);
-      if (idx !== -1) {
-        this.app.data.today.splice(idx, 1);
-        console.log('🐛 [V3 VALIDATE] Removed orphan parent from Today');
-      }
-    }
-    if (inLater && childrenInLater.length === 0) {
-      const idx = this.app.data.tomorrow.findIndex(t => t.id === parentId);
-      if (idx !== -1) {
-        this.app.data.tomorrow.splice(idx, 1);
-        console.log('🐛 [V3 VALIDATE] Removed orphan parent from Later');
-      }
-    }
+    // In tree-first, we clean up orphan parents during move operations
+    // This function now just logs for verification
   }
 
   // ==================== TASK EDITING ====================
@@ -977,30 +1110,40 @@ class TaskManager {
 
   /**
    * Show inline input to add subtask
+   * TREE-FIRST: Modifies tree node expansion state
    * @param {string} taskId - Parent task ID
    */
   showAddSubtaskDialog(taskId) {
     console.log('🐛 [SUBTASK] showAddSubtaskDialog called', { taskId });
 
-    const taskInfo = this.findTask(taskId);
-    if (!taskInfo) {
-      console.error('🐛 [SUBTASK] Task not found!');
+    // TREE-FIRST: Find node in trees
+    const nodeInToday = this.trees.today.findById(taskId);
+    const nodeInTomorrow = this.trees.tomorrow.findById(taskId);
+
+    if (!nodeInToday && !nodeInTomorrow) {
+      console.error('🐛 [SUBTASK] Task not found in trees!');
       return;
     }
-
-    // Find the actual task in the data array using helper method
-    const actualTask = this.findTaskById(taskId);
-    if (!actualTask) {
-      console.error('🐛 [SUBTASK] Actual task not found in data!');
-      return;
-    }
-
-    // Mark this task as having an active subtask input
-    actualTask._addingSubtask = true;
 
     // Make sure the task is expanded in both lists so we can see the input
-    actualTask.expandedInToday = true;
-    actualTask.expandedInLater = true;
+    if (nodeInToday) {
+      nodeInToday.setExpandedIn('today', true);
+      nodeInToday.setExpandedIn('tomorrow', true);
+    }
+    if (nodeInTomorrow) {
+      nodeInTomorrow.setExpandedIn('today', true);
+      nodeInTomorrow.setExpandedIn('tomorrow', true);
+    }
+
+    // Sync tree state to flat arrays
+    this.syncTreestoFlatArrays();
+
+    // Mark this task as having an active subtask input
+    // (This is UI state, set on flat task for renderer to read)
+    const actualTask = this.findTaskById(taskId);
+    if (actualTask) {
+      actualTask._addingSubtask = true;
+    }
 
     console.log('🐛 [SUBTASK] Marked task for subtask input, re-rendering...');
     this.app.save();
@@ -1020,42 +1163,50 @@ class TaskManager {
 
   /**
    * Add subtask to a task
+   * TREE-FIRST: Adds subtask as child node in tree
    * @param {string} parentTaskId - Parent task ID
    * @param {string} text - Subtask text
    */
   addSubtask(parentTaskId, text) {
     console.log('🐛 [SUBTASK] addSubtask called', { parentTaskId, text });
 
-    const taskInfo = this.findTask(parentTaskId);
-    if (!taskInfo) {
-      console.error('🐛 [SUBTASK] Parent task not found!');
+    // TREE-FIRST: Find parent node in trees
+    const parentInToday = this.trees.today.findById(parentTaskId);
+    const parentInTomorrow = this.trees.tomorrow.findById(parentTaskId);
+
+    if (!parentInToday && !parentInTomorrow) {
+      console.error('🐛 [SUBTASK] Parent task not found in trees!');
       return;
     }
 
     // WAVE 1 FIX: Track operation for save queue integrity
     this.app.incrementOperationCount();
 
-    // Create a new task with parentId set
-    const newTask = {
-      id: this.generateId(),
-      text: text,
+    const id = this.generateId();
+    const nodeOptions = {
+      id,
       completed: false,
       important: false,
-      parentId: parentTaskId,
+      expandedInToday: true,
+      expandedInLater: true,
       createdAt: Date.now()
     };
 
-    console.log('🐛 [SUBTASK] Created new subtask:', newTask);
+    // Add subtask to the tree where parent exists
+    // (prefer Today if parent is in both)
+    const targetTree = parentInToday ? 'today' : 'tomorrow';
+    const parentNode = parentInToday || parentInTomorrow;
 
-    // Add to the same list as the parent using helper method
-    this.addTaskToList(newTask, taskInfo.list);
+    parentNode.addChild(text, nodeOptions);
+    console.log('🐛 [SUBTASK] Added subtask to tree:', { parentTaskId, text, targetTree });
 
-    // Message parent: subtask entering
-    this.incrementSubtaskTotal(parentTaskId, taskInfo.list);
+    // Message parent: subtask entering (for compatibility with count system)
+    this.incrementSubtaskTotal(parentTaskId, targetTree);
+
+    // Sync tree to flat arrays
+    this.syncTreestoFlatArrays();
 
     this.app.save();
-
-    // Re-render to show the new subtask
     this.app.render();
 
     // Re-focus the input after render
@@ -1072,35 +1223,31 @@ class TaskManager {
 
   /**
    * Toggle subtask expansion
+   * TREE-FIRST: Modifies expansion state on tree node
    * @param {string} taskId - Task ID
    * @param {HTMLElement} taskElement - Specific task element that was clicked (optional)
    */
   toggleSubtaskExpansion(taskId, taskElement = null) {
-    const taskInfo = this.findTask(taskId);
-    if (!taskInfo) return;
-
     // WAVE 1 FIX: Track operation for save queue integrity
     this.app.incrementOperationCount();
 
-    // Find the actual task in the data array (not the copy) using helper method
-    const actualTask = this.findTaskById(taskId);
-    if (actualTask) {
-      // Determine which list this element is in
-      const targetElement = taskElement || document.querySelector(`[data-task-id="${taskId}"]`);
-      if (!targetElement) return;
+    // Determine which list this element is in
+    const targetElement = taskElement || document.querySelector(`[data-task-id="${taskId}"]`);
+    if (!targetElement) return;
 
-      const listContainer = targetElement.closest('#today-list, #tomorrow-list');
-      const listName = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
+    const listContainer = targetElement.closest('#today-list, #tomorrow-list');
+    const listName = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
 
-      // Toggle expansion for this specific list
-      const expandedProp = listName === 'today' ? 'expandedInToday' : 'expandedInLater';
+    // TREE-FIRST: Find and modify the node in the appropriate tree
+    const tree = this.trees[listName];
+    const node = tree.findById(taskId);
 
-      // Get current state (default to true if undefined for backwards compatibility)
-      const currentState = actualTask[expandedProp] !== false;
-      const newExpandedState = !currentState;
+    if (node) {
+      // Toggle expansion state for this specific list
+      node.toggleExpansionIn(listName);
 
-      // Update the property
-      actualTask[expandedProp] = newExpandedState;
+      // Sync tree to flat arrays
+      this.syncTreestoFlatArrays();
 
       this.app.save();
       this.app.render();
