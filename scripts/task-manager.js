@@ -1277,19 +1277,59 @@ class TaskManager {
 
     this.app.save();
 
-    // Save scroll position before render (keyboard dismiss causes scroll jump on mobile)
+    // SURGICAL DOM INSERT: Add subtask element without full render
+    // This keeps the input element alive so keyboard doesn't dismiss
+    // Only works if parent already has subtasks (expand icon exists)
+    const input = document.getElementById(`subtask-input-${parentTaskId}`);
+    if (input) {
+      const inputContainer = input.closest('.subtask-input-container');
+      const subtaskList = input.closest('.subtask-list');
+      const parentTaskEl = subtaskList?.closest('.task-item');
+      const expandIcon = parentTaskEl?.querySelector('.expand-icon');
+
+      // Only do surgical insert if expand icon exists (not first subtask)
+      // First subtask needs full render to add expand icon to parent
+      if (subtaskList && inputContainer && expandIcon) {
+        // Determine which list we're in for rendering
+        const listContainer = subtaskList.closest('#today-list, #tomorrow-list');
+        const listName = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
+
+        // Create render-ready child object
+        const childData = {
+          id,
+          text,
+          completed: false,
+          important: false,
+          moveAction: listName === 'today' ? 'push' : 'pull',
+          moveIcon: listName === 'today' ? '→' : '←'
+        };
+
+        // Create and insert the subtask element before the input
+        const subtaskEl = this.app.renderer.createSubtaskElement(childData, listName);
+        subtaskList.insertBefore(subtaskEl, inputContainer);
+
+        console.log('🐛 [SUBTASK] Surgically inserted subtask, keyboard preserved');
+
+        // Clear input for next subtask
+        input.value = '';
+        return;
+      }
+    }
+
+    // Full render needed: first subtask (needs expand icon) or fallback
+    console.log('🐛 [SUBTASK] Full render needed (first subtask or fallback)');
+
+    // Save scroll position before render
     const scrollY = window.scrollY;
 
     this.app.render();
 
     // Re-focus the input after render and restore scroll position
     setTimeout(() => {
-      const input = document.getElementById(`subtask-input-${parentTaskId}`);
-      if (input) {
-        // Restore scroll position first (before keyboard re-shows)
+      const newInput = document.getElementById(`subtask-input-${parentTaskId}`);
+      if (newInput) {
         window.scrollTo(0, scrollY);
-        input.focus({ preventScroll: true });
-        console.log('🐛 [SUBTASK] Re-focused input after adding subtask');
+        newInput.focus({ preventScroll: true });
       }
     }, 50);
   }
