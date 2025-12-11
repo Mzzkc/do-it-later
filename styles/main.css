@@ -153,12 +153,15 @@ header {
   gap: 0.25rem;
 }
 
-.theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
+/* Hover states - only for devices with true hover capability (mouse/trackpad) */
+@media (hover: hover) {
+  .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 
-.light-theme .theme-toggle:hover {
-  background: rgba(0, 0, 0, 0.05);
+  .light-theme .theme-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
 }
 
 .toggle-track {
@@ -247,11 +250,13 @@ header {
   opacity: 0.6;
 }
 
-.delete-mode-toggle:hover {
-  background: var(--surface);
-  color: var(--text);
-  opacity: 1;
-  border-color: #dc2626;
+@media (hover: hover) {
+  .delete-mode-toggle:hover {
+    background: var(--surface);
+    color: var(--text);
+    opacity: 1;
+    border-color: #dc2626;
+  }
 }
 
 .delete-mode-toggle:active {
@@ -266,8 +271,10 @@ header {
   opacity: 1;
 }
 
-.delete-mode-toggle.active:hover {
-  background: #dc2626;
+@media (hover: hover) {
+  .delete-mode-toggle.active:hover {
+    background: #dc2626;
+  }
 }
 
 .delete-mode-toggle.active:active {
@@ -655,8 +662,10 @@ ul {
   /* Invisible but clickable */
 }
 
-.expand-icon:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .expand-icon:hover {
+    color: var(--text);
+  }
 }
 
 /* Subtask styles */
@@ -737,8 +746,10 @@ ul {
 }
 
 /* Task hover - flat, no animations */
-.task-item:hover {
-  background: var(--surface);
+@media (hover: hover) {
+  .task-item:hover {
+    background: var(--surface);
+  }
 }
 
 /* Active/click state - flat */
@@ -748,9 +759,11 @@ ul {
 }
 
 /* Delete mode styles */
-.list-section.delete-mode .task-item:hover {
-  background: rgba(220, 38, 38, 0.15);
-  color: #dc2626;
+@media (hover: hover) {
+  .list-section.delete-mode .task-item:hover {
+    background: rgba(220, 38, 38, 0.15);
+    color: #dc2626;
+  }
 }
 
 .list-section.delete-mode .task-item:active {
@@ -827,8 +840,10 @@ ul {
   transition: all 0.2s ease;
 }
 
-.add-button:hover {
-  filter: brightness(1.1);
+@media (hover: hover) {
+  .add-button:hover {
+    filter: brightness(1.1);
+  }
 }
 
 .add-button:active {
@@ -871,22 +886,24 @@ footer {
   transition: opacity 0.2s ease;
 }
 
-.sync-btn:hover svg {
-  opacity: 1;
-}
+@media (hover: hover) {
+  .sync-btn:hover svg {
+    opacity: 1;
+  }
 
-.sync-btn:hover {
-  background: var(--background);
-  border-color: var(--text-muted);
+  .sync-btn:hover {
+    background: var(--background);
+    border-color: var(--text-muted);
+  }
+
+  /* Light theme subtle variations */
+  .light-theme .sync-btn:hover {
+    background: #f8f8f8;
+  }
 }
 
 .sync-btn:active {
   background: var(--surface);
-}
-
-/* Light theme subtle variations */
-.light-theme .sync-btn:hover {
-  background: #f8f8f8;
 }
 
 .donation-section {
@@ -915,8 +932,10 @@ footer {
   transition: color var(--transition-speed) var(--transition-ease) var(--text-delay);
 }
 
-.donation-link:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .donation-link:hover {
+    text-decoration: underline;
+  }
 }
 
 .storage-notice {
@@ -949,15 +968,17 @@ footer {
   border-color: var(--text-muted);
 }
 
-.nav-btn:hover {
-  background: var(--surface);
+@media (hover: hover) {
+  .nav-btn:hover {
+    background: var(--surface);
+  }
+
+  .nav-btn.active:hover {
+    background: var(--background);
+  }
 }
 
 .nav-btn:active {
-  background: var(--background);
-}
-
-.nav-btn.active:hover {
   background: var(--background);
 }
 
@@ -1102,8 +1123,10 @@ footer {
   transition: all 0.2s ease;
 }
 
-.qr-tab:hover {
-  background: var(--surface);
+@media (hover: hover) {
+  .qr-tab:hover {
+    background: var(--surface);
+  }
 }
 
 .qr-tab.active {
@@ -1153,8 +1176,18 @@ footer {
   color: var(--text);
 }
 
-.qr-btn:hover {
-  background: var(--background);
+@media (hover: hover) {
+  .qr-btn:hover {
+    background: var(--background);
+  }
+
+  .qr-btn-primary:hover {
+    background: var(--primary-color);
+  }
+
+  .qr-btn-success:hover {
+    background: var(--success-color);
+  }
 }
 
 .qr-btn:active {
@@ -1172,10 +1205,6 @@ footer {
   border-color: var(--primary-color);
 }
 
-.qr-btn-primary:hover {
-  background: var(--primary-color);
-}
-
 .qr-btn-secondary {
   background: var(--surface);
   color: var(--text);
@@ -1186,10 +1215,6 @@ footer {
   background: var(--success-color);
   color: white;
   border-color: var(--success-color);
-}
-
-.qr-btn-success:hover {
-  background: var(--success-color);
 }
 
 .qr-btn-hidden {
@@ -1209,9 +1234,11 @@ footer {
   transition: all 0.2s ease;
 }
 
-.qr-close:hover {
-  background: var(--background);
-  color: var(--text);
+@media (hover: hover) {
+  .qr-close:hover {
+    background: var(--background);
+    color: var(--text);
+  }
 }
 
 /* QR Modal Panel & Content Styles */
