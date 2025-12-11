@@ -122,4 +122,62 @@ test.describe('Mobile Gestures', () => {
     });
     expect(taskItemUserSelect).toBe('none');
   });
+
+  test('should not visually highlight Edit Task on context menu open', async ({ page }) => {
+    // Regression test: Edit Task should NOT appear highlighted after long press
+    // Bug: Focus was being set programmatically, triggering :focus CSS styles
+    // Fix: Use :focus-visible instead of :focus for visual styling
+    await app.addTodayTask('Focus test task');
+
+    await app.longPressTask('Focus test task');
+
+    // Wait for context menu and the focus timeout (100ms in code + buffer)
+    await page.waitForTimeout(200);
+
+    // Get the Edit Task menu item
+    const editItem = page.locator('.context-menu .context-menu-item[data-action="edit"]');
+    await expect(editItem).toBeVisible();
+
+    // Verify the CSS uses :focus-visible (not :focus) for visual styling
+    // This ensures that programmatic focus doesn't trigger visual highlighting
+    // on real touch devices (even though Playwright's mouse simulation may differ)
+    const cssCheck = await page.evaluate(() => {
+      // Check all stylesheets for the context-menu-item focus rules
+      const stylesheets = Array.from(document.styleSheets);
+      let hasFocusVisibleRule = false;
+      let hasPlainFocusRule = false;
+
+      for (const sheet of stylesheets) {
+        try {
+          const rules = sheet.cssRules || sheet.rules;
+          for (const rule of rules) {
+            if (rule.selectorText && rule.selectorText.includes('.context-menu-item')) {
+              // Check if selector uses :focus-visible (correct)
+              if (rule.selectorText.includes(':focus-visible')) {
+                hasFocusVisibleRule = true;
+              }
+              // Check if selector uses plain :focus without :focus-visible (bug)
+              // Allow :focus in combination with :focus-visible or :not(:focus-visible)
+              if (rule.selectorText.match(/:focus(?!-visible)/) &&
+                  !rule.selectorText.includes(':focus-visible')) {
+                hasPlainFocusRule = true;
+              }
+            }
+          }
+        } catch (e) {
+          // Cross-origin stylesheets may throw
+        }
+      }
+
+      return {
+        hasFocusVisibleRule,
+        hasPlainFocusRule
+      };
+    });
+
+    // Should have :focus-visible rules (for keyboard accessibility)
+    expect(cssCheck.hasFocusVisibleRule).toBe(true);
+    // Should NOT have plain :focus rules that would highlight on programmatic focus
+    expect(cssCheck.hasPlainFocusRule).toBe(false);
+  });
 });

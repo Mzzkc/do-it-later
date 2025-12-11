@@ -1504,16 +1504,14 @@ footer {
   white-space: nowrap;
 }
 
-/* Hover and focus states */
-.context-menu-item:hover,
-.context-menu-item:focus {
+/* Hover state - for mouse users */
+.context-menu-item:hover {
   background: var(--background);
   color: var(--text);
   border: 1px solid var(--notebook-yellow);
 }
 
-.context-menu-item:hover svg,
-.context-menu-item:focus svg {
+.context-menu-item:hover svg {
   color: var(--notebook-yellow);
 }
 
@@ -1522,9 +1520,16 @@ footer {
   background: var(--background);
 }
 
-/* Focus ring for accessibility */
-.context-menu-item:focus {
+/* Focus-visible state - only shows for keyboard navigation, not programmatic focus */
+.context-menu-item:focus-visible {
+  background: var(--background);
+  color: var(--text);
+  border: 1px solid var(--notebook-yellow);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+}
+
+.context-menu-item:focus-visible svg {
+  color: var(--notebook-yellow);
 }
 
 /* Special styling for important toggle */
@@ -1533,7 +1538,7 @@ footer {
 }
 
 .context-menu-item[data-action="important"]:hover svg,
-.context-menu-item[data-action="important"]:focus svg {
+.context-menu-item[data-action="important"]:focus-visible svg {
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -1551,7 +1556,7 @@ footer {
   }
 
   .context-menu-item:hover,
-  .context-menu-item:focus {
+  .context-menu-item:focus-visible {
     border-color: var(--text);
   }
 }
