@@ -100,4 +100,26 @@ test.describe('Mobile Gestures', () => {
     });
     expect(bodyOverflowAfter).not.toBe('hidden');
   });
+
+  test('should prevent text selection on task items (long press bug fix)', async ({ page }) => {
+    // Regression test: Long pressing a task should NOT allow text selection
+    // Bug: Text in greyed-out area behind context menu was becoming selectable
+    await app.addTodayTask('Text selection test');
+
+    // Check that task text has user-select: none
+    const taskTextUserSelect = await page.evaluate(() => {
+      const taskText = document.querySelector('.task-text');
+      if (!taskText) return 'element-not-found';
+      return window.getComputedStyle(taskText).userSelect;
+    });
+    expect(taskTextUserSelect).toBe('none');
+
+    // Also verify task-item itself has user-select: none
+    const taskItemUserSelect = await page.evaluate(() => {
+      const taskItem = document.querySelector('.task-item');
+      if (!taskItem) return 'element-not-found';
+      return window.getComputedStyle(taskItem).userSelect;
+    });
+    expect(taskItemUserSelect).toBe('none');
+  });
 });

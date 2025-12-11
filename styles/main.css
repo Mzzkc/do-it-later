@@ -350,6 +350,9 @@ ul {
   cursor: pointer;
   /* transition removed - causes test instability */
   border-radius: 4px;
+  /* Prevent text selection during long press (mobile context menu) */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Task content wrapper for flexbox layout */
@@ -564,6 +567,9 @@ ul {
   min-width: 0 !important; /* Critical for flex item width constraint */
   pointer-events: none; /* Text is not interactive */
   transform: none !important; /* Text should never have its own transforms */
+  /* Prevent text selection during long press (mobile context menu) */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Deadline indicator styles */
