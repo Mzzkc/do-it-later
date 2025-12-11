@@ -125,8 +125,10 @@ test.describe('Mobile Gestures', () => {
 
   test('should not visually highlight Edit Task on context menu open', async ({ page }) => {
     // Regression test: Edit Task should NOT appear highlighted after long press
-    // Bug: Focus was being set programmatically, triggering :focus CSS styles
-    // Fix: Use :focus-visible instead of :focus for visual styling
+    // Bug 1: Focus was being set programmatically, triggering :focus CSS styles
+    // Fix 1: Use :focus-visible instead of :focus for visual styling
+    // Bug 2: Hover states were "sticking" on touch devices after touchend
+    // Fix 2: Wrap :hover rules in @media (hover: hover) so they only apply on mouse devices
     await app.addTodayTask('Focus test task');
 
     await app.longPressTask('Focus test task');
@@ -138,29 +140,44 @@ test.describe('Mobile Gestures', () => {
     const editItem = page.locator('.context-menu .context-menu-item[data-action="edit"]');
     await expect(editItem).toBeVisible();
 
-    // Verify the CSS uses :focus-visible (not :focus) for visual styling
-    // This ensures that programmatic focus doesn't trigger visual highlighting
-    // on real touch devices (even though Playwright's mouse simulation may differ)
+    // Verify the CSS uses correct patterns for touch-friendly styling
     const cssCheck = await page.evaluate(() => {
-      // Check all stylesheets for the context-menu-item focus rules
       const stylesheets = Array.from(document.styleSheets);
       let hasFocusVisibleRule = false;
       let hasPlainFocusRule = false;
+      let hasHoverInMediaQuery = false;
+      let hasUnwrappedHoverRule = false;
 
       for (const sheet of stylesheets) {
         try {
           const rules = sheet.cssRules || sheet.rules;
           for (const rule of rules) {
+            // Check regular style rules
             if (rule.selectorText && rule.selectorText.includes('.context-menu-item')) {
-              // Check if selector uses :focus-visible (correct)
               if (rule.selectorText.includes(':focus-visible')) {
                 hasFocusVisibleRule = true;
               }
-              // Check if selector uses plain :focus without :focus-visible (bug)
-              // Allow :focus in combination with :focus-visible or :not(:focus-visible)
               if (rule.selectorText.match(/:focus(?!-visible)/) &&
                   !rule.selectorText.includes(':focus-visible')) {
                 hasPlainFocusRule = true;
+              }
+              // Check for unwrapped :hover rules (bad - causes sticky hover)
+              if (rule.selectorText.includes(':hover')) {
+                hasUnwrappedHoverRule = true;
+              }
+            }
+            // Check media query rules for @media (hover: hover)
+            if (rule.type === CSSRule.MEDIA_RULE && rule.conditionText) {
+              if (rule.conditionText.includes('hover: hover') || rule.conditionText.includes('hover:hover')) {
+                for (const innerRule of rule.cssRules) {
+                  if (innerRule.selectorText &&
+                      innerRule.selectorText.includes('.context-menu-item') &&
+                      innerRule.selectorText.includes(':hover')) {
+                    hasHoverInMediaQuery = true;
+                    // This hover is properly wrapped, so it's not "unwrapped"
+                    hasUnwrappedHoverRule = false;
+                  }
+                }
               }
             }
           }
@@ -171,7 +188,9 @@ test.describe('Mobile Gestures', () => {
 
       return {
         hasFocusVisibleRule,
-        hasPlainFocusRule
+        hasPlainFocusRule,
+        hasHoverInMediaQuery,
+        hasUnwrappedHoverRule
       };
     });
 
@@ -179,5 +198,9 @@ test.describe('Mobile Gestures', () => {
     expect(cssCheck.hasFocusVisibleRule).toBe(true);
     // Should NOT have plain :focus rules that would highlight on programmatic focus
     expect(cssCheck.hasPlainFocusRule).toBe(false);
+    // Should have :hover rules wrapped in @media (hover: hover)
+    expect(cssCheck.hasHoverInMediaQuery).toBe(true);
+    // Should NOT have unwrapped :hover rules (causes sticky hover on touch)
+    expect(cssCheck.hasUnwrappedHoverRule).toBe(false);
   });
 });
