@@ -527,13 +527,11 @@ class ContextMenu {
       this.hide();
     });
 
-    // Focus first item
-    setTimeout(() => {
-      const firstItem = this.menuElement.querySelector('.context-menu-item');
-      if (firstItem) {
-        firstItem.focus();
-      }
-    }, 100);
+    // Note: We intentionally do NOT auto-focus the first menu item.
+    // Auto-focus caused visual highlighting issues on touch devices:
+    // 1. :focus-visible was triggered on fresh page loads (no prior input context)
+    // 2. This made "Edit Task" appear selected when the menu opened
+    // Keyboard users can still Tab through menu items if needed.
   }
 
   /**
