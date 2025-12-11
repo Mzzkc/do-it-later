@@ -151,4 +151,41 @@ test.describe('Miscellaneous Features', () => {
     count = await app.getCompletedCount();
     expect(count).toBe(2); // Counter decrements when uncompleting
   });
+
+  test('long press in delete mode should NOT open edit mode', async ({ page }) => {
+    // Regression test: Bug caused long press to enter edit mode when delete mode was active
+    // Expected: In delete mode, long press should do nothing (not open context menu, not edit)
+
+    // Add a task
+    await app.addTodayTask('Test task');
+
+    // Enable delete mode
+    await app.enableDeleteMode('today');
+
+    // Verify delete mode is active
+    const isActive = await app.isDeleteModeActive('today');
+    expect(isActive).toBe(true);
+
+    // Perform long press on the task
+    await app.longPressTask('Test task');
+
+    // Wait a moment for any async operations
+    await page.waitForTimeout(200);
+
+    // Should NOT be in edit mode (no .edit-input visible)
+    const editInput = page.locator('.edit-input');
+    await expect(editInput).toHaveCount(0);
+
+    // Context menu should also NOT be visible (delete mode skips context menu)
+    const contextMenu = page.locator('.context-menu');
+    await expect(contextMenu).toHaveCount(0);
+
+    // Task should still exist (not deleted by long press)
+    const tasks = await app.getTodayTasks();
+    expect(tasks.length).toBe(1);
+
+    // Verify it's the correct task
+    const taskText = await tasks[0].locator('.task-text').textContent();
+    expect(taskText).toBe('Test task');
+  });
 });

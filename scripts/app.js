@@ -686,8 +686,9 @@ class DoItTomorrowApp {
     const listNameFromDOM = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
 
     // Check if we're in delete mode (global, not per-list)
+    // In delete mode, skip context menu but still set wasLongPress to prevent click deletion
     if (this.deleteMode) {
-      setTimeout(() => this.taskManager.enterEditMode(taskId), 10);
+      this.wasLongPress = true;
       return;
     }
 
