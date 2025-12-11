@@ -51,11 +51,10 @@
 /* CSS-only mobile button fix using focus-visible */
 @media (hover: none) {
   /* Completely disable focus styles on touch devices except for nav buttons */
-  button:focus:not(:focus-visible):not(.nav-btn),
+  button:focus:not(:focus-visible):not(.nav-btn):not(.theme-toggle),
   .sync-btn:focus:not(:focus-visible),
   .add-button:focus:not(:focus-visible),
-  .delete-mode-toggle:focus:not(:focus-visible),
-  .theme-toggle:focus:not(:focus-visible) {
+  .delete-mode-toggle:focus:not(:focus-visible) {
     outline: none;
     background: var(--surface);
     color: var(--text);
@@ -63,6 +62,13 @@
     box-shadow: none;
     transform: none;
     filter: none;
+  }
+
+  /* Theme toggle needs transparent background (not var(--surface)) */
+  .theme-toggle:focus:not(:focus-visible) {
+    outline: none;
+    background: none;
+    box-shadow: none;
   }
 
   /* Only allow focus-visible (keyboard navigation) to show focus styles */
@@ -262,6 +268,11 @@ header {
 .delete-mode-toggle:active {
   transform: none;
   transition: transform 0.1s ease;
+  /* Provide visual feedback on touch devices */
+  background: var(--surface);
+  color: var(--text);
+  opacity: 1;
+  border-color: #dc2626;
 }
 
 .delete-mode-toggle.active {
