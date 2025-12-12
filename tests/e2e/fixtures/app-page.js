@@ -276,6 +276,49 @@ export class AppPage {
     return expandIcon === '▼';
   }
 
+  /**
+   * Get task in a specific list by text
+   * @param {string} text - Task text to find
+   * @param {string} listName - 'today' or 'later'
+   */
+  async getTaskInList(text, listName) {
+    const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
+    return await this.page.locator(`#${listId} .task-item:not(.subtask-item):has(.task-text:text-is("${text}"))`).first();
+  }
+
+  /**
+   * Toggle subtask expansion for a parent in a SPECIFIC list
+   * This is critical for testing cross-list parents where the same parent exists in both lists
+   * @param {string} parentText - Parent task text
+   * @param {string} listName - 'today' or 'later' - which list's instance to toggle
+   */
+  async toggleSubtaskExpansionInList(parentText, listName) {
+    const parent = await this.getTaskInList(parentText, listName);
+    await parent.locator('.expand-icon').click();
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Check if subtasks are expanded for a parent in a SPECIFIC list
+   * @param {string} parentText - Parent task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async isSubtaskExpandedInList(parentText, listName) {
+    const parent = await this.getTaskInList(parentText, listName);
+    const expandIcon = await parent.locator('.expand-icon').innerText();
+    return expandIcon === '▼';
+  }
+
+  /**
+   * Get subtasks of a parent in a SPECIFIC list
+   * @param {string} parentText - Parent task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async getSubtasksInList(parentText, listName) {
+    const parent = await this.getTaskInList(parentText, listName);
+    return await parent.locator('.subtask-list .task-item').all();
+  }
+
   // State verification methods
   async isTaskCompleted(text) {
     const task = await this.getTaskOrSubtaskByText(text);

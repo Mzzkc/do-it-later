@@ -463,4 +463,78 @@ test.describe('Subtask Feature', () => {
     const parentStillInToday = await app.isTaskInList('Delete Test Parent', 'today');
     expect(parentStillInToday).toBe(true);
   });
+
+  test('15. Cross-List Parent - Expand/Collapse Works in Later List', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // clicking expand/collapse on the LATER list instance should work properly.
+    //
+    // BUG: The Later list instance cannot collapse/expand UNLESS a subtask
+    // is first moved from Today to Later (which "activates" the node in the
+    // Later tree). After moving a subtask, exactly ONE expand/collapse works,
+    // then it stops working again.
+    //
+    // Root cause: toggleSubtaskExpansion looks up the node in the tree for the
+    // list where the click occurred. If the parent was originally created in
+    // Today and only exists in Later due to V3 invariant (parent copied when
+    // subtask moves), the tree node may not exist or may be stale.
+
+    // Setup: Create parent with subtasks in Today
+    await app.addTodayTask('Cross List Expand Parent');
+    await app.addSubtask('Cross List Expand Parent', 'Subtask A');
+    await app.addSubtask('Cross List Expand Parent', 'Subtask B');
+
+    // Verify initial state: parent expanded in Today
+    const expandedInTodayInitial = await app.isSubtaskExpandedInList('Cross List Expand Parent', 'today');
+    expect(expandedInTodayInitial).toBe(true);
+
+    // Move one subtask to Later (this triggers V3 invariant - parent gets added to Later)
+    await app.clickMoveButton('Subtask B');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent now exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List Expand Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Expand Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Verify parent in Later is expanded (default state)
+    const expandedInLaterInitial = await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later');
+    expect(expandedInLaterInitial).toBe(true);
+
+    // TEST THE BUG: Collapse the parent in the LATER list
+    await app.toggleSubtaskExpansionInList('Cross List Expand Parent', 'later');
+
+    // Verify it collapsed
+    const expandedInLaterAfterCollapse = await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later');
+    expect(expandedInLaterAfterCollapse).toBe(false);
+
+    // TEST THE BUG: Try to expand it again (this is where the bug manifests)
+    await app.toggleSubtaskExpansionInList('Cross List Expand Parent', 'later');
+
+    // This SHOULD expand, but the bug causes it to remain collapsed
+    const expandedInLaterAfterExpand = await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later');
+    expect(expandedInLaterAfterExpand).toBe(true);
+
+    // TEST: Multiple toggles should all work
+    await app.toggleSubtaskExpansionInList('Cross List Expand Parent', 'later');
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later')).toBe(false);
+
+    await app.toggleSubtaskExpansionInList('Cross List Expand Parent', 'later');
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later')).toBe(true);
+
+    // VERIFY: Today list expansion should be INDEPENDENT
+    // Toggling in Later should NOT affect Today
+    const expandedInTodayAfter = await app.isSubtaskExpandedInList('Cross List Expand Parent', 'today');
+    expect(expandedInTodayAfter).toBe(true); // Should still be expanded
+
+    // Toggle in Today and verify independence
+    await app.toggleSubtaskExpansionInList('Cross List Expand Parent', 'today');
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'today')).toBe(false);
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later')).toBe(true); // Later unaffected
+
+    // Verify state persists after reload
+    await app.reload();
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'today')).toBe(false);
+    expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later')).toBe(true);
+  });
 });

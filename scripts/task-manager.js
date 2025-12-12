@@ -1390,14 +1390,16 @@ class TaskManager {
     // Get child IDs from tree
     const childIds = new Set(node.children.map(c => c.id));
 
-    // Return flat task objects for compatibility with rest of system
+    // CRITICAL: When listName is specified, get children from THAT LIST ONLY
+    // This ensures we get the correct per-list expansion state for cross-list tasks
+    if (listName) {
+      const listArray = this.app.data[listName];
+      return listArray.filter(t => childIds.has(t.id));
+    }
+
+    // No list specified - return from both lists (for non-render operations)
     const allTasks = [...this.app.data.today, ...this.app.data.tomorrow];
     let children = allTasks.filter(t => childIds.has(t.id));
-
-    // If listName is provided, further filter by which list the child is in
-    if (listName) {
-      children = children.filter(child => this.app.data[listName].find(t => t.id === child.id));
-    }
 
     return children;
   }
@@ -1550,9 +1552,13 @@ class TaskManager {
     const tree = this.trees[listName];
     const topLevelNodes = tree.root.children;
 
-    // Get flat task objects for top-level nodes (for compatibility)
+    // Get flat task objects from THIS LIST'S array specifically
+    // CRITICAL: Do NOT use findTaskById here! It searches today first,
+    // so cross-list parents would always return the today version,
+    // ignoring per-list expansion state stored in the tomorrow version.
+    const listArray = this.app.data[listName];
     const topLevelTasks = topLevelNodes
-      .map(node => this.findTaskById(node.id))
+      .map(node => listArray.find(t => t.id === node.id))
       .filter(task => task !== undefined);
 
     // Sort and return with children arrays (filtered to this list only)

@@ -1,6 +1,6 @@
 {
   "name": "do-it-later",
-  "version": "1.28.13",
+  "version": "1.28.14",
   "description": "Simple two-list todo app (Today and Later) with subtasks, deadlines, and device sync",
   "type": "module",
   "scripts": {
