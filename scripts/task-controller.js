@@ -263,7 +263,8 @@ class TaskController {
       this.app.showNotification('Task deleted', 'success');
     } else {
       // Normal mode - toggle completion
-      this.app.taskManager.completeTask(taskId, event);
+      // CRITICAL: Pass listName to ensure cross-list parents complete in the correct list only
+      this.app.taskManager.completeTask(taskId, event, listName);
     }
   }
 

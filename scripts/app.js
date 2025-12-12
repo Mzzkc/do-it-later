@@ -646,7 +646,8 @@ class DoItTomorrowApp {
     }
 
     // Normal click - complete task
-    this.taskManager.completeTask(id, event);
+    // CRITICAL: Pass effectiveListName to ensure cross-list parents complete in correct list only
+    this.taskManager.completeTask(id, event, effectiveListName);
   }
 
   // Phase 2: Ultra-comprehensive Long Press & Context Menu System

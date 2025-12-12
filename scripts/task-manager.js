@@ -691,9 +691,10 @@ class TaskManager {
    * Toggle task completion status
    * @param {string} id - Task ID
    * @param {Event} event - Optional event object for ripple effect
+   * @param {string} listName - Optional list name ('today' or 'tomorrow') for cross-list parents
    * @returns {boolean} True if task was toggled, false otherwise
    */
-  completeTask(id, event) {
+  completeTask(id, event, listName = null) {
     // Check if task is locked (in edit mode) - prevent completion during edit
     if (this.lockedTasks.has(id)) {
       console.log('🐛 [COMPLETE] Task is locked (edit mode), ignoring completion request');
@@ -705,8 +706,22 @@ class TaskManager {
     //   this.addRippleEffect(event.target);
     // }
 
-    // Find the actual task object (not a copy) in the data arrays
-    const task = this.findTaskById(id);
+    // CRITICAL: When listName is provided, find task in THAT LIST ONLY
+    // This fixes cross-list parents where findTaskById would return the wrong instance
+    let task;
+    let effectiveListName = listName;
+
+    if (listName) {
+      // Find task in the specific list
+      task = this.app.data[listName].find(t => t.id === id);
+    } else {
+      // No list specified - use findTaskById (legacy behavior)
+      task = this.findTaskById(id);
+      // Determine which list it's in for cascading
+      if (task) {
+        effectiveListName = this.getTaskList(id);
+      }
+    }
 
     if (task) {
       const wasCompleted = task.completed;
@@ -717,19 +732,15 @@ class TaskManager {
         this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
         this.app.updateCompletedCounter();
 
-        // Parent manually completed → cascade to children by calling completeTask()
-        // Children will message parent back with proper counts
-        if (!task.parentId) {
-          const taskInfo = this.findTask(id);
-          if (taskInfo) {
-            const children = this.getChildren(id, taskInfo.list);
-            children.forEach(child => {
-              if (!child.completed) {
-                // Call completeTask() so child messages parent properly
-                this.completeTask(child.id);
-              }
-            });
-          }
+        // Parent manually completed → cascade to children IN THE SAME LIST
+        if (!task.parentId && effectiveListName) {
+          const children = this.getChildren(id, effectiveListName);
+          children.forEach(child => {
+            if (!child.completed) {
+              // CRITICAL: Pass listName to ensure cascade stays in same list
+              this.completeTask(child.id, null, effectiveListName);
+            }
+          });
         }
       }
       // Decrement counter when unmarking (undo)
@@ -738,49 +749,41 @@ class TaskManager {
         this.app.updateCompletedCounter();
       }
 
-      // Parent manually uncompleted → cascade to children
-      if (wasCompleted && !task.completed && !task.parentId) {
-        const taskInfo = this.findTask(id);
-        if (taskInfo) {
-          const children = this.getChildren(id, taskInfo.list);
-          children.forEach(child => {
-            if (child.completed) {
-              // Call completeTask() to toggle child and message parent
-              this.completeTask(child.id);
-            }
-          });
-        }
+      // Parent manually uncompleted → cascade to children IN THE SAME LIST
+      if (wasCompleted && !task.completed && !task.parentId && effectiveListName) {
+        const children = this.getChildren(id, effectiveListName);
+        children.forEach(child => {
+          if (child.completed) {
+            // CRITICAL: Pass listName to ensure cascade stays in same list
+            this.completeTask(child.id, null, effectiveListName);
+          }
+        });
       }
 
       // Subtask messages parent about completion state changes
-      if (task.parentId) {
-        const taskInfo = this.findTask(id);
-        const listName = taskInfo ? taskInfo.list : null;
+      if (task.parentId && effectiveListName) {
+        // Message parent: completed/uncompleted
+        if (!wasCompleted && task.completed) {
+          this.incrementSubtaskCompleted(task.parentId, effectiveListName);
+        } else if (wasCompleted && !task.completed) {
+          this.decrementSubtaskCompleted(task.parentId, effectiveListName);
+        }
 
-        if (listName) {
-          // Message parent: completed/uncompleted
-          if (!wasCompleted && task.completed) {
-            this.incrementSubtaskCompleted(task.parentId, listName);
-          } else if (wasCompleted && !task.completed) {
-            this.decrementSubtaskCompleted(task.parentId, listName);
-          }
+        // Check if parent should auto-complete (find parent in SAME list)
+        const parent = this.app.data[effectiveListName].find(t => t.id === task.parentId);
+        if (parent && parent.subtaskCounts) {
+          const listKey = effectiveListName === 'tomorrow' ? 'later' : 'today';
+          const counts = parent.subtaskCounts[listKey];
 
-          // Check if parent should auto-complete
-          const parent = this.findTaskById(task.parentId);
-          if (parent && parent.subtaskCounts) {
-            const listKey = listName === 'tomorrow' ? 'later' : 'today';
-            const counts = parent.subtaskCounts[listKey];
-
-            if (counts.completed === counts.total && counts.total > 0 && !parent.completed) {
-              parent.completed = true;
-              this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
-              this.app.updateCompletedCounter();
-              this.app.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
-            } else if (counts.completed < counts.total && parent.completed) {
-              parent.completed = false;
-              this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
-              this.app.updateCompletedCounter();
-            }
+          if (counts.completed === counts.total && counts.total > 0 && !parent.completed) {
+            parent.completed = true;
+            this.app.data.totalCompleted = (this.app.data.totalCompleted || 0) + 1;
+            this.app.updateCompletedCounter();
+            this.app.showNotification('Task completed! All subtasks done.', Config.NOTIFICATION_TYPES.SUCCESS);
+          } else if (counts.completed < counts.total && parent.completed) {
+            parent.completed = false;
+            this.app.data.totalCompleted = Math.max(0, (this.app.data.totalCompleted || 0) - 1);
+            this.app.updateCompletedCounter();
           }
         }
       }

@@ -149,6 +149,45 @@ export class AppPage {
     await this.page.waitForTimeout(100);
   }
 
+  /**
+   * Toggle task completion in a SPECIFIC list
+   * This is critical for cross-list parents where clicking in Later should
+   * only affect the Later instance and its children, not the Today instance
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async toggleTaskCompletionInList(text, listName) {
+    const listKey = listName === 'later' ? 'tomorrow' : 'today';
+
+    const result = await this.page.evaluate(({ text, listKey }) => {
+      // Find the task in the SPECIFIC list only
+      const task = app.data[listKey].find(t => t.text === text);
+      if (task) {
+        // Call completeTask with listName context
+        app.taskManager.completeTask(task.id, null, listKey);
+        return { success: true, taskId: task.id };
+      }
+      return { success: false, taskId: null };
+    }, { text, listKey });
+
+    if (!result.success) {
+      throw new Error(`Task "${text}" not found in ${listName} list for completion`);
+    }
+
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Check if task is completed in a SPECIFIC list
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async isTaskCompletedInList(text, listName) {
+    const parent = await this.getTaskInList(text, listName);
+    const classes = await parent.getAttribute('class');
+    return classes.includes('completed');
+  }
+
   async clickTaskText(text) {
     const task = await this.getTaskOrSubtaskByText(text);
     await task.locator('.task-text').first().click({ force: true });

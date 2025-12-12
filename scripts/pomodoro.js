@@ -162,8 +162,11 @@ class PomodoroTimer {
    */
   completeTask() {
     const taskId = this.state.taskId;
+    // Get list name for cross-list parent support
+    const taskInfo = this.app.taskManager.findTask(taskId);
+    const listName = taskInfo ? taskInfo.list : null;
     this.stop();
-    this.app.taskManager.completeTask(taskId);
+    this.app.taskManager.completeTask(taskId, null, listName);
   }
 
   /**

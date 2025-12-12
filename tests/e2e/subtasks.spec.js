@@ -537,4 +537,64 @@ test.describe('Subtask Feature', () => {
     expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'today')).toBe(false);
     expect(await app.isSubtaskExpandedInList('Cross List Expand Parent', 'later')).toBe(true);
   });
+
+  test('16. Cross-List Parent - Completion in Later Should Not Affect Today', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // completing the parent in the LATER list should ONLY complete:
+    // - The Later list instance of the parent
+    // - The children in the Later list
+    // It should NOT affect:
+    // - The Today list instance of the parent
+    // - The children in the Today list
+    //
+    // BUG: completeTask uses findTaskById which returns the TODAY version,
+    // so clicking complete on Later actually completes Today's tasks!
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Complete Parent');
+    await app.addSubtask('Cross List Complete Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Complete Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List Complete Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Complete Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Verify initial state: nothing is completed
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'today')).toBe(false);
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'later')).toBe(false);
+
+    // TEST THE BUG: Complete the parent in the LATER list
+    await app.toggleTaskCompletionInList('Cross List Complete Parent', 'later');
+
+    // Later parent and its subtask should be completed
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'later')).toBe(true);
+
+    // Check Later subtask is completed
+    const laterSubtaskCompleted = await app.page.evaluate(() => {
+      const subtask = app.data.tomorrow.find(t => t.text === 'Subtask Move Later');
+      return subtask ? subtask.completed : null;
+    });
+    expect(laterSubtaskCompleted).toBe(true);
+
+    // CRITICAL: Today parent should NOT be completed (this is the bug!)
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'today')).toBe(false);
+
+    // CRITICAL: Today subtask should NOT be completed (this is the bug!)
+    const todaySubtaskCompleted = await app.page.evaluate(() => {
+      const subtask = app.data.today.find(t => t.text === 'Subtask Stay Today');
+      return subtask ? subtask.completed : null;
+    });
+    expect(todaySubtaskCompleted).toBe(false);
+
+    // Verify state persists after reload
+    await app.reload();
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'later')).toBe(true);
+    expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'today')).toBe(false);
+  });
 });
