@@ -662,13 +662,14 @@ class DoItTomorrowApp {
       devMode: this.devMode
     });
 
+    // v1.28.16: Pass listName to all callbacks for cross-list parent operations
     this.contextMenu = new ContextMenu({
-      onEdit: (taskId) => this.handleMenuEdit(taskId),
-      onToggleImportant: (taskId) => this.handleMenuToggleImportant(taskId),
-      onSetDeadline: (taskId) => this.handleMenuSetDeadline(taskId),
-      onStartPomodoro: (taskId) => this.handleMenuStartPomodoro(taskId),
-      onAddSubtask: (taskId) => this.handleMenuAddSubtask(taskId),
-      onDelete: (taskId) => this.handleMenuDelete(taskId),
+      onEdit: (taskId, listName) => this.handleMenuEdit(taskId, listName),
+      onToggleImportant: (taskId, listName) => this.handleMenuToggleImportant(taskId, listName),
+      onSetDeadline: (taskId, listName) => this.handleMenuSetDeadline(taskId, listName),
+      onStartPomodoro: (taskId, listName) => this.handleMenuStartPomodoro(taskId, listName),
+      onAddSubtask: (taskId, listName) => this.handleMenuAddSubtask(taskId, listName),
+      onDelete: (taskId, listName) => this.handleMenuDelete(taskId, listName),
       onClose: () => this.handleMenuClose(),
       devMode: this.devMode
     });
@@ -693,8 +694,8 @@ class DoItTomorrowApp {
       return;
     }
 
-    // Show context menu
-    this.contextMenu.show(position, task);
+    // Show context menu with list context for cross-list parent operations (v1.28.16)
+    this.contextMenu.show(position, task, listNameFromDOM);
     this.wasLongPress = true;
 
     if (this.devMode.isActive()) {
@@ -721,12 +722,14 @@ class DoItTomorrowApp {
   }
 
   // Handle menu toggle important action
-  handleMenuToggleImportant(taskId) {
-    console.log('🐛 [IMPORTANT] handleMenuToggleImportant called', { taskId });
+  // v1.28.16: Accept listName for cross-list parent operations
+  handleMenuToggleImportant(taskId, listName) {
+    console.log('🐛 [IMPORTANT] handleMenuToggleImportant called', { taskId, listName });
 
-    // Find the ACTUAL task in the data array (not a copy)
-    const actualTask = this.taskManager.findTaskById(taskId);
-    console.log('🐛 [IMPORTANT] findTaskById result:', actualTask);
+    // v1.28.16: Use list-specific lookup for cross-list parent operations
+    // This ensures we modify the correct instance when same ID exists in both lists
+    const actualTask = this.taskManager.findTaskInList(taskId, listName);
+    console.log('🐛 [IMPORTANT] findTaskInList result:', actualTask);
 
     if (!actualTask) {
       console.error('🐛 [IMPORTANT] Task not found!');
@@ -787,9 +790,10 @@ class DoItTomorrowApp {
   }
 
   // Handle menu set deadline action
-  handleMenuSetDeadline(taskId) {
+  // v1.28.16: Accept listName for cross-list parent operations
+  handleMenuSetDeadline(taskId, listName) {
     this.contextMenu.hide();
-    setTimeout(() => this.deadlinePicker.show(taskId), 50);
+    setTimeout(() => this.deadlinePicker.show(taskId, listName), 50);
   }
 
   // Handle menu delete action

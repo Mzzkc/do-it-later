@@ -358,6 +358,69 @@ export class AppPage {
     return await parent.locator('.subtask-list .task-item').all();
   }
 
+  /**
+   * Long press a task in a SPECIFIC list to open context menu
+   * Critical for testing cross-list parents where same task exists in both lists
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async longPressTaskInList(text, listName) {
+    const task = await this.getTaskInList(text, listName);
+    const taskContent = task.locator('.task-content').first();
+    await taskContent.hover({ force: true });
+    await this.page.mouse.down();
+    await this.page.waitForTimeout(700); // Long press duration (600ms + buffer)
+    await this.page.mouse.up();
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Check if task is marked important in a SPECIFIC list
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async isTaskImportantInList(text, listName) {
+    const task = await this.getTaskInList(text, listName);
+    const classes = await task.getAttribute('class');
+    return classes.includes('important');
+  }
+
+  /**
+   * Check if task has deadline indicator in a SPECIFIC list
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async hasDeadlineInList(text, listName) {
+    const task = await this.getTaskInList(text, listName);
+    const deadline = await task.locator('.deadline-indicator').count();
+    return deadline > 0;
+  }
+
+  /**
+   * Toggle important for a task in a SPECIFIC list via context menu
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async toggleImportantInList(text, listName) {
+    await this.longPressTaskInList(text, listName);
+    await this.selectContextMenuItem('Toggle Important');
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Set deadline for a task in a SPECIFIC list via context menu
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   * @param {string} dateString - Date in YYYY-MM-DD format
+   */
+  async setDeadlineInList(text, listName, dateString) {
+    await this.longPressTaskInList(text, listName);
+    await this.selectContextMenuItem('Set Deadline');
+    await this.page.fill('#deadline-input', dateString);
+    await this.page.click('#set-deadline-btn');
+    await this.page.waitForTimeout(100);
+  }
+
   // State verification methods
   async isTaskCompleted(text) {
     const task = await this.getTaskOrSubtaskByText(text);

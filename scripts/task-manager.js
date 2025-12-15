@@ -211,6 +211,21 @@ class TaskManager {
   }
 
   /**
+   * Find a task by ID in a SPECIFIC list
+   * v1.28.16: Use this for cross-list parent operations where the same ID exists in both lists
+   * @param {string} id - Task ID
+   * @param {string} listName - 'today' or 'tomorrow' - which list to search in
+   * @returns {Object|undefined} Task object from specified list, or undefined if not found
+   */
+  findTaskInList(id, listName) {
+    if (!listName) {
+      // Fallback to original behavior if no list specified
+      return this.findTaskById(id);
+    }
+    return this.app.data[listName].find(t => t.id === id);
+  }
+
+  /**
    * Add a task to a specific list
    * @param {Object} task - Task object to add
    * @param {string} listName - Name of the list to add to

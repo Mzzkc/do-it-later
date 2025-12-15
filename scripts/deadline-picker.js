@@ -8,9 +8,14 @@ class DeadlinePicker {
 
   /**
    * Show deadline picker modal
+   * v1.28.16: Accept listName for cross-list parent operations
    * @param {string} taskId - Task ID to set deadline for
+   * @param {string} listName - Which list the task was long-pressed in ('today' or 'tomorrow')
    */
-  show(taskId) {
+  show(taskId, listName = null) {
+    // v1.28.16: Store listName for use in setDeadline callback
+    this.currentListName = listName;
+
     const taskInfo = this.app.taskManager.findTask(taskId);
     if (!taskInfo) return;
 
@@ -75,24 +80,25 @@ class DeadlinePicker {
     // Focus input
     setTimeout(() => input.focus(), 100);
 
-    // Set deadline
+    // Set deadline - v1.28.16: Pass stored listName for cross-list parent operations
     setBtn.addEventListener('click', () => {
       const deadline = input.value;
       if (deadline) {
-        this.setDeadline(taskId, deadline);
+        this.setDeadline(taskId, deadline, this.currentListName);
         backdrop.remove();
       }
     });
 
     // Cancel
     cancelBtn.addEventListener('click', () => {
+      this.currentListName = null; // Clear stored context
       backdrop.remove();
     });
 
-    // Remove deadline
+    // Remove deadline - v1.28.16: Pass stored listName for cross-list parent operations
     if (removeBtn) {
       removeBtn.addEventListener('click', () => {
-        this.setDeadline(taskId, null);
+        this.setDeadline(taskId, null, this.currentListName);
         backdrop.remove();
       });
     }
@@ -116,12 +122,18 @@ class DeadlinePicker {
 
   /**
    * Set task deadline
+   * v1.28.16: Accept listName for cross-list parent operations
    * @param {string} taskId - Task ID
    * @param {string|null} deadline - ISO date string or null to remove
+   * @param {string} listName - Which list the task was long-pressed in ('today' or 'tomorrow')
    */
-  setDeadline(taskId, deadline) {
-    // Find the actual task object to update
-    const actualTask = this.app.taskManager.findTaskById(taskId);
+  setDeadline(taskId, deadline, listName = null) {
+    // v1.28.16: Use list-specific lookup for cross-list parent operations
+    // This ensures we modify the correct instance when same ID exists in both lists
+    const actualTask = this.app.taskManager.findTaskInList(taskId, listName);
+
+    // Clear stored context after use
+    this.currentListName = null;
 
     if (!actualTask) return;
 

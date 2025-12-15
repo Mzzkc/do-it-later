@@ -298,11 +298,13 @@ class ContextMenu {
    * Show context menu at position for task
    * @param {Object} position - Position with x and y coordinates
    * @param {Object} task - Task object
+   * @param {string} listName - Which list the task was long-pressed in ('today' or 'tomorrow')
    */
-  show(position, task) {
+  show(position, task, listName = null) {
     if (this.isVisible) this.hide();
 
     this.currentTask = task;
+    this.currentListName = listName; // v1.28.16: Track list context for cross-list parent operations
     this.isVisible = true;
 
     // Prevent body scroll while menu is open
@@ -315,7 +317,8 @@ class ContextMenu {
       console.log('📋 CONTEXT MENU SHOWN:', {
         taskId: task.id,
         position,
-        isImportant: task.important
+        isImportant: task.important,
+        listName: this.currentListName
       });
     }
   }
@@ -329,6 +332,7 @@ class ContextMenu {
     this.isVisible = false;
     this.removeMenuElement();
     this.currentTask = null;
+    this.currentListName = null; // v1.28.16: Clear list context
 
     // Restore body scroll
     document.body.style.overflow = '';
@@ -542,24 +546,28 @@ class ContextMenu {
   handleMenuAction(action) {
     if (!this.currentTask) return;
 
+    // v1.28.16: Pass listName to all callbacks for cross-list parent operations
+    const taskId = this.currentTask.id;
+    const listName = this.currentListName;
+
     switch (action) {
       case 'edit':
-        this.onEdit(this.currentTask.id);
+        this.onEdit(taskId, listName);
         break;
       case 'important':
-        this.onToggleImportant(this.currentTask.id);
+        this.onToggleImportant(taskId, listName);
         break;
       case 'deadline':
-        this.onSetDeadline(this.currentTask.id);
+        this.onSetDeadline(taskId, listName);
         break;
       case 'pomodoro':
-        this.onStartPomodoro(this.currentTask.id);
+        this.onStartPomodoro(taskId, listName);
         break;
       case 'add-subtask':
-        this.onAddSubtask(this.currentTask.id);
+        this.onAddSubtask(taskId, listName);
         break;
       case 'delete':
-        this.onDelete(this.currentTask.id);
+        this.onDelete(taskId, listName);
         break;
     }
   }

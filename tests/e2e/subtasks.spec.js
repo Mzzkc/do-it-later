@@ -597,4 +597,109 @@ test.describe('Subtask Feature', () => {
     expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'later')).toBe(true);
     expect(await app.isTaskCompletedInList('Cross List Complete Parent', 'today')).toBe(false);
   });
+
+  test('17. Cross-List Parent - Toggle Important in Later Should Not Affect Today', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // toggling importance via context menu in the LATER list should ONLY affect:
+    // - The Later list instance of the parent
+    // It should NOT affect:
+    // - The Today list instance of the parent
+    //
+    // BUG: handleMenuToggleImportant uses findTaskById which returns the TODAY version,
+    // so long-pressing on Later and toggling important actually affects Today's task!
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Important Parent');
+    await app.addSubtask('Cross List Important Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Important Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List Important Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Important Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Verify initial state: nothing is important
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'today')).toBe(false);
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'later')).toBe(false);
+
+    // TEST THE BUG: Toggle important on the parent in the LATER list
+    await app.toggleImportantInList('Cross List Important Parent', 'later');
+
+    // BUG MANIFESTATION: The operation affected the WRONG list instance!
+    // Because findTaskById searches today[] first, the Today instance was modified
+    // instead of the Later instance that was actually long-pressed.
+    //
+    // Expected (after fix): Later=important, Today=not important
+    // Actual (bug): Later=not important, Today=important
+
+    // Later parent should be important (this is what we long-pressed)
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'later')).toBe(true);
+
+    // Today parent should NOT be important (we didn't touch it!)
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'today')).toBe(false);
+
+    // Verify state persists after reload
+    await app.reload();
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'later')).toBe(true);
+    expect(await app.isTaskImportantInList('Cross List Important Parent', 'today')).toBe(false);
+  });
+
+  test('18. Cross-List Parent - Set Deadline in Later Should Not Affect Today', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // setting deadline via context menu in the LATER list should ONLY affect:
+    // - The Later list instance of the parent
+    // It should NOT affect:
+    // - The Today list instance of the parent
+    //
+    // BUG: setDeadline uses findTaskById which returns the TODAY version,
+    // so long-pressing on Later and setting deadline actually affects Today's task!
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Deadline Parent');
+    await app.addSubtask('Cross List Deadline Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Deadline Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List Deadline Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Deadline Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Verify initial state: no deadlines
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'today')).toBe(false);
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'later')).toBe(false);
+
+    // TEST THE BUG: Set deadline on the parent in the LATER list
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const dateString = tomorrowDate.toISOString().split('T')[0];
+    await app.setDeadlineInList('Cross List Deadline Parent', 'later', dateString);
+
+    // BUG MANIFESTATION: The operation affected the WRONG list instance!
+    // Because findTaskById searches today[] first, the Today instance was modified
+    // instead of the Later instance that was actually long-pressed.
+    //
+    // Expected (after fix): Later=has deadline, Today=no deadline
+    // Actual (bug): Later=no deadline, Today=has deadline
+
+    // Later parent should have deadline (this is what we long-pressed)
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'later')).toBe(true);
+
+    // Today parent should NOT have deadline (we didn't touch it!)
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'today')).toBe(false);
+
+    // Verify state persists after reload
+    await app.reload();
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'later')).toBe(true);
+    expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'today')).toBe(false);
+  });
 });
