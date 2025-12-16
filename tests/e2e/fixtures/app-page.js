@@ -303,6 +303,30 @@ export class AppPage {
     return await parent.locator('.subtask-list .task-item').all();
   }
 
+  /**
+   * Add subtask to a parent in a SPECIFIC list via context menu
+   * Critical for testing cross-list parents where same parent exists in both lists
+   * @param {string} parentText - Parent task text
+   * @param {string} listName - 'today' or 'later'
+   * @param {string} subtaskText - Text for the new subtask
+   */
+  async addSubtaskInList(parentText, listName, subtaskText) {
+    // Long press the parent in the specific list
+    await this.longPressTaskInList(parentText, listName);
+    await this.selectContextMenuItem('Add Subtask');
+
+    // The subtask input should appear in the same list we long-pressed
+    const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
+    const subtaskInput = this.page.locator(`#${listId} .subtask-input`);
+
+    // Wait for input to appear (with timeout that will fail if bug exists)
+    await subtaskInput.waitFor({ state: 'visible', timeout: 5000 });
+
+    await subtaskInput.fill(subtaskText);
+    await subtaskInput.press('Enter');
+    await this.page.waitForTimeout(150);
+  }
+
   async toggleSubtaskExpansion(parentText) {
     const parent = await this.getTaskByText(parentText);
     await parent.locator('.expand-icon').click();
@@ -721,5 +745,50 @@ export class AppPage {
       return await message.innerText();
     }
     return null;
+  }
+
+  /**
+   * Edit a task's text in a SPECIFIC list via context menu
+   * Critical for testing cross-list parents where same task exists in both lists
+   * @param {string} text - Current task text
+   * @param {string} listName - 'today' or 'later'
+   * @param {string} newText - New text to set
+   */
+  async editTaskInList(text, listName, newText) {
+    await this.longPressTaskInList(text, listName);
+    await this.selectContextMenuItem('Edit Task');
+    await this.page.waitForTimeout(100);
+
+    // NOTE: Due to bug, the edit input may appear in the WRONG list
+    // (if editing cross-list parent in Later, input may appear in Today)
+    // We find the edit-input wherever it appears to complete the edit action
+    const editInput = this.page.locator('.edit-input');
+    await editInput.fill(newText);
+    await editInput.press('Enter');
+    await this.page.waitForTimeout(150); // Wait for save
+  }
+
+  /**
+   * Get task text in a SPECIFIC list
+   * @param {string} taskText - Task text to find (used for locating the task)
+   * @param {string} listName - 'today' or 'later'
+   * @returns {string} The task's current text
+   */
+  async getTaskTextInList(taskText, listName) {
+    const task = await this.getTaskInList(taskText, listName);
+    return await task.locator('.task-text').innerText();
+  }
+
+  /**
+   * Get all task texts from app.data for a specific list via page evaluation
+   * Useful for verification after operations that may rename tasks
+   * @param {string} listName - 'today' or 'later'
+   * @returns {Array<{id: string, text: string}>} Array of task objects with id and text
+   */
+  async getTaskDataInList(listName) {
+    const dataKey = listName === 'today' ? 'today' : 'tomorrow';
+    return await this.page.evaluate((key) => {
+      return app.data[key].map(t => ({ id: t.id, text: t.text }));
+    }, dataKey);
   }
 }

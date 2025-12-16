@@ -1046,21 +1046,31 @@ class TaskManager {
   /**
    * Enter edit mode for a task
    * @param {string} id - Task ID
+   * @param {string} listName - v1.28.17: List context for cross-list parent operations ('today' or 'later')
    */
-  enterEditMode(id) {
+  enterEditMode(id, listName) {
     // Prevent race conditions by checking if we're already editing this task
     if (this.app.editingTask === id) return;
 
     // Cancel any existing edit mode first
     if (this.app.editingTask) this.cancelEdit();
 
-    const taskInfo = this.findTask(id);
+    // v1.28.17: Use list-specific lookup for cross-list parent operations
+    const taskInfo = listName ? this.findTaskInList(id, listName) : this.findTask(id);
     if (!taskInfo) return;
 
-    const taskElement = document.querySelector(`[data-task-id="${id}"] .task-text`);
+    // v1.28.17: For cross-list parents, target the specific list's DOM element
+    let taskElement;
+    if (listName) {
+      const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
+      taskElement = document.querySelector(`#${listId} [data-task-id="${id}"] .task-text`);
+    } else {
+      taskElement = document.querySelector(`[data-task-id="${id}"] .task-text`);
+    }
     if (!taskElement) return;
 
     this.app.editingTask = id;
+    this.app.editingTaskList = listName; // v1.28.17: Store list context for saveEdit
     this.app.originalText = taskInfo.text;
 
     // Lock the task to prevent completion/deletion during edit
@@ -1115,8 +1125,10 @@ class TaskManager {
   saveEdit(newText) {
     if (!this.app.editingTask) return;
 
-    // Find the actual task object to update
-    const actualTask = this.findTaskById(this.app.editingTask);
+    // v1.28.17: Use list-specific lookup for cross-list parent operations
+    const actualTask = this.app.editingTaskList
+      ? this.findTaskInList(this.app.editingTask, this.app.editingTaskList)
+      : this.findTaskById(this.app.editingTask);
 
     if (!actualTask) return;
 
@@ -1189,6 +1201,7 @@ class TaskManager {
     }
 
     this.app.editingTask = null;
+    this.app.editingTaskList = null; // v1.28.17: Clear list context
     this.app.originalText = null;
     this.app.wasLongPress = false; // Reset long press flag when canceling edit
   }

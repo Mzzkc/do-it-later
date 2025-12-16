@@ -716,9 +716,10 @@ class DoItTomorrowApp {
   }
 
   // Handle menu edit action
-  handleMenuEdit(taskId) {
+  // v1.28.17: Accept listName for cross-list parent operations
+  handleMenuEdit(taskId, listName) {
     this.contextMenu.hide();
-    setTimeout(() => this.taskManager.enterEditMode(taskId), 50);
+    setTimeout(() => this.taskManager.enterEditMode(taskId, listName), 50);
   }
 
   // Handle menu toggle important action

@@ -702,4 +702,61 @@ test.describe('Subtask Feature', () => {
     expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'later')).toBe(true);
     expect(await app.hasDeadlineInList('Cross List Deadline Parent', 'today')).toBe(false);
   });
+
+  test('19. Cross-List Parent - Edit Task in Later Should Not Affect Today', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // editing task text via context menu in the LATER list should ONLY affect:
+    // - The Later list instance of the parent
+    // It should NOT affect:
+    // - The Today list instance of the parent
+    //
+    // BUG: handleMenuEdit doesn't receive listName, and saveEdit uses findTaskById
+    // which returns the TODAY version, so long-pressing on Later and editing
+    // actually changes Today's task text!
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Edit Parent');
+    await app.addSubtask('Cross List Edit Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Edit Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists with same original text
+    const parentInToday = await app.isTaskInList('Cross List Edit Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Edit Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // TEST THE BUG: Edit the parent text in the LATER list
+    await app.editTaskInList('Cross List Edit Parent', 'later', 'Edited Later Parent');
+
+    // BUG MANIFESTATION: The operation affected the WRONG list instance!
+    // Because findTaskById searches today[] first, the Today instance was modified
+    // instead of the Later instance that was actually long-pressed.
+    //
+    // Expected (after fix): Later="Edited Later Parent", Today="Cross List Edit Parent"
+    // Actual (bug): Later="Cross List Edit Parent", Today="Edited Later Parent"
+
+    // Verify via app.data that the LATER parent was edited
+    const laterTaskData = await app.getTaskDataInList('later');
+    const editedInLater = laterTaskData.some(t => t.text === 'Edited Later Parent');
+    expect(editedInLater).toBe(true);
+
+    // Verify via app.data that TODAY parent still has original text
+    const todayTaskData = await app.getTaskDataInList('today');
+    const originalInToday = todayTaskData.some(t => t.text === 'Cross List Edit Parent');
+    expect(originalInToday).toBe(true);
+
+    // Verify state persists after reload
+    await app.reload();
+    const laterTaskDataAfterReload = await app.getTaskDataInList('later');
+    const editedInLaterAfterReload = laterTaskDataAfterReload.some(t => t.text === 'Edited Later Parent');
+    expect(editedInLaterAfterReload).toBe(true);
+
+    const todayTaskDataAfterReload = await app.getTaskDataInList('today');
+    const originalInTodayAfterReload = todayTaskDataAfterReload.some(t => t.text === 'Cross List Edit Parent');
+    expect(originalInTodayAfterReload).toBe(true);
+  });
 });
