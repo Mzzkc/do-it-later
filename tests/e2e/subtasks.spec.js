@@ -796,4 +796,77 @@ test.describe('Subtask Feature', () => {
     );
     expect(subtaskTextsAfterReload).toContain('New Later Subtask');
   });
+
+  test('21. Cross-List Parent - Cancel Edit via Escape Should Restore Both List Text Visibility', async () => {
+    // REGRESSION TEST: When editing a cross-list parent via Later list and pressing Escape,
+    // the Later copy's .task-text should be restored to visible (not stuck with display: none).
+    // Note: Due to blur event triggering saveEdit() which calls render(), this bug may not
+    // manifest via normal Escape key press. The test verifies the behavior works correctly.
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Cancel Edit Parent');
+    await app.addSubtask('Cross List Cancel Edit Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Cancel Edit Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List Cancel Edit Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Cancel Edit Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Start editing in the Later list (don't complete the edit)
+    await app.startEditInList('Cross List Cancel Edit Parent', 'later');
+
+    // Verify edit input exists
+    const hasInput = await app.page.locator('.edit-input').count();
+    expect(hasInput).toBeGreaterThan(0);
+
+    // Cancel edit by pressing Escape
+    await app.pressEscape();
+
+    // After Escape, BOTH list copies should have visible task text
+    const todayTextVisible = await app.isTaskTextVisibleInList('Cross List Cancel Edit Parent', 'today');
+    const laterTextVisible = await app.isTaskTextVisibleInList('Cross List Cancel Edit Parent', 'later');
+
+    expect(todayTextVisible).toBe(true);
+    expect(laterTextVisible).toBe(true);
+  });
+
+  test('22. Cross-List Parent - Toggle Important Animation Should Trigger in Correct List', async () => {
+    // REGRESSION TEST: When marking a cross-list parent as important via Later list context menu,
+    // the importance animation should trigger on the LATER copy (not just Today).
+    // Bug: handleMenuToggleImportant uses unscoped querySelector for animation.
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List Animation Parent');
+    await app.addSubtask('Cross List Animation Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List Animation Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists and is NOT important yet
+    const parentInToday = await app.isTaskInList('Cross List Animation Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List Animation Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Toggle important via Later list context menu
+    await app.toggleImportantInList('Cross List Animation Parent', 'later');
+
+    // Wait a moment for animation class to be applied (happens after 50ms setTimeout)
+    await app.page.waitForTimeout(100);
+
+    // Check if animation class was applied to LATER copy
+    // Note: Animation class is removed after 600ms, so we need to check quickly
+    const laterHasAnimation = await app.hasImportanceAnimationInList('Cross List Animation Parent', 'later');
+
+    // This would fail before the fix - animation only appears on Today copy
+    expect(laterHasAnimation).toBe(true);
+  });
 });

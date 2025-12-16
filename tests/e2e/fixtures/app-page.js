@@ -791,4 +791,64 @@ export class AppPage {
       return app.data[key].map(t => ({ id: t.id, text: t.text }));
     }, dataKey);
   }
+
+  /**
+   * Start editing a task in a SPECIFIC list via context menu (without completing the edit)
+   * Use this to test edit cancellation behavior
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   */
+  async startEditInList(text, listName) {
+    await this.longPressTaskInList(text, listName);
+    await this.selectContextMenuItem('Edit Task');
+    await this.page.waitForTimeout(100);
+    // Edit input should now be visible
+  }
+
+  /**
+   * Press Escape key globally (e.g., to cancel edit mode)
+   */
+  async pressEscape() {
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Check if task text is visible (not hidden) in a SPECIFIC list
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   * @returns {boolean} True if .task-text element is visible (display != 'none')
+   */
+  async isTaskTextVisibleInList(text, listName) {
+    const task = await this.getTaskInList(text, listName);
+    // Get ONLY the direct child .task-content's .task-text, not nested subtask texts
+    const taskText = task.locator(':scope > .task-content .task-text').first();
+
+    // Check if display is not 'none'
+    const display = await taskText.evaluate(el => window.getComputedStyle(el).display);
+    return display !== 'none';
+  }
+
+  /**
+   * Check if edit input currently exists in a SPECIFIC list
+   * @param {string} listName - 'today' or 'later'
+   * @returns {boolean} True if edit input exists in the list
+   */
+  async hasEditInputInList(listName) {
+    const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
+    const count = await this.page.locator(`#${listId} .edit-input`).count();
+    return count > 0;
+  }
+
+  /**
+   * Check if importance animation class is applied to task in a SPECIFIC list
+   * @param {string} text - Task text
+   * @param {string} listName - 'today' or 'later'
+   * @returns {boolean} True if 'importance-added' class is present
+   */
+  async hasImportanceAnimationInList(text, listName) {
+    const task = await this.getTaskInList(text, listName);
+    const classes = await task.getAttribute('class');
+    return classes.includes('importance-added');
+  }
 }

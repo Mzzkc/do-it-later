@@ -759,8 +759,10 @@ class DoItTomorrowApp {
       this.render();
 
       // Then trigger the glow animation
+      // v1.28.19: Use list-scoped query for cross-list parents
       setTimeout(() => {
-        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        const listId = listName === 'tomorrow' ? 'tomorrow-list' : 'today-list';
+        const taskElement = document.querySelector(`#${listId} [data-task-id="${taskId}"]`);
         console.log('🐛 [IMPORTANT] Found task element for animation:', taskElement);
         if (taskElement) {
           console.log('🐛 [IMPORTANT] Element classes before:', taskElement.className);

@@ -1059,11 +1059,14 @@ class TaskManager {
     if (!taskInfo) return;
 
     // v1.28.17: For cross-list parents, target the specific list's DOM element
+    // v1.28.19: Note - fallback (when listName not provided) returns first match
+    // which is Today for cross-list parents. Context menu always provides listName.
     let taskElement;
     if (listName) {
       const listId = listName === 'today' ? 'today-list' : 'tomorrow-list';
       taskElement = document.querySelector(`#${listId} [data-task-id="${id}"] .task-text`);
     } else {
+      // Fallback for non-context-menu edits (currently not used)
       taskElement = document.querySelector(`[data-task-id="${id}"] .task-text`);
     }
     if (!taskElement) return;
@@ -1187,10 +1190,20 @@ class TaskManager {
       }
     });
 
-    // Restore task text display
-    const taskElement = document.querySelector(`[data-task-id="${this.app.editingTask}"] .task-text`);
-    if (taskElement) {
-      taskElement.style.display = '';
+    // Restore task text display (defensive - usually render() is called after cancelEdit)
+    // v1.28.19: Use list-scoped query for cross-list parents
+    if (this.app.editingTaskList) {
+      const listId = this.app.editingTaskList === 'today' ? 'today-list' : 'tomorrow-list';
+      const taskElement = document.querySelector(`#${listId} [data-task-id="${this.app.editingTask}"] .task-text`);
+      if (taskElement) {
+        taskElement.style.display = '';
+      }
+    } else {
+      // Fallback for non-list-specific editing
+      const taskElement = document.querySelector(`[data-task-id="${this.app.editingTask}"] .task-text`);
+      if (taskElement) {
+        taskElement.style.display = '';
+      }
     }
 
     // Unlock the task
@@ -1422,6 +1435,9 @@ class TaskManager {
     this.app.incrementOperationCount();
 
     // Determine which list this element is in
+    // v1.28.19: Note - fallback query returns first match (Today for cross-list parents)
+    // This is acceptable since list detection happens from the element's position
+    // Callers should always pass taskElement from the actual clicked element
     const targetElement = taskElement || document.querySelector(`[data-task-id="${taskId}"]`);
     if (!targetElement) return;
 
