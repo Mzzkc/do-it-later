@@ -68,12 +68,12 @@ class TaskManager {
    */
   syncTreestoFlatArrays() {
     // Preserve UI state from existing flat tasks before syncing
+    // v1.28.18: Removed _addingSubtask - no longer using flags, DOM injection instead
     const uiStateMap = new Map();
     [...this.app.data.today, ...this.app.data.tomorrow].forEach(task => {
-      if (task._isEditing || task._addingSubtask || task._editText) {
+      if (task._isEditing || task._editText) {
         uiStateMap.set(task.id, {
           _isEditing: task._isEditing,
-          _addingSubtask: task._addingSubtask,
           _editText: task._editText
         });
       }
@@ -87,7 +87,6 @@ class TaskManager {
       const savedState = uiStateMap.get(task.id);
       if (savedState) {
         if (savedState._isEditing) task._isEditing = savedState._isEditing;
-        if (savedState._addingSubtask) task._addingSubtask = savedState._addingSubtask;
         if (savedState._editText) task._editText = savedState._editText;
       }
     });
@@ -1210,11 +1209,12 @@ class TaskManager {
 
   /**
    * Show inline input to add subtask
-   * TREE-FIRST: Modifies tree node expansion state
+   * v1.28.18: Accepts listName for list-specific operation
    * @param {string} taskId - Parent task ID
+   * @param {string} listName - Which list to show input in ('today' or 'tomorrow')
    */
-  showAddSubtaskDialog(taskId) {
-    console.log('🐛 [SUBTASK] showAddSubtaskDialog called', { taskId });
+  showAddSubtaskDialog(taskId, listName) {
+    console.log('🐛 [SUBTASK] showAddSubtaskDialog called', { taskId, listName });
 
     // TREE-FIRST: Find node in trees
     const nodeInToday = this.trees.today.findById(taskId);
@@ -1225,40 +1225,71 @@ class TaskManager {
       return;
     }
 
-    // Make sure the task is expanded in both lists so we can see the input
-    if (nodeInToday) {
-      nodeInToday.setExpandedIn('today', true);
-      nodeInToday.setExpandedIn('tomorrow', true);
-    }
-    if (nodeInTomorrow) {
-      nodeInTomorrow.setExpandedIn('today', true);
-      nodeInTomorrow.setExpandedIn('tomorrow', true);
+    // Expand the task in the specific list so we can see the input
+    const targetNode = listName === 'tomorrow' ? nodeInTomorrow : nodeInToday;
+    if (targetNode) {
+      targetNode.setExpandedIn(listName === 'tomorrow' ? 'later' : 'today', true);
     }
 
     // Sync tree state to flat arrays
     this.syncTreestoFlatArrays();
 
-    // Mark this task as having an active subtask input
-    // (This is UI state, set on flat task for renderer to read)
-    const actualTask = this.findTaskById(taskId);
-    if (actualTask) {
-      actualTask._addingSubtask = true;
+    // Check if task already has children (input will be rendered by renderer)
+    const hasChildren = targetNode && targetNode.children && targetNode.children.length > 0;
+
+    if (hasChildren) {
+      // Task has children - renderer will show input, just re-render and focus
+      this.app.save();
+      this.app.render();
+
+      // Focus the input in the specific list
+      setTimeout(() => {
+        const listId = listName === 'tomorrow' ? 'tomorrow-list' : 'today-list';
+        const input = document.querySelector(`#${listId} [data-task-id="${taskId}"] .subtask-input`);
+        if (input) {
+          input.focus();
+          console.log('🐛 [SUBTASK] Focused existing subtask input in', listName);
+        }
+      }, 50);
+    } else {
+      // Task has no children - inject input directly into the specific list's DOM
+      this.app.save();
+      this.app.render();
+
+      // Find the task element in the specific list and inject subtask container with input
+      setTimeout(() => {
+        const listId = listName === 'tomorrow' ? 'tomorrow-list' : 'today-list';
+        const taskElement = document.querySelector(`#${listId} [data-task-id="${taskId}"]`);
+
+        if (taskElement && !taskElement.querySelector('.subtask-list')) {
+          // Create subtask container with input
+          const container = document.createElement('ul');
+          container.className = 'subtask-list';
+          container.style.display = 'block'; // Visible since we're adding
+
+          const inputLi = document.createElement('li');
+          inputLi.className = 'subtask-input-container';
+          inputLi.innerHTML = `
+            <input
+              type="text"
+              class="subtask-input"
+              placeholder="Add a subtask..."
+              data-parent-id="${taskId}"
+              enterkeyhint="done"
+            />
+          `;
+          container.appendChild(inputLi);
+          taskElement.appendChild(container);
+
+          // Focus the input
+          const input = inputLi.querySelector('.subtask-input');
+          if (input) {
+            input.focus();
+            console.log('🐛 [SUBTASK] Injected and focused subtask input in', listName);
+          }
+        }
+      }, 50);
     }
-
-    console.log('🐛 [SUBTASK] Marked task for subtask input, re-rendering...');
-    this.app.save();
-    this.app.render();
-
-    // Focus the input after render
-    setTimeout(() => {
-      const input = document.getElementById(`subtask-input-${taskId}`);
-      if (input) {
-        input.focus();
-        console.log('🐛 [SUBTASK] Focused subtask input');
-      } else {
-        console.error('🐛 [SUBTASK] Could not find subtask input after render');
-      }
-    }, 50);
   }
 
   /**
@@ -1266,9 +1297,10 @@ class TaskManager {
    * TREE-FIRST: Adds subtask as child node in tree
    * @param {string} parentTaskId - Parent task ID
    * @param {string} text - Subtask text
+   * @param {string} targetList - v1.28.18: Target list ('today' or 'tomorrow') from DOM context
    */
-  addSubtask(parentTaskId, text) {
-    console.log('🐛 [SUBTASK] addSubtask called', { parentTaskId, text });
+  addSubtask(parentTaskId, text, targetList = null) {
+    console.log('🐛 [SUBTASK] addSubtask called', { parentTaskId, text, targetList });
 
     // TREE-FIRST: Find parent node in trees
     const parentInToday = this.trees.today.findById(parentTaskId);
@@ -1292,10 +1324,22 @@ class TaskManager {
       createdAt: Date.now()
     };
 
-    // Add subtask to the tree where parent exists
-    // (prefer Today if parent is in both)
-    const targetTree = parentInToday ? 'today' : 'tomorrow';
-    const parentNode = parentInToday || parentInTomorrow;
+    // v1.28.18: Use targetList from DOM context if provided
+    // This is critical for cross-list parents - the input's list determines the tree
+    let targetTree;
+    let parentNode;
+
+    if (targetList === 'tomorrow' && parentInTomorrow) {
+      targetTree = 'tomorrow';
+      parentNode = parentInTomorrow;
+    } else if (targetList === 'today' && parentInToday) {
+      targetTree = 'today';
+      parentNode = parentInToday;
+    } else {
+      // Fallback: prefer Today if parent is in both (legacy behavior)
+      targetTree = parentInToday ? 'today' : 'tomorrow';
+      parentNode = parentInToday || parentInTomorrow;
+    }
 
     parentNode.addChild(text, nodeOptions);
     console.log('🐛 [SUBTASK] Added subtask to tree:', { parentTaskId, text, targetTree });
@@ -1311,7 +1355,9 @@ class TaskManager {
     // SURGICAL DOM INSERT: Add subtask element without full render
     // This keeps the input element alive so keyboard doesn't dismiss
     // Only works if parent already has subtasks (expand icon exists)
-    const input = document.getElementById(`subtask-input-${parentTaskId}`);
+    // v1.28.18: Use targetList to find the correct input (cross-list parents have inputs in both lists)
+    const listId = targetList === 'tomorrow' ? 'tomorrow-list' : 'today-list';
+    const input = document.querySelector(`#${listId} [data-parent-id="${parentTaskId}"].subtask-input`);
     if (input) {
       const inputContainer = input.closest('.subtask-input-container');
       const subtaskList = input.closest('.subtask-list');

@@ -822,9 +822,10 @@ class DoItTomorrowApp {
   }
 
   // Handle menu add subtask action
-  handleMenuAddSubtask(taskId) {
+  // v1.28.18: Pass listName for list-specific subtask input
+  handleMenuAddSubtask(taskId, listName) {
     this.contextMenu.hide();
-    setTimeout(() => this.taskManager.showAddSubtaskDialog(taskId), 50);
+    setTimeout(() => this.taskManager.showAddSubtaskDialog(taskId, listName), 50);
   }
 
   // Handle menu close

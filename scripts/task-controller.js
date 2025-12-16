@@ -85,22 +85,40 @@ class TaskController {
         const text = input.value.trim();
 
         if (text) {
-          this.app.taskManager.addSubtask(taskId, text);
+          // v1.28.18: Determine target tree from input's DOM position
+          // This is critical for cross-list parents where input exists in both lists
+          const listContainer = input.closest('#today-list, #tomorrow-list');
+          const targetList = listContainer?.id === 'today-list' ? 'today' : 'tomorrow';
+          this.app.taskManager.addSubtask(taskId, text, targetList);
           input.value = '';
         }
       }
     });
 
     // Handle Escape key to close subtask input
+    // v1.28.18: For first-subtask case (injected DOM), remove the container
+    // For existing children case, input stays (rendered by renderer)
     container.addEventListener('keydown', (e) => {
       if (e.target.classList.contains('subtask-input') && e.key === 'Escape') {
         const input = e.target;
         const taskId = input.dataset.parentId;
-        const task = this.app.taskManager.findTaskById(taskId);
-        if (task) {
-          task._addingSubtask = false;
-          this.app.render();
+
+        // Check if this task has children in the tree
+        const nodeInToday = this.app.taskManager.trees.today.findById(taskId);
+        const nodeInTomorrow = this.app.taskManager.trees.tomorrow.findById(taskId);
+        const node = nodeInToday || nodeInTomorrow;
+        const hasChildren = node && node.children && node.children.length > 0;
+
+        if (!hasChildren) {
+          // First-subtask case: remove the injected subtask container
+          const subtaskList = input.closest('.subtask-list');
+          if (subtaskList) {
+            subtaskList.remove();
+          }
         }
+        // For tasks with children, input stays visible (no action needed)
+        // Just blur the input
+        input.blur();
       }
     });
   }

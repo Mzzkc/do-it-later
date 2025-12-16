@@ -104,10 +104,10 @@ class Renderer {
     taskContent.innerHTML = this.getTaskHTML(task, listName);
     li.appendChild(taskContent);
 
-    // Render children if present OR if adding a subtask
-    // Only create container if there are actual children in this list OR adding a subtask
+    // v1.28.18: Only create subtask container if task has children
+    // For first-subtask case, showAddSubtaskDialog injects directly into DOM
     const hasChildrenInThisList = task.children && task.children.length > 0;
-    if (hasChildrenInThisList || task._addingSubtask) {
+    if (hasChildrenInThisList) {
       const subtaskContainer = this.createSubtaskContainer(task, listName);
       li.appendChild(subtaskContainer);
     }
@@ -146,8 +146,11 @@ class Renderer {
       });
     }
 
-    // Add subtask input if needed
-    if (task._addingSubtask) {
+    // v1.28.18: Always show subtask input when task has children
+    // This is list-specific - each list render gets its own input
+    // For first-subtask case (no children), showAddSubtaskDialog injects directly
+    const hasChildren = task.children && task.children.length > 0;
+    if (hasChildren) {
       const inputLi = this.createSubtaskInput(task.id);
       container.appendChild(inputLi);
     }

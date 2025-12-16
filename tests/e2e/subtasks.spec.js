@@ -759,4 +759,41 @@ test.describe('Subtask Feature', () => {
     const originalInTodayAfterReload = todayTaskDataAfterReload.some(t => t.text === 'Cross List Edit Parent');
     expect(originalInTodayAfterReload).toBe(true);
   });
+
+  test('20. Cross-List Parent - Add Subtask in Later Should Add to Later Tree', async () => {
+    // REGRESSION TEST: When a parent task exists in BOTH Today and Later lists,
+    // adding a subtask via the Later list's input should add to the Later tree.
+    // The input's DOM position determines which tree receives the subtask.
+
+    // Setup: Create parent with subtasks split across lists
+    await app.addTodayTask('Cross List AddSub Parent');
+    await app.addSubtask('Cross List AddSub Parent', 'Subtask Stay Today');
+    await app.addSubtask('Cross List AddSub Parent', 'Subtask Move Later');
+
+    // Move one subtask to Later (creates cross-list parent)
+    await app.clickMoveButton('Subtask Move Later');
+    await app.page.waitForTimeout(300);
+
+    // Verify parent exists in BOTH lists
+    const parentInToday = await app.isTaskInList('Cross List AddSub Parent', 'today');
+    const parentInLater = await app.isTaskInList('Cross List AddSub Parent', 'later');
+    expect(parentInToday).toBe(true);
+    expect(parentInLater).toBe(true);
+
+    // Add subtask via the Later list's input
+    await app.addSubtaskInList('Cross List AddSub Parent', 'later', 'New Later Subtask');
+
+    // Verify the subtask was added to the Later tree
+    const laterSubtasks = await app.getSubtasksInList('Cross List AddSub Parent', 'later');
+    const subtaskTexts = await Promise.all(laterSubtasks.map(s => s.locator('.task-text').innerText()));
+    expect(subtaskTexts).toContain('New Later Subtask');
+
+    // Verify state persists after reload
+    await app.reload();
+    const laterSubtasksAfterReload = await app.getSubtasksInList('Cross List AddSub Parent', 'later');
+    const subtaskTextsAfterReload = await Promise.all(
+      laterSubtasksAfterReload.map(s => s.locator('.task-text').innerText())
+    );
+    expect(subtaskTextsAfterReload).toContain('New Later Subtask');
+  });
 });
